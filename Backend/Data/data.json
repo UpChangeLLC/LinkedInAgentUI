@@ -1,0 +1,549 @@
+[
+    {
+        "created": 1511244147916,
+        "trackingId": "4Ri+x1ZlT7Oo5+qHAIE6qw==",
+        "firstName": "Yogesh",
+        "lastName": "Yadav",
+        "pronoun": null,
+        "versionTag": "1080083938",
+        "headline": "Data Scientist @Cogitate Technologies | LLM | Azure Synapse, Fabric & ML Studio | ML | NLP | AI Powered Solutions | Data-warehousing ",
+        "publicIdentifier": "yogesh-yadav-203216154",
+        "creator": false,
+        "influencer": false,
+        "premium": false,
+        "connectionType": 3,
+        "birthDate": {
+            "month": 8,
+            "day": 3,
+            "year": null
+        },
+        "id": "621613731",
+        "profileId": "ACoAACUNEqMBsNXL54DqGi9CkzRfg2u3wWnsDns",
+        "pictureUrl": "https://media.licdn.com/dms/image/v2/D4D03AQGdWYXyuqcSlQ/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1707547439111?e=1776297600&v=beta&t=tlfyij7GmxetBLfFe80ZUqDqNFsO735FnUs29ZwlM8A",
+        "coverImageUrl": "https://media.licdn.com/dms/image/v2/D4D16AQGOv-S4NRjS6A/profile-displaybackgroundimage-shrink_350_1400/profile-displaybackgroundimage-shrink_350_1400/0/1676903791678?e=1776297600&v=beta&t=Y0xRli95OvHWJw1wvfFAocDuDQZIaK9tv5DLayb60ZU",
+        "countryCode": "IN",
+        "geoUrn": "urn:li:fsd_geo:115884833",
+        "geoLocationName": "Gurugram, Haryana, India",
+        "geoCountryName": "India",
+        "jobTitle": "",
+        "summary": "Data scientist, passionate about leveraging data to drive insights and solve complex business problems. Skilled in LLM , AI powered solution design, Python, Statistics, Databases, ML, NLP and Visualisation tools. A collaborative team player with a track record of delivering actionable recommendations and driving business growth.",
+        "positions": [
+            {
+                "company": {
+                    "name": "Cogitate",
+                    "url": "https://www.linkedin.com/company/3529840/",
+                    "logo": "https://media.licdn.com/dms/image/v2/D4D0BAQHeCADt80_ckQ/company-logo_400_400/company-logo_400_400/0/1734534649274/cogitate_technology_solutions_logo?e=1776297600&v=beta&t=FFLpUWszpb8jOGmolCXeHv1YUdSgjwjEYV6k6-i3pDw"
+                },
+                "employmentType": "Full-time",
+                "totalDuration": "2 yrs 9 mos",
+                "positions": [
+                    {
+                        "title": "Data Scientist",
+                        "locationName": "",
+                        "timePeriod": {
+                            "startDate": {
+                                "month": 4,
+                                "year": 2025
+                            },
+                            "endDate": null
+                        },
+                        "totalDuration": "1 yr",
+                        "description": "",
+                        "insights": ""
+                    },
+                    {
+                        "title": "Associate Data Scientist",
+                        "locationName": "Navi Mumbai, Maharashtra, India · On-site",
+                        "timePeriod": {
+                            "startDate": {
+                                "month": 7,
+                                "year": 2023
+                            },
+                            "endDate": {
+                                "month": 3,
+                                "year": 2025
+                            }
+                        },
+                        "totalDuration": "1 yr 9 mos",
+                        "description": "",
+                        "insights": ""
+                    }
+                ]
+            },
+            {
+                "title": "Data Science Career Mentor",
+                "locationName": "Gurugram, Haryana, India · Remote",
+                "timePeriod": {
+                    "startDate": {
+                        "month": 5,
+                        "year": 2023
+                    },
+                    "endDate": null
+                },
+                "totalDuration": "2 yrs 11 mos",
+                "description": "Providing mentoring services to people who want to improve their abilities, advance their careers, or overcome particular obstacles in their field.",
+                "company": {
+                    "url": "https://www.linkedin.com/company/79703243/",
+                    "name": "topmate.io",
+                    "logo": "https://media.licdn.com/dms/image/v2/D560BAQGsl1Ab9W3R7A/company-logo_400_400/company-logo_400_400/0/1731241647690/topmate_io_logo?e=1776297600&v=beta&t=r3IV8T-REQLY5kBfekfSgUtxpZLOyx-dPE_b-seLcDU"
+                }
+            },
+            {
+                "title": "Data Analyst",
+                "locationName": "Gurugram, Haryana, India · Remote",
+                "timePeriod": {
+                    "startDate": {
+                        "month": 6,
+                        "year": 2023
+                    },
+                    "endDate": {
+                        "month": 8,
+                        "year": 2023
+                    }
+                },
+                "totalDuration": "3 mos",
+                "description": "",
+                "company": {
+                    "url": "https://www.linkedin.com/company/13444978/",
+                    "name": "Yoshops.com",
+                    "logo": "https://media.licdn.com/dms/image/v2/C510BAQFp9WAQW0Mvcg/company-logo_400_400/company-logo_400_400/0/1631422330387/yoshops_logo?e=1776297600&v=beta&t=Q5XDYYvr1IbLAsvH3QBC9LVTVBEEtm22Ax1J2bLoZBw"
+                }
+            },
+            {
+                "title": "Health and well-being",
+                "locationName": "Gurugram, Haryana",
+                "timePeriod": {
+                    "startDate": {
+                        "month": 8,
+                        "year": 2021
+                    },
+                    "endDate": {
+                        "month": 7,
+                        "year": 2022
+                    }
+                },
+                "totalDuration": "1 yr",
+                "description": "",
+                "company": {
+                    "url": "",
+                    "name": "Career Break"
+                }
+            },
+            {
+                "title": "Marketing Engineer",
+                "locationName": "Gurugram, Haryana, India",
+                "timePeriod": {
+                    "startDate": {
+                        "month": 11,
+                        "year": 2020
+                    },
+                    "endDate": {
+                        "month": 7,
+                        "year": 2021
+                    }
+                },
+                "totalDuration": "9 mos",
+                "description": "Sales and Marketing Engineer",
+                "insights": "Skills: Presentations · Written Communication · Analytical Skills · Tenacious Work Ethic · Problem Solving · Communication · Microsoft Excel · Strategic Thinking · English · Optimization",
+                "company": {
+                    "url": "https://www.linkedin.com/company/461134/",
+                    "name": "Icon Power Solutions Pvt Ltd",
+                    "logo": "https://media.licdn.com/dms/image/v2/C4D0BAQHHzdRpFN35Sw/company-logo_400_400/company-logo_400_400/0/1659061092315/icon_power_solutions_pvt_ltd_logo?e=1776297600&v=beta&t=THS44zktUhCPILYdnTW4ooiN4lK1IVldZFx88KBczOM"
+                }
+            }
+        ],
+        "educations": [
+            {
+                "schoolUrl": "",
+                "schoolName": "State Institute of Engineering and Technology,Nilokheri",
+                "degreeName": "Bachelor of Technology - BTech",
+                "fieldOfStudy": "Electrical, Electronics and Communications Engineering",
+                "timePeriod": {
+                    "startDate": {
+                        "year": 2016
+                    },
+                    "endDate": {
+                        "year": 2020
+                    }
+                }
+            },
+            {
+                "schoolLogo": "https://media.licdn.com/dms/image/v2/C510BAQENzBx_R8uKkA/company-logo_400_400/company-logo_400_400/0/1631339604817?e=1776297600&v=beta&t=UjCaT0mv4t8HEe_IXZgM7Sk0mjCHm_NzPn3Fn_w9Q7g",
+                "schoolUrl": "https://www.linkedin.com/company/13636052/",
+                "schoolName": "NIIT Pune",
+                "degreeName": "PGP in Data Science and Machine Learning",
+                "fieldOfStudy": "Mathematics and Computer Science",
+                "timePeriod": {
+                    "startDate": {
+                        "month": 9,
+                        "year": 2022
+                    },
+                    "endDate": {
+                        "month": 3,
+                        "year": 2023
+                    }
+                }
+            }
+        ],
+        "certifications": [
+            {
+                "name": "PGP in Data Science and Machine Learning ",
+                "authority": "NIIT Limited",
+                "timePeriod": {},
+                "issueDate": null,
+                "issuer": "NIIT Limited"
+            },
+            {
+                "name": "Artificial intelligence",
+                "authority": "Microsoft",
+                "timePeriod": {},
+                "issueDate": null,
+                "issuer": "Microsoft"
+            }
+        ],
+        "courses": [],
+        "honors": [],
+        "languages": [
+            {
+                "name": "English",
+                "proficiency": ""
+            },
+            {
+                "name": "Hindi",
+                "proficiency": ""
+            }
+        ],
+        "volunteerExperiences": [],
+        "projects": [
+            {
+                "title": "Amazon Reviews Dataset Analysis",
+                "description": "1. Amazon reviews for particular products were given and used sentiment analysis to predict the best-performing products and brand.\n2. Using ML-segmented products and customers to target different scenes and offers to increase sales and retain customers .\n3. Using time series forcasted the future of different categories to optimise inventory management.",
+                "dateRange": {},
+                "associatedWith": "Jan 2023 - Feb 2023"
+            }
+        ],
+        "publications": [],
+        "patents": [],
+        "testScores": [],
+        "organizations": [],
+        "volunteerCauses": [],
+        "companyName": "Cogitate",
+        "companyPublicId": "cogitate-technology-solutions",
+        "companyLinkedinUrl": "https://www.linkedin.com/company/cogitate-technology-solutions/",
+        "currentCompany": {
+            "entityUrn": "urn:li:fsd_company:3529840",
+            "name": "Cogitate",
+            "logoResolutionResult": {
+                "url": null,
+                "vectorImage": {
+                    "digitalmediaAsset": "urn:li:digitalmediaAsset:D4D0BAQHeCADt80_ckQ",
+                    "attribution": null,
+                    "c2paManifestData": null,
+                    "artifacts": [
+                        {
+                            "width": 200,
+                            "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1734534649274/cogitate_technology_solutions_logo?e=1776297600&v=beta&t=_veGrg2Jjk0VH2yB97ZRDivbK3by0p01ZAPlX3LwLNo",
+                            "expiresAt": 1776297600000,
+                            "height": 200
+                        },
+                        {
+                            "width": 100,
+                            "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1734534649274/cogitate_technology_solutions_logo?e=1776297600&v=beta&t=7aDjBE-pJqWZbm9_YznI0IigFxgTOB-TcJ_a2rgHpz4",
+                            "expiresAt": 1776297600000,
+                            "height": 100
+                        },
+                        {
+                            "width": 400,
+                            "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1734534649274/cogitate_technology_solutions_logo?e=1776297600&v=beta&t=FFLpUWszpb8jOGmolCXeHv1YUdSgjwjEYV6k6-i3pDw",
+                            "expiresAt": 1776297600000,
+                            "height": 400
+                        }
+                    ],
+                    "rootUrl": "https://media.licdn.com/dms/image/v2/D4D0BAQHeCADt80_ckQ/company-logo_"
+                }
+            },
+            "universalName": "cogitate-technology-solutions",
+            "url": "https://www.linkedin.com/company/cogitate-technology-solutions/"
+        },
+        "followerCount": 2552,
+        "mutualConnections": [],
+        "isVerified": true,
+        "verificationBadge": "SYS_ICN_VERIFIED_MEDIUM",
+        "availablePremiumFeatures": [],
+        "pronunciationUrl": "",
+        "connectionsCount": 2552,
+        "skills": [
+            {
+                "name": "C#",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Linear Regression",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Wrangling",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Probability",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Mining",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Extract, Transform, Load (ETL)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "SQL",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Image Editing",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Business Analytics",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Models",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Computer Vision",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Computer Science",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Programming",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Business Analysis",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Decision Trees",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Web Scraping",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Predictive Modeling",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Tenacious Work Ethic",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Optimization",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Strategic Thinking",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Linear Regression",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Wrangling",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Probability",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Mining",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Extract, Transform, Load (ETL)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Image Editing",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Business Analytics",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Models",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Computer Vision",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Computer Science",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Programming",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Business Analysis",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Decision Trees",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Web Scraping",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Predictive Modeling",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Tenacious Work Ethic",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Optimization",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Business Insights",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Storytelling",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Presentations",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "C#",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "SQL",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Microsoft Excel",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Databases",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Tableau",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "MySQL",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Python (Programming Language)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "C (Programming Language)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Microsoft Office",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Strategic Thinking",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Analytical Skills",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Communication",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Problem Solving",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "English",
+                "endorsements": 0,
+                "experiences": ""
+            }
+        ],
+        "inputUrl": "https://www.linkedin.com/in/yogesh-yadav-203216154/"
+    }
+]

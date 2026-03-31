@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./Backend/config.env
+    environment:
+      FRONTEND_DIST: /app/dist
+    restart: unless-stopped

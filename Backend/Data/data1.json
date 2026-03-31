@@ -1,0 +1,474 @@
+[
+    {
+        "created": 1554899423734,
+        "trackingId": "dv4OxrENTf+vuOQbXE9QxQ==",
+        "firstName": "Shubham",
+        "lastName": "Kumar",
+        "pronoun": null,
+        "versionTag": "3410451114",
+        "headline": "Senior Data Scientist @Cogitate | Ex-GeBBS | Ex-Highradius",
+        "publicIdentifier": "shubham-kumar-3aa9b3184",
+        "creator": false,
+        "influencer": false,
+        "premium": false,
+        "connectionType": "OUT_OF_NETWORK",
+        "birthDate": null,
+        "id": "731053426",
+        "profileId": "ACoAACuS_XIBycNxQTbX22GtbFkDPelnx4ObNP8",
+        "pictureUrl": "https://media.licdn.com/dms/image/v2/D5603AQGMqzlA96bh_Q/profile-displayphoto-scale_100_100/B56ZmHxHFbHQAc-/0/1758919423036?e=1776297600&v=beta&t=2qyGJyRQxlzZObfQNhj0LQpsKMKPqRNHVQWFcLUHY-A",
+        "coverImageUrl": "https://media.licdn.com/dms/image/v2/D5616AQGdKBA6GJPDtA/profile-displaybackgroundimage-shrink_350_1400/profile-displaybackgroundimage-shrink_350_1400/0/1720890356499?e=1776297600&v=beta&t=OZmghVu-K4-jt2s6aM46vs-GkqHemj7iT59Pg5q67Gw",
+        "countryCode": "IN",
+        "geoUrn": "urn:li:fsd_geo:106164952",
+        "geoLocationName": "Mumbai, Maharashtra, India",
+        "geoCountryName": "India",
+        "jobTitle": "Senior Data Scientist",
+        "summary": "Accomplished Data Scientist with 4+ years of experience delivering scalable AI/ML solutions across Fintech and Healthcare domains, with proven expertise in end-to-end model development, deployment, and automation.\n",
+        "positions": [
+            {
+                "title": "Senior Data Scientist",
+                "locationName": "",
+                "timePeriod": {
+                    "startDate": {
+                        "month": 7,
+                        "year": 2025
+                    },
+                    "endDate": null
+                },
+                "totalDuration": "9 mos",
+                "employmentType": "Full-time",
+                "description": "",
+                "insights": "",
+                "company": {
+                    "url": "https://www.linkedin.com/company/3529840/",
+                    "name": "Cogitate",
+                    "logo": "https://media.licdn.com/dms/image/v2/D4D0BAQHeCADt80_ckQ/company-logo_400_400/company-logo_400_400/0/1734534649274/cogitate_technology_solutions_logo?e=1776297600&v=beta&t=FFLpUWszpb8jOGmolCXeHv1YUdSgjwjEYV6k6-i3pDw"
+                }
+            },
+            {
+                "title": "Data Scientist",
+                "locationName": "Mumbai, Maharashtra, India · On-site",
+                "timePeriod": {
+                    "startDate": {
+                        "month": 4,
+                        "year": 2024
+                    },
+                    "endDate": {
+                        "month": 7,
+                        "year": 2025
+                    }
+                },
+                "totalDuration": "1 yr 4 mos",
+                "employmentType": "Full-time",
+                "description": "* Led the design and implementation of a Generative AI solution to automate the U.S. medical coding process\n* Achieved 95% coding accuracy, significantly improving overall quality\n* Reduced manual coder effort by 60%, enhancing operational efficiency\n* Integrated AI/ML models into the existing medical billing cycle, ensuring seamless adoption\n* Collaborated with cross-functional teams to integrate AI/ML solutions into the existing revenue cycle management (RCM) system of the U.S. medical billing process; identified key business challenges and opportunities, and translated them into actionable data science projects\n* Drove innovation by aligning AI capabilities with healthcare compliance and workflow needs\n* Contributed to scalable automation in healthcare operations, showcasing the potential of AI in solving industry-specific challenges\n* Designed and deployed scalable data pipelines for processing large volumes of medical records, ensuring data integrity and compliance with healthcare regulations.\n* Mentoring junior data scientists, fostering a culture of knowledge sharing and continuous learning within the team to enhance overall capabilities and performance.",
+                "insights": "Python (Programming Language), Large Language Models (LLM) and +11 skills",
+                "company": {
+                    "url": "https://www.linkedin.com/company/82267/",
+                    "name": "GeBBS Healthcare Solutions",
+                    "logo": "https://media.licdn.com/dms/image/v2/C560BAQHJbPstM-9sew/company-logo_400_400/company-logo_400_400/0/1630660767559/gebbs_healthcare_solutions_logo?e=1776297600&v=beta&t=mOs4XJDNrTL_aAmJNmZr61EO1I7YLWlPs-vIC2JoNfk"
+                }
+            },
+            {
+                "title": "Associate Data Scientist",
+                "locationName": "Hyderabad, Telangana, India · On-site",
+                "timePeriod": {
+                    "startDate": {
+                        "month": 8,
+                        "year": 2021
+                    },
+                    "endDate": {
+                        "month": 4,
+                        "year": 2024
+                    }
+                },
+                "totalDuration": "2 yrs 9 mos",
+                "employmentType": "Full-time",
+                "description": "* Spearheaded creating and optimizing a GenAI model for extracting key entities from remittance and invoice documents, boosting extraction accuracy by 35-40% and significantly enhancing financial data processing efficiency.\n* Developed an end-to-end pipeline for the Financial Document Scanner product using Tesseract OCR for image-based PDFs and PDFMiner for text-based PDFs.\n* Extracted and organized tabular regions (e.g., balance sheets, cash flow statements, income statements) from financial statements, enabling over 90% accuracy in customer credit risk analysis across 500+ financial statements.\n* Conducted exploratory data analysis (EDA) to uncover trends and patterns in complex datasets, supporting strategic decision-making and operational improvements.\n* Implemented regression models to forecast payment dates for open invoices, adapting models to capture regional and subsidiary-specific trends.\n* Scaled the Payment Date Prediction Model to handle 12M+ invoices across multiple regions, improving accuracy to 89%.\n* Successfully led end-to-end development and optimization initiatives across data extraction, modeling, and deployment processes.",
+                "insights": "",
+                "company": {
+                    "url": "https://www.linkedin.com/company/835110/",
+                    "name": "HighRadius",
+                    "logo": "https://media.licdn.com/dms/image/v2/D560BAQG46HFrpwzM-g/company-logo_400_400/company-logo_400_400/0/1721816460710/highradius_logo?e=1776297600&v=beta&t=bOqJ6iO4Fglj1yHu0lB1PfayEcWKvpl-b_fRI7zznZI"
+                }
+            }
+        ],
+        "educations": [
+            {
+                "schoolLogo": "https://media.licdn.com/dms/image/v2/C4D0BAQFbJbgVOfBgxA/company-logo_400_400/company-logo_400_400/0/1631328172776?e=1776297600&v=beta&t=oTO_TrAM80qDygzITZsx0RURR8Zraqu_xSN4e3GCrPQ",
+                "schoolUrl": "https://www.linkedin.com/company/378140/",
+                "schoolName": "Lovely Professional University",
+                "degreeName": "Bachelor of Technology - BTech",
+                "fieldOfStudy": "Computer Science",
+                "timePeriod": {}
+            },
+            {
+                "schoolUrl": "",
+                "schoolName": "MSRDS college",
+                "degreeName": "Intermediate",
+                "fieldOfStudy": "Intermediate",
+                "timePeriod": {}
+            }
+        ],
+        "certifications": [
+            {
+                "name": "IBM Data Analyst Professional Certificate",
+                "authority": "IBM",
+                "timePeriod": {},
+                "issueDate": null,
+                "issuer": "IBM"
+            },
+            {
+                "name": "Highradius summer internship",
+                "authority": "HighRadius",
+                "timePeriod": {},
+                "issueDate": null,
+                "issuer": "HighRadius"
+            }
+        ],
+        "courses": [],
+        "honors": [],
+        "languages": [],
+        "volunteerExperiences": [],
+        "projects": [
+            {
+                "title": "AI-Enabled FinTech B2B Invoice Management Application",
+                "description": "Built a Full stack invoice management system application using HTML,CSS,JS and java which includes a responsive account Receivables Dashboard with some features like adding,editing,deleting.\nBuilt a Machine learning model to predict the data to payment of an invoice by predicting Delay.",
+                "dateRange": {},
+                "associatedWith": "Jun 2021 - Jul 2021"
+            },
+            {
+                "title": "Medical Reasoning system using AI",
+                "description": "This project accomplished under the guidance of Dr.V Devendran,Professor of Lovely professional University.This was a group project in this project we developed a medical reasoning system in AI using the Python programming language.",
+                "dateRange": {},
+                "associatedWith": "Feb 2020 - Apr 2020"
+            }
+        ],
+        "publications": [],
+        "patents": [],
+        "testScores": [],
+        "organizations": [],
+        "volunteerCauses": [],
+        "companyName": "Cogitate",
+        "companyPublicId": "cogitate-technology-solutions",
+        "companyLinkedinUrl": "https://www.linkedin.com/company/cogitate-technology-solutions/",
+        "currentCompany": {
+            "entityUrn": "urn:li:fsd_company:3529840",
+            "name": "Cogitate",
+            "logoResolutionResult": {
+                "url": null,
+                "vectorImage": {
+                    "digitalmediaAsset": "urn:li:digitalmediaAsset:D4D0BAQHeCADt80_ckQ",
+                    "attribution": null,
+                    "c2paManifestData": null,
+                    "artifacts": [
+                        {
+                            "width": 200,
+                            "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1734534649274/cogitate_technology_solutions_logo?e=1776297600&v=beta&t=_veGrg2Jjk0VH2yB97ZRDivbK3by0p01ZAPlX3LwLNo",
+                            "expiresAt": 1776297600000,
+                            "height": 200
+                        },
+                        {
+                            "width": 100,
+                            "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1734534649274/cogitate_technology_solutions_logo?e=1776297600&v=beta&t=7aDjBE-pJqWZbm9_YznI0IigFxgTOB-TcJ_a2rgHpz4",
+                            "expiresAt": 1776297600000,
+                            "height": 100
+                        },
+                        {
+                            "width": 400,
+                            "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1734534649274/cogitate_technology_solutions_logo?e=1776297600&v=beta&t=FFLpUWszpb8jOGmolCXeHv1YUdSgjwjEYV6k6-i3pDw",
+                            "expiresAt": 1776297600000,
+                            "height": 400
+                        }
+                    ],
+                    "rootUrl": "https://media.licdn.com/dms/image/v2/D4D0BAQHeCADt80_ckQ/company-logo_"
+                }
+            },
+            "universalName": "cogitate-technology-solutions",
+            "url": "https://www.linkedin.com/company/cogitate-technology-solutions/"
+        },
+        "followerCount": 1609,
+        "mutualConnections": [],
+        "isVerified": true,
+        "verificationBadge": "SYS_ICN_VERIFIED_MEDIUM",
+        "availablePremiumFeatures": [],
+        "pronunciationUrl": "",
+        "connectionsCount": 1611,
+        "skills": [
+            {
+                "name": "Artificial Intelligence (AI)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Optical Character Recognition (OCR)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Natural Language Processing (NLP)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Django",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Prompt Engineering",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Vector Databases",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Large Language Models (LLM)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Generative AI",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Retrieval-Augmented Generation (RAG)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "congnos",
+                "endorsements": 2,
+                "experiences": ""
+            },
+            {
+                "name": "Operations",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Manipulation",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Predictive Analytics",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Business Requirements",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Streaming",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Deep Learning",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Applied Mathematics",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Problem Solving",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Multitasking",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Warehousing",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Artificial Intelligence (AI)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Optical Character Recognition (OCR)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Natural Language Processing (NLP)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Prompt Engineering",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Large Language Models (LLM)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Operations",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Manipulation",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Predictive Analytics",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Business Requirements",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Streaming",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Deep Learning",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Applied Mathematics",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Warehousing",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Statistical Analysis",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Data Extraction",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Qualitative Data",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Statistics",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Strategic Insights",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Quantitative Research",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Visualization",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Django",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Databases",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Amazon Web Services (AWS)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Python (Programming Language)",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Microsoft Excel",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Microsoft Power BI",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "SQL",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "PL/SQL",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "MySQL",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Problem Solving",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Multitasking",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Analytical Skills",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Vector Databases",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Generative AI",
+                "endorsements": 0,
+                "experiences": ""
+            },
+            {
+                "name": "Retrieval-Augmented Generation (RAG)",
+                "endorsements": 0,
+                "experiences": ""
+            }
+        ],
+        "inputUrl": "https://www.linkedin.com/in/shubham-kumar-3aa9b3184/"
+    }
+]

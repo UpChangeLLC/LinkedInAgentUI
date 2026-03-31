@@ -1,0 +1,119 @@
+{
+  "name": "Shubham Kumar",
+  "title": "Senior Data Scientist at Cogitate",
+  "initials": "SK",
+  "location": "Mumbai, India",
+  "summary": "Shubham Kumar is a mid-level Data Scientist with strong generative AI and NLP experience but limited exposure to enterprise-scale AI governance and productization. His technical depth is solid, yet his risk posture is high due to rapid automation of model development and deployment workflows.",
+  "profile_score": 6.8,
+  "score_breakdown": {
+    "experience_depth": 7,
+    "skill_relevance": 6,
+    "education": 6,
+    "profile_completeness": 8,
+    "career_progression": 7
+  },
+  "score_rationale": "Profile shows consistent growth and relevant AI skills but lacks demonstrated leadership in AI strategy or cross-domain product ownership.",
+  "ai_risk_assessment": {
+    "overall_risk": "High",
+    "risk_score": 72,
+    "summary": "Automation of data science workflows and low-code AI platforms will compress mid-level data science roles by 2026. Shubham\u2019s current focus on model building and deployment is directly exposed to generative automation tools.",
+    "high_risk_skills": [
+      "Model Deployment",
+      "Predictive Analytics"
+    ],
+    "low_risk_skills": [
+      "Prompt Engineering",
+      "Vector Databases"
+    ],
+    "recommendation": "Shift immediately toward AI product management and MLOps architecture to secure long-term relevance.",
+    "risk_drivers": [
+      "Rapid commoditization of model training",
+      "Rise of AutoML and GenAI code generation",
+      "Limited exposure to AI governance and product lifecycle"
+    ]
+  },
+  "insights": {
+    "strengths": [
+      "Hands-on generative AI implementation",
+      "Strong NLP and OCR pipeline experience",
+      "Cross-domain exposure in Fintech and Healthcare"
+    ],
+    "gaps": [
+      "Limited leadership in AI strategy",
+      "No evidence of scalable MLOps or governance expertise"
+    ],
+    "market_position": "Competitive technically but vulnerable to automation-driven role compression"
+  },
+  "recommendations": [
+    {
+      "priority": "High",
+      "action": "Enroll in an advanced MLOps and AI governance certification",
+      "reason": "Build resilience against automation and align with enterprise AI deployment standards"
+    },
+    {
+      "priority": "High",
+      "action": "Lead a cross-functional AI product initiative within current organization",
+      "reason": "Demonstrate product ownership and strategic AI integration capability"
+    },
+    {
+      "priority": "Medium",
+      "action": "Publish technical case studies or open-source contributions on scalable GenAI systems",
+      "reason": "Strengthen visibility and credibility in future-proof AI domains"
+    }
+  ],
+  "job_recommendations": [
+    {
+      "role": "AI Product Manager",
+      "fit_score": 78,
+      "reason": "Leverages technical AI depth while transitioning toward strategic product leadership, reducing automation exposure.",
+      "next_steps": [
+        "Complete product management fundamentals course",
+        "Gain experience in cross-functional AI delivery"
+      ]
+    }
+  ],
+  "upskilling_plan": [
+    {
+      "skill": "MLOps and AI Governance",
+      "priority": "High",
+      "why": "Critical to move beyond model development into scalable, compliant AI systems management",
+      "learning_actions": [
+        "Complete Coursera MLOps specialization",
+        "Implement CI/CD pipeline for GenAI models"
+      ]
+    }
+  ],
+  "action_timeline_30_60_90": {
+    "day_0_30": [
+      "Enroll in MLOps certification",
+      "Audit current AI deployment workflows for automation exposure"
+    ],
+    "day_31_60": [
+      "Initiate internal AI product ownership project",
+      "Document and publish technical learnings"
+    ],
+    "day_61_90": [
+      "Network with AI product leaders",
+      "Apply for hybrid AI strategy roles"
+    ]
+  },
+  "top_skills": [
+    "Generative AI",
+    "NLP",
+    "Prompt Engineering",
+    "Vector Databases",
+    "Deep Learning"
+  ],
+  "years_experience": 4,
+  "roles_held": 3,
+  "data_source": "apify_local_json",
+  "strengths": [
+    "Hands-on generative AI implementation",
+    "Strong NLP and OCR pipeline experience",
+    "Cross-domain exposure in Fintech and Healthcare"
+  ],
+  "gaps": [
+    "Limited leadership in AI strategy",
+    "No evidence of scalable MLOps or governance expertise"
+  ]
+}

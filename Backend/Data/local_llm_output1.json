@@ -1,0 +1,119 @@
+{
+  "name": "Shubham Kumar",
+  "title": "Senior Data Scientist at Cogitate",
+  "initials": "SK",
+  "location": "Mumbai, Maharashtra, India",
+  "summary": "Shubham Kumar is at high risk of AI disruption due to reliance on skills that are increasingly automated. Immediate upskilling in advanced AI techniques is essential to maintain relevance in the evolving job market.",
+  "profile_score": 6.5,
+  "score_breakdown": {
+    "experience_depth": 6,
+    "skill_relevance": 5,
+    "education": 6,
+    "profile_completeness": 7,
+    "career_progression": 6
+  },
+  "score_rationale": "The profile demonstrates solid experience but lacks cutting-edge skills that are critical for future-proofing against AI advancements.",
+  "ai_risk_assessment": {
+    "overall_risk": "High",
+    "risk_score": 72,
+    "summary": "The profile is exposed to AI replacement pressure due to reliance on traditional data science skills and insufficient advanced AI capabilities. Without immediate action, job security will diminish by 2025.",
+    "high_risk_skills": [
+      "Optical Character Recognition (OCR)",
+      "Data Manipulation"
+    ],
+    "low_risk_skills": [
+      "Deep Learning",
+      "Predictive Analytics"
+    ],
+    "recommendation": "Enroll in advanced AI and machine learning courses immediately.",
+    "risk_drivers": [
+      "High automation potential in current skills",
+      "Rapid advancements in AI technologies",
+      "Increased competition from AI-trained professionals"
+    ]
+  },
+  "insights": {
+    "strengths": [
+      "Strong experience in AI/ML solutions",
+      "Proven track record in healthcare and fintech",
+      "Mentorship capabilities"
+    ],
+    "gaps": [
+      "Lack of advanced AI techniques",
+      "Limited exposure to emerging technologies"
+    ],
+    "market_position": "Competitive but vulnerable to rapid AI advancements."
+  },
+  "recommendations": [
+    {
+      "priority": "High",
+      "action": "Complete an advanced course in Generative AI",
+      "reason": "Generative AI is critical for future roles and is currently in high demand."
+    },
+    {
+      "priority": "High",
+      "action": "Gain certification in Large Language Models (LLM)",
+      "reason": "LLMs are transforming data science and will be essential for future projects."
+    },
+    {
+      "priority": "Medium",
+      "action": "Engage in hands-on projects involving AI automation",
+      "reason": "Practical experience will solidify learning and enhance employability."
+    }
+  ],
+  "job_recommendations": [
+    {
+      "role": "AI Solutions Architect",
+      "fit_score": 78,
+      "reason": "This role leverages advanced AI skills and offers greater job security against automation.",
+      "next_steps": [
+        "Update resume to highlight AI projects",
+        "Network with professionals in AI architecture"
+      ]
+    }
+  ],
+  "upskilling_plan": [
+    {
+      "skill": "Generative AI",
+      "priority": "High",
+      "why": "Generative AI is rapidly evolving and essential for future-proofing your career.",
+      "learning_actions": [
+        "Enroll in a specialized online course",
+        "Participate in AI hackathons focused on generative models"
+      ]
+    }
+  ],
+  "action_timeline_30_60_90": {
+    "day_0_30": [
+      "Research and select an advanced AI course",
+      "Join AI-focused online communities"
+    ],
+    "day_31_60": [
+      "Complete the selected AI course",
+      "Start a personal project using Generative AI"
+    ],
+    "day_61_90": [
+      "Apply for AI-related roles",
+      "Seek mentorship from industry experts"
+    ]
+  },
+  "top_skills": [
+    "Artificial Intelligence (AI)",
+    "Natural Language Processing (NLP)",
+    "Generative AI",
+    "Deep Learning",
+    "Predictive Analytics"
+  ],
+  "years_experience": 4,
+  "roles_held": 3,
+  "data_source": "apify_local_json",
+  "strengths": [
+    "Strong experience in AI/ML solutions",
+    "Proven track record in healthcare and fintech",
+    "Mentorship capabilities"
+  ],
+  "gaps": [
+    "Lack of advanced AI techniques",
+    "Limited exposure to emerging technologies"
+  ]
+}

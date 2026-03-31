@@ -1,0 +1,190 @@
+{
+  "name": "Yogesh Yadav",
+  "title": "Data Scientist at Cogitate Technologies",
+  "initials": "YY",
+  "location": "Gurugram, Haryana, India",
+  "summary": "Yogesh Yadav is a Data Scientist with strong expertise in AI-powered solution design, machine learning, and natural language processing. He has experience mentoring aspiring data professionals and delivering data-driven insights that support business growth. His background spans analytics, predictive modeling, and visualization, supported by a solid foundation in engineering and data science education. Yogesh demonstrates a clear trajectory from data analysis to advanced AI solution development.",
+  "profile_score": 7.4,
+  "score_breakdown": {
+    "experience_depth": 7,
+    "skill_relevance": 8,
+    "education": 7,
+    "profile_completeness": 8,
+    "career_progression": 7
+  },
+  "score_rationale": "Yogesh\u2019s profile shows strong technical depth and relevant skills in AI and ML, with a clear upward career path. Slightly limited tenure length and project detail keep the score below 8 but still reflect a solid professional foundation.",
+  "ai_risk_assessment": {
+    "overall_risk": "Medium",
+    "risk_score": 55,
+    "summary": "Data science roles face moderate exposure to AI automation as model development and data preprocessing become increasingly automated. However, Yogesh\u2019s focus on LLMs, AI solution design, and mentoring adds resilience through creativity and human judgment. His analytical and communication skills further reduce automation risk.",
+    "high_risk_skills": [
+      "Data Wrangling",
+      "ETL",
+      "Predictive Modeling"
+    ],
+    "low_risk_skills": [
+      "AI Solutions",
+      "Strategic Thinking",
+      "Communication",
+      "Mentoring"
+    ],
+    "recommendation": "Yogesh should deepen his expertise in AI product integration and MLOps to stay ahead of automation trends and enhance end-to-end solution delivery capabilities.",
+    "risk_drivers": [
+      "Automation of data preprocessing",
+      "Rapid evolution of AutoML tools",
+      "Emergence of AI-assisted coding environments"
+    ]
+  },
+  "insights": {
+    "strengths": [
+      "Strong foundation in ML and NLP",
+      "Experience with Azure and cloud-based data tools",
+      "Mentoring and communication abilities"
+    ],
+    "gaps": [
+      "Limited exposure to production-level MLOps",
+      "Few documented large-scale business impact projects"
+    ],
+    "market_position": "Yogesh is well-positioned among early-career data scientists with strong technical breadth and emerging leadership potential."
+  },
+  "recommendations": [
+    {
+      "priority": "High",
+      "action": "Build 2-3 end-to-end AI deployment projects using MLOps frameworks like MLflow or Kubeflow",
+      "reason": "Demonstrates production readiness and reduces AI automation risk."
+    },
+    {
+      "priority": "High",
+      "action": "Publish technical blogs or case studies on LLM-based solutions",
+      "reason": "Enhances visibility and thought leadership in the AI community."
+    },
+    {
+      "priority": "Medium",
+      "action": "Earn an advanced certification in cloud AI architecture (e.g., Azure AI Engineer Associate)",
+      "reason": "Strengthens credibility and cloud integration expertise."
+    },
+    {
+      "priority": "Low",
+      "action": "Participate in data science competitions or hackathons",
+      "reason": "Expands practical experience and peer recognition."
+    }
+  ],
+  "job_recommendations": [
+    {
+      "role": "Machine Learning Engineer",
+      "fit_score": 84,
+      "reason": "Strong ML and Python foundation with exposure to cloud tools and AI solution design.",
+      "next_steps": [
+        "Gain hands-on experience with model deployment pipelines",
+        "Highlight end-to-end project ownership in portfolio"
+      ]
+    },
+    {
+      "role": "AI Solutions Architect",
+      "fit_score": 80,
+      "reason": "Experience in designing AI-powered solutions and mentoring aligns with solution architecture roles.",
+      "next_steps": [
+        "Develop system design and integration documentation",
+        "Learn scalable architecture patterns for AI systems"
+      ]
+    },
+    {
+      "role": "Data Science Consultant",
+      "fit_score": 78,
+      "reason": "Strong analytical and communication skills suitable for client-facing data strategy roles.",
+      "next_steps": [
+        "Build case studies demonstrating business impact",
+        "Enhance consulting and stakeholder management skills"
+      ]
+    },
+    {
+      "role": "NLP Engineer",
+      "fit_score": 82,
+      "reason": "Proficiency in NLP and LLMs makes this a natural specialization path.",
+      "next_steps": [
+        "Contribute to open-source NLP projects",
+        "Experiment with fine-tuning transformer models"
+      ]
+    }
+  ],
+  "upskilling_plan": [
+    {
+      "skill": "MLOps",
+      "priority": "High",
+      "why": "Essential for deploying and maintaining ML models in production environments.",
+      "learning_actions": [
+        "Complete a course on MLflow or Kubeflow",
+        "Implement CI/CD pipelines for ML projects"
+      ]
+    },
+    {
+      "skill": "Cloud AI Architecture",
+      "priority": "High",
+      "why": "Improves ability to design scalable AI systems on Azure or AWS.",
+      "learning_actions": [
+        "Earn Azure AI Engineer certification",
+        "Build a cloud-based AI microservice"
+      ]
+    },
+    {
+      "skill": "Generative AI and LLM Fine-tuning",
+      "priority": "Medium",
+      "why": "Keeps skills aligned with emerging AI trends and applications.",
+      "learning_actions": [
+        "Experiment with Hugging Face models",
+        "Publish a project using fine-tuned LLMs"
+      ]
+    },
+    {
+      "skill": "Business Impact Analytics",
+      "priority": "Medium",
+      "why": "Enhances ability to translate technical outputs into strategic business insights.",
+      "learning_actions": [
+        "Study data storytelling techniques",
+        "Collaborate with business teams on ROI-focused projects"
+      ]
+    },
+    {
+      "skill": "Data Engineering Fundamentals",
+      "priority": "Low",
+      "why": "Improves understanding of data pipelines and scalability.",
+      "learning_actions": [
+        "Learn Apache Spark basics",
+        "Build ETL workflows using Airflow"
+      ]
+    }
+  ],
+  "action_timeline_30_60_90": {
+    "day_0_30": [
+      "Enroll in an MLOps certification course",
+      "Audit current portfolio for production-readiness gaps"
+    ],
+    "day_31_60": [
+      "Develop and deploy one end-to-end ML project on Azure",
+      "Write and publish a technical blog on LLM applications"
+    ],
+    "day_61_90": [
+      "Apply for advanced AI roles or internal promotion",
+      "Join a data science community or mentorship program to expand network"
+    ]
+  },
+  "top_skills": [
+    "Python",
+    "Machine Learning",
+    "Natural Language Processing",
+    "AI Solutions",
+    "Azure Synapse"
+  ],
+  "years_experience": 4,
+  "roles_held": 4,
+  "data_source": "apify_local_json",
+  "strengths": [
+    "Strong foundation in ML and NLP",
+    "Experience with Azure and cloud-based data tools",
+    "Mentoring and communication abilities"
+  ],
+  "gaps": [
+    "Limited exposure to production-level MLOps",
+    "Few documented large-scale business impact projects"
+  ]
+}

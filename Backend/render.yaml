@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: ai-resilience-dashboard
+    env: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /mcp/health
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: MCP_API_KEY
+        sync: false
+      - key: AI_CLIENT
+        value: openai
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: APIFY_ACTOR_ID
+        value: supreme_coder/linkedin-profile-scraper
+      - key: APIFY_DATASET_CACHE_FILE
+        value: apify_dataset_cache.json
+      - key: AI_CLIENT_TIMEOUT_SEC
+        value: "60"
+      - key: AI_CLIENT_MAX_RETRIES
+        value: "2"
+      # Set these in Render dashboard as secrets before production use:
+      # OPENAI_API_KEY / GROQ_API_KEY / AZURE_OPENAI_API_KEY / ANTHROPIC_API_KEY
+      # APIFY_API_TOKEN
