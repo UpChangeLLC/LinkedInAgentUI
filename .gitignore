@@ -1,7 +1,6 @@
 # Secrets — never commit
-Backend/config.env
-**/config.env
-.env
+Backend/.env
+**/.env
 .env.local
 .env.*.local
 

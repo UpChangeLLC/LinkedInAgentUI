@@ -40,7 +40,7 @@ from prompts import (
 )
 
 load_dotenv()
-load_dotenv("config.env", override=False)
+load_dotenv(".env", override=False)
 
 os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
 os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")

@@ -15,7 +15,7 @@ from ai_backend import run_pipeline_with_trace
 
 
 load_dotenv()
-load_dotenv("config.env", override=False)
+load_dotenv(".env", override=False)
 
 app = FastAPI(title="MCP HTTP Adapter")
 
