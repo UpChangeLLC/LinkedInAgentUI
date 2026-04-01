@@ -1,0 +1,38 @@
+# Blueprint: one Web Service (Docker) — UI + /mcp/* API on the same URL
+# Dashboard: set secret env vars (OPENAI_API_KEY, APIFY_API_TOKEN, etc.)
+services:
+  - type: web
+    name: linkedin-agent-ui
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /mcp/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: FRONTEND_DIST
+        value: /app/dist
+      - key: AI_CLIENT
+        value: openai
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: APIFY_ACTOR_ID
+        value: supreme_coder/linkedin-profile-scraper
+      - key: APIFY_DATASET_CACHE_FILE
+        value: apify_dataset_cache.json
+      - key: AI_CLIENT_TIMEOUT_SEC
+        value: "60"
+      - key: AI_CLIENT_MAX_RETRIES
+        value: "2"
+      # Set in Render dashboard (Environment) — do not commit:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: APIFY_API_TOKEN
+        sync: false
+      - key: MCP_API_KEY
+        sync: false
+      - key: LANGCHAIN_API_KEY
+        sync: false

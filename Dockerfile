@@ -38,4 +38,5 @@ COPY Backend/ .
 COPY --from=frontend /frontend/dist ./dist
 ENV FRONTEND_DIST=/app/dist
 EXPOSE 8001
-CMD ["python", "-m", "uvicorn", "mcp_http:app", "--host", "0.0.0.0", "--port", "8001"]
+# Render and other hosts set PORT; local Docker defaults to 8001
+CMD ["sh", "-c", "exec python -m uvicorn mcp_http:app --host 0.0.0.0 --port ${PORT:-8001}"]

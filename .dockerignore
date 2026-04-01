@@ -1,5 +1,7 @@
 .git
 .gitignore
+# Secrets: inject at runtime via docker-compose env_file, not image layers
+Backend/config.env
 **/.venv
 **/__pycache__
 **/*.pyc

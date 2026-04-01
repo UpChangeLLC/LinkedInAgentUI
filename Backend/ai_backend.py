@@ -42,11 +42,10 @@ from prompts import (
 load_dotenv()
 load_dotenv("config.env", override=False)
 
-# LangSmith: enable tracing only when LANGCHAIN_API_KEY is set (e.g. in config.env)
-if (os.getenv("LANGCHAIN_API_KEY") or "").strip():
-    os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
-    os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
-    os.environ.setdefault("LANGCHAIN_PROJECT", os.getenv("LANGCHAIN_PROJECT", "linkedin-agent"))
+os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+os.environ.setdefault("LANGCHAIN_PROJECT", "linkedin-agent")
+os.environ.setdefault("LANGCHAIN_API_KEY", "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")
  
  
 logger = logging.getLogger(__name__)
