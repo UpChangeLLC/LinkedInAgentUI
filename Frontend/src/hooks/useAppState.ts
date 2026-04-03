@@ -4,7 +4,7 @@ import { mcpRun } from '../lib/mcp';
 import { toMockResults } from '../lib/transform';
 import type { MockResults } from '../data/mockResults';
 
-type Page = 'landing' | 'intake' | 'analyzing' | 'results';
+type Page = 'landing' | 'intake' | 'analyzing' | 'results' | 'error';
 
 export function useAppState() {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -12,6 +12,7 @@ export function useAppState() {
   const [formData, setFormData] = useState<any>({});
   const [resultsBackend, setResultsBackend] = useState<any>(null);
   const [resultsComputed, setResultsComputed] = useState<MockResults>(mockResults);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const goToIntake = useCallback(() => {
     setCurrentPage('intake');
@@ -21,9 +22,10 @@ export function useAppState() {
   const submitForm = useCallback((data: any) => {
     setFormData(data);
     setCurrentPage('analyzing');
+    setErrorMessage('');
     // Fire-and-forget MCP call; navigate to results when done
     (async () => {
-      // Poll until status === 'ok' with a timeout; fall back to mock results.
+      // Poll until status === 'ok' with a timeout; show error on failure.
       const payload = {
         linkedin_url: data?.linkedinUrl || data?.linkedin_url || '',
         resume_text: data?.resumeText || data?.resume_text || ''
@@ -32,18 +34,20 @@ export function useAppState() {
       const timeoutMs = 120_000; // 2 minutes
       const start = Date.now();
       let resp: any | null = null;
+      let lastError = '';
       // First attempt immediately
       try {
         resp = await mcpRun(payload);
-      } catch {
+      } catch (e: any) {
+        lastError = e?.message || 'Network error';
         resp = null;
       }
       while ((!resp || resp?.status !== 'ok') && (Date.now() - start) < timeoutMs) {
         await sleep(intervalMs);
         try {
           resp = await mcpRun(payload);
-        } catch {
-          // keep retrying until timeout
+        } catch (e: any) {
+          lastError = e?.message || 'Network error';
           resp = null;
         }
       }
@@ -54,14 +58,14 @@ export function useAppState() {
         const transformed = toMockResults(resp?.result || {});
         setResultsComputed(transformed);
         setFormData((prev: any) => ({ ...prev, backend: resp }));
+        setCurrentPage('results');
       } else {
-        // Timeout: show mock results
+        // Timeout or persistent failure: show error page
         setResultsBackend(null);
-        setResultsComputed(mockResults);
-        setFormData((prev: any) => ({ ...prev, backend: null, backendTimeout: true }));
+        setErrorMessage(lastError || 'The analysis service did not respond in time. Please try again.');
+        setCurrentPage('error');
       }
 
-      setCurrentPage('results');
       window.scrollTo(0, 0);
     })();
   }, []);
@@ -73,17 +77,28 @@ export function useAppState() {
 
   const goBack = useCallback(() => {
     if (currentPage === 'intake') setCurrentPage('landing');
-    if (currentPage === 'results') setCurrentPage('landing'); // Reset
+    if (currentPage === 'results') setCurrentPage('landing');
+    if (currentPage === 'error') setCurrentPage('landing');
   }, [currentPage]);
+
+  const retrySubmit = useCallback(() => {
+    if (formData?.linkedinUrl || formData?.linkedin_url) {
+      submitForm(formData);
+    } else {
+      setCurrentPage('intake');
+    }
+  }, [formData, submitForm]);
 
   return {
     currentPage,
     formData,
     results: resultsComputed,
     resultsBackend,
+    errorMessage,
     goToIntake,
     submitForm,
     goToResults,
-    goBack
+    goBack,
+    retrySubmit
   };
 }

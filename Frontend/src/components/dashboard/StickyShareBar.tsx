@@ -2,6 +2,7 @@ import React, { useState, Component } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, X, Linkedin, Copy, Check } from 'lucide-react';
 import { MockResults } from '../../data/mockResults';
+import { trackEvent } from '../../lib/analytics';
 interface StickyShareBarProps {
   results: MockResults;
 }
@@ -10,6 +11,7 @@ export function StickyShareBar({ results }: StickyShareBarProps) {
   const [copied, setCopied] = useState(false);
   const handleShare = () => {
     const text = `I just scored ${results.score}/100 on the AI Resilience Score™ (${results.personalRisk.personalRiskBand}). How AI-ready are you? 👉 airesiliencescore.com\n\n#AILeadership #FutureOfWork`;
+    trackEvent('share_linkedin', { score: results.score, component: 'sticky_bar' });
     window.open(
       `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`,
       '_blank'
@@ -18,6 +20,7 @@ export function StickyShareBar({ results }: StickyShareBarProps) {
   const handleCopy = () => {
     navigator.clipboard.writeText('https://airesiliencescore.com');
     setCopied(true);
+    trackEvent('share_copy_link', { score: results.score });
     setTimeout(() => setCopied(false), 2000);
   };
   return (

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Share2, Copy, Check, Linkedin } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { trackEvent } from '../../lib/analytics';
 import { Badge } from '../ui/Badge';
 import { MockResults } from '../../data/mockResults';
 interface ShareScoreCardProps {
@@ -16,11 +17,13 @@ export function ShareScoreCard({ results }: ShareScoreCardProps) {
       `I just got my AI Resilience Score: ${score}/100. Check your executive AI readiness here: https://airesiliencescore.com`
     );
     setCopied(true);
+    trackEvent('share_copy_link', { score });
     setTimeout(() => setCopied(false), 2000);
   };
   const handleShare = () => {
     const text = `I just analyzed my AI leadership readiness. My AI Resilience Score is ${score}/100 (${personalRisk.personalRiskBand}). \n\nSee how you stack up against other ${personalProfile.title}s in ${personalProfile.industry}.\n\n#AILeadership #ExecutiveResilience #FutureOfWork`;
     const url = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`;
+    trackEvent('share_linkedin', { score, component: 'share_card' });
     window.open(url, '_blank');
   };
   return (

@@ -22,20 +22,23 @@ export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
+  const isValidLinkedInUrl = (raw: string): boolean => {
+    try {
+      const url = new URL(raw.includes('://') ? raw : `https://${raw}`);
+      const host = url.hostname.replace(/^www\./, '');
+      return host === 'linkedin.com' && /^\/(in|pub)\/[\w-]+\/?$/.test(url.pathname);
+    } catch {
+      return false;
+    }
+  };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!linkedinUrl.includes('linkedin.com')) {
-      setError('Please enter a valid LinkedIn URL');
+    if (!isValidLinkedInUrl(linkedinUrl)) {
+      setError('Please enter a valid LinkedIn profile URL (e.g. https://linkedin.com/in/your-name)');
       return;
     }
     onSubmit({
       linkedinUrl
-    });
-  };
-  const handleLinkedInLogin = () => {
-    // Mock LinkedIn OAuth — in production this would redirect to LinkedIn OAuth
-    onSubmit({
-      linkedinUrl: 'https://linkedin.com/in/sarah-chen'
     });
   };
   return (
@@ -218,7 +221,7 @@ export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
                 </AnimatePresence>
               </div>
 
-              {/* Mock Profile Preview */}
+              {/* Profile URL detected indicator */}
               {linkedinUrl.length > 10 &&
               <motion.div
                 initial={{
@@ -230,17 +233,14 @@ export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
                   height: 'auto'
                 }}
                 className="border border-gray-200 rounded-lg p-4 bg-gray-50 flex items-center gap-4">
-                
-                  <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
-                    <User className="w-6 h-6 text-gray-500" />
+
+                  <div className="w-12 h-12 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0">
+                    <LinkIcon className="w-6 h-6 text-linkedin" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Sarah Chen</p>
+                    <p className="font-semibold text-gray-900">LinkedIn profile detected</p>
                     <p className="text-sm text-gray-600">
-                      Chief Operating Officer at TechCorp
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      San Francisco Bay Area • 500+ connections
+                      We'll analyze your public profile information
                     </p>
                   </div>
                 </motion.div>
@@ -271,19 +271,19 @@ export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
               </div>
             </div>
 
-            {/* LinkedIn Login Option */}
+            {/* LinkedIn Login Option — Coming Soon */}
             <button
-              onClick={handleLinkedInLogin}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all group">
-              
+              disabled
+              className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border border-gray-200 rounded-lg opacity-50 cursor-not-allowed">
+
               <Linkedin className="w-5 h-5 text-[#0A66C2]" />
-              <span className="text-gray-700 font-medium group-hover:text-gray-900 transition-colors">
+              <span className="text-gray-700 font-medium">
                 Sign in with LinkedIn
               </span>
+              <span className="text-xs text-gray-400 ml-1">(Coming Soon)</span>
             </button>
             <p className="mt-3 text-center text-xs text-gray-400">
-              Don't know your profile URL? Sign in and we'll find it
-              automatically.
+              Don't know your profile URL? LinkedIn sign-in is coming soon.
             </p>
           </Card>
         </div>

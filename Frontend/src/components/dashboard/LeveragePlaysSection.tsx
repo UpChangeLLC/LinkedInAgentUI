@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from '../ui/Card';
+import { EXTERNAL_LINKS } from '../../lib/config';
 import { Badge } from '../ui/Badge';
 import { MockResults } from '../../data/mockResults';
 import { Rocket, Clock, TrendingUp, ExternalLink } from 'lucide-react';
@@ -81,7 +82,7 @@ export function LeveragePlaysSection({ results }: LeveragePlaysSectionProps) {
           </span>{' '}
           The{' '}
           <a
-            href="https://hyperaccelerator.com/"
+            href={EXTERNAL_LINKS.hyperaccelerator}
             target="_blank"
             rel="noopener noreferrer"
             className="text-linkedin font-semibold hover:underline">

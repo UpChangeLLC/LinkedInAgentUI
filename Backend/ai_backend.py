@@ -45,7 +45,7 @@ load_dotenv("config.env", override=False)
 os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
 os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
 os.environ.setdefault("LANGCHAIN_PROJECT", "linkedin-agent")
-os.environ.setdefault("LANGCHAIN_API_KEY", "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")
+os.environ.setdefault("LANGCHAIN_API_KEY", os.getenv("LANGCHAIN_API_KEY", ""))
  
  
  
@@ -242,7 +242,7 @@ def _linkedin_cache_key(linkedin_url: str) -> str:
 
 
 def _load_apify_cache(cache_file: Path) -> Dict[str, str]:
-    """Load local LinkedIn->dataset cache map."""
+    """Load local LinkedIn->dataset cache map. Legacy fallback only."""
     if not cache_file.exists():
         return {}
     try:
@@ -252,7 +252,7 @@ def _load_apify_cache(cache_file: Path) -> Dict[str, str]:
 
 
 def _save_apify_cache(cache_file: Path, data: Dict[str, str]) -> None:
-    """Persist local LinkedIn->dataset cache map."""
+    """Persist local LinkedIn->dataset cache map. Legacy fallback only."""
     cache_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
@@ -288,10 +288,14 @@ async def _apify_run_actor(actor_id: str, token: str, run_input: Dict[str, Any])
 
 
 async def fetch_linkedin_via_apify(linkedin_url: str) -> str:
-    """Fetch LinkedIn profile via Apify, reusing prior dataset for same profile when available."""
+    """Fetch LinkedIn profile via Apify, reusing prior dataset for same profile when available.
+
+    Cache lookup order: Redis → PostgreSQL → file. Cache writes go to all backends.
+    """
+    from services.apify_cache_service import get_cached_dataset, set_cached_dataset
+
     token = os.getenv("APIFY_API_TOKEN", "").strip()
     actor_id = os.getenv("APIFY_ACTOR_ID", "supreme_coder/linkedin-profile-scraper").strip()
-    cache_file = Path(os.getenv("APIFY_DATASET_CACHE_FILE", "apify_dataset_cache.json"))
     if not token:
         raise RuntimeError("APIFY_API_TOKEN is not set")
     normalized_url = normalize_linkedin_profile_url(linkedin_url)
@@ -299,16 +303,24 @@ async def fetch_linkedin_via_apify(linkedin_url: str) -> str:
         raise ValueError("Invalid LinkedIn profile URL.")
 
     key = _linkedin_cache_key(normalized_url)
-    cache = _load_apify_cache(cache_file)
-    cached_dataset_id = cache.get(key, "")
-    if cached_dataset_id:
-        try:
-            items = await _apify_get_dataset_items(cached_dataset_id, token)
-            if items:
-                return json.dumps(items[0], ensure_ascii=True)
-        except Exception:
-            pass
 
+    # --- Cache read (Redis → PG → file) ---
+    cached = await get_cached_dataset(key)
+    if cached:
+        # If raw_data is stored, return it directly
+        if cached.get("raw_data"):
+            return json.dumps(cached["raw_data"], ensure_ascii=True)
+        # Otherwise re-fetch from dataset
+        dataset_id = cached.get("dataset_id", "")
+        if dataset_id:
+            try:
+                items = await _apify_get_dataset_items(dataset_id, token)
+                if items:
+                    return json.dumps(items[0], ensure_ascii=True)
+            except Exception:
+                pass
+
+    # --- Fresh scrape ---
     run_input = {
         "urls": [{"url": normalized_url}],
         "findContacts.contactCompassToken": "",
@@ -321,9 +333,16 @@ async def fetch_linkedin_via_apify(linkedin_url: str) -> str:
     if not items:
         raise RuntimeError("Apify dataset returned no items")
 
-    cache[key] = dataset_id
-    _save_apify_cache(cache_file, cache)
-    return json.dumps(items[0], ensure_ascii=True)
+    # --- Cache write (Redis + PG + file) ---
+    raw_data = items[0]
+    await set_cached_dataset(
+        url_hash=key,
+        dataset_id=dataset_id,
+        raw_data=raw_data,
+        linkedin_url=normalized_url,
+        actor_id=actor_id,
+    )
+    return json.dumps(raw_data, ensure_ascii=True)
 
 
 def _extract_json_from_text(text: str) -> Dict[str, Any]:
@@ -464,13 +483,23 @@ async def llm_json_completion(system_prompt: str, user_prompt: str) -> Dict[str,
     return json.loads(content)
 
 
+# ── Input sanitization ────────────────────────────────────────────────────────
+
+def sanitize_for_llm(text: str, max_chars: int = 50_000) -> str:
+    """Strip control characters and truncate before passing to LLM prompts."""
+    # Remove ASCII control chars except newline/tab
+    cleaned = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+    return cleaned[:max_chars]
+
+
 # ── Profile extraction ────────────────────────────────────────────────────────
 
 async def extract_profile_structured(source_name: str, raw_text: str) -> Dict[str, Any]:
     """Extract structured profile from raw source text."""
+    safe_text = sanitize_for_llm(raw_text, max_chars=12_000)
     user_prompt = (
         f"Source: {source_name}\n\n"
-        f"Raw text:\n{raw_text[:12000]}"
+        f"<user_input>\n{safe_text}\n</user_input>"
     )
     return await llm_json_completion(PROFILE_EXTRACTION_SYSTEM_PROMPT, user_prompt)
 
@@ -489,10 +518,11 @@ async def merge_profiles(
     if resume_profile and not linkedin_profile:
         return resume_profile
 
-    user_prompt = json.dumps(
+    raw = json.dumps(
         {"linkedin": linkedin_profile, "resume": resume_profile},
         ensure_ascii=True,
     )
+    user_prompt = f"<user_input>\n{sanitize_for_llm(raw, max_chars=20_000)}\n</user_input>"
     result = await llm_json_completion(PROFILE_MERGE_SYSTEM_PROMPT, user_prompt)
     return result.get("merged_profile", {})
 
@@ -501,9 +531,10 @@ async def merge_profiles(
 
 async def analyze_profile(merged_profile: Dict[str, Any], data_source: str) -> Dict[str, Any]:
     """Generate structured career analysis from merged profile."""
+    profile_json = sanitize_for_llm(json.dumps(merged_profile, ensure_ascii=True), max_chars=14_000)
     user_prompt = (
         f"data_source: {data_source}\n\n"
-        f"Profile data:\n{json.dumps(merged_profile, ensure_ascii=True)[:14000]}"
+        f"<user_input>\n{profile_json}\n</user_input>"
     )
     result = await llm_json_completion(AI_READINESS_SYSTEM_PROMPT_v2, user_prompt)
     result["data_source"] = data_source

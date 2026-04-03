@@ -92,34 +92,20 @@ export function AnalyzingPage({ onComplete }: AnalyzingPageProps) {
       case 0:
         return (
           <div className="space-y-4 font-mono text-sm md:text-base text-left max-w-md mx-auto">
-            <TypewriterLine text="Role: Chief Operating Officer" delay={0} />
-            <TypewriterLine
-              text="Company: TechCorp (Series C, 450 employees)"
-              delay={0.5} />
-            
-            <TypewriterLine text="Industry: Enterprise SaaS" delay={1} />
-            <TypewriterLine
-              text="Experience: 12 years in operations"
-              delay={1.5} />
-            
-            <TypewriterLine text="Education: MBA, Stanford" delay={2} />
-            <TypewriterLine
-              text="Skills: 23 endorsed skills detected"
-              delay={2.5} />
-            
+            <TypewriterLine text="Fetching LinkedIn profile data..." delay={0} />
+            <TypewriterLine text="Extracting role and experience..." delay={0.5} />
+            <TypewriterLine text="Identifying industry context..." delay={1} />
+            <TypewriterLine text="Mapping skills and endorsements..." delay={1.5} />
+            <TypewriterLine text="Profile data loaded successfully" delay={2} />
           </div>);
 
       case 1:
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-            <MetricCard label="Industry AI Adoption" value="67%" delay={0} />
-            <MetricCard label="Competitor Deployments" value="14" delay={0.2} />
-            <MetricCard
-              label="Market Disruption Index"
-              value="7.2/10"
-              delay={0.4} />
-            
-            <MetricCard label="Automation Patents" value="2,847" delay={0.6} />
+            <MetricCard label="Industry AI Adoption" value="Analyzing..." delay={0} />
+            <MetricCard label="Competitor Landscape" value="Scanning..." delay={0.2} />
+            <MetricCard label="Market Disruption Level" value="Computing..." delay={0.4} />
+            <MetricCard label="Automation Exposure" value="Assessing..." delay={0.6} />
           </div>);
 
       case 2:
@@ -193,7 +179,7 @@ export function AnalyzingPage({ onComplete }: AnalyzingPageProps) {
               Calibrating recommendations...
             </p>
             <p className="text-sm text-gray-500">
-              Cross-referencing 12,000+ executive benchmarks
+              Cross-referencing executive benchmarks
             </p>
           </div>);
 

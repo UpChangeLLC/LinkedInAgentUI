@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from '../ui/Card';
+import { EXTERNAL_LINKS } from '../../lib/config';
 import { MockResults } from '../../data/mockResults';
 import {
   CheckCircle,
@@ -77,7 +78,7 @@ export function PersonalRoadmapSection({
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <a
-            href="https://hyperaccelerator.com/"
+            href={EXTERNAL_LINKS.hyperaccelerator}
             target="_blank"
             rel="noopener noreferrer"
             className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-start gap-4 hover:shadow-md hover:border-linkedin/30 transition-all cursor-pointer group">
@@ -137,7 +138,7 @@ export function PersonalRoadmapSection({
 
       {/* Workshop Recommendation */}
       <a
-        href="https://hyperaccelerator.com/"
+        href={EXTERNAL_LINKS.hyperaccelerator}
         target="_blank"
         rel="noopener noreferrer"
         className="block bg-gradient-to-r from-linkedin/5 to-linkedin/10 rounded-xl border border-linkedin/20 p-6 hover:border-linkedin/40 transition-colors group">

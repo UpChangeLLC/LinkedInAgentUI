@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MockResults } from '../../data/mockResults';
+import { trackEvent } from '../../lib/analytics';
 interface ScoreRevealProps {
   results: MockResults;
   onComplete: () => void;
@@ -23,6 +24,7 @@ export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
         requestAnimationFrame(animate);
       } else {
         setPhase('reveal');
+        trackEvent('score_reveal_completed', { score: targetScore, watch_duration_ms: Date.now() - startTime });
         setTimeout(() => {
           setPhase('done');
           setTimeout(onComplete, 800);

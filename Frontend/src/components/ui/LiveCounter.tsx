@@ -1,17 +1,36 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Users } from 'lucide-react';
+
+const env = (import.meta as any).env || {};
+const baseUrl = ((env.VITE_MCP_BASE_URL as string) ?? '').replace(/\/+$/, '');
+
 export function LiveCounter() {
-  const [count, setCount] = useState(12405);
+  const [count, setCount] = useState<number | null>(null);
+
   useEffect(() => {
-    // Simulate live updates
-    const interval = setInterval(() => {
-      if (Math.random() > 0.7) {
-        setCount((prev) => prev + Math.floor(Math.random() * 3) + 1);
+    let cancelled = false;
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${baseUrl}/api/stats`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && typeof data.total_assessments === 'number') {
+            setCount(data.total_assessments);
+          }
+        }
+      } catch {
+        // Silently ignore — counter just won't show
       }
-    }, 3000);
-    return () => clearInterval(interval);
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
+
+  if (count === null || count === 0) return null;
+
   return (
     <div className="hidden md:flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
       <div className="relative">
@@ -26,6 +45,6 @@ export function LiveCounter() {
           execs analyzed
         </span>
       </div>
-    </div>);
-
+    </div>
+  );
 }

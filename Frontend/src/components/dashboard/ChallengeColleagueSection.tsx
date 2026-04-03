@@ -3,12 +3,14 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Send, Users, Trophy } from 'lucide-react';
+import { trackEvent } from '../../lib/analytics';
 export function ChallengeColleagueSection() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+    trackEvent('challenge_sent');
     setSent(true);
     setTimeout(() => {
       setSent(false);

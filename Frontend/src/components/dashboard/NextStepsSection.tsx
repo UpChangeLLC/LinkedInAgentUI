@@ -9,6 +9,7 @@ import {
   ArrowRight } from
 'lucide-react';
 import { Card } from '../ui/Card';
+import { EXTERNAL_LINKS } from '../../lib/config';
 import { Badge } from '../ui/Badge';
 export function NextStepsSection() {
   return (
@@ -81,7 +82,7 @@ export function NextStepsSection() {
               </div>
 
               <a
-                href="https://hyperaccelerator.com/"
+                href={EXTERNAL_LINKS.hyperaccelerator}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-linkedin hover:bg-[#004182] text-white font-semibold px-6 py-3 rounded-lg transition-colors">

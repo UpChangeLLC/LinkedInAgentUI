@@ -1,5 +1,6 @@
 import React from 'react';
 import { Accordion } from '../ui/Accordion';
+import { EXTERNAL_LINKS } from '../../lib/config';
 import { MockResults } from '../../data/mockResults';
 import { Calendar, CheckSquare, UserCircle, ExternalLink } from 'lucide-react';
 interface ThirtyDayPlanSectionProps {
@@ -88,7 +89,7 @@ export function ThirtyDayPlanSection({ results }: ThirtyDayPlanSectionProps) {
           </p>
         </div>
         <a
-          href="https://hyperaccelerator.com/"
+          href={EXTERNAL_LINKS.hyperaccelerator}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-6 py-3 rounded-lg transition-colors whitespace-nowrap flex-shrink-0 border border-gray-200">
