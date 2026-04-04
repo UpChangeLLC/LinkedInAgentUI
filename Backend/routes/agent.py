@@ -318,6 +318,7 @@ async def _record_pipeline_run(
 
         async with _session_factory() as session:
             session.add(run)
+            await session.flush()  # Ensure PipelineRun row exists before FK reference
 
             # Emit analytics event
             if result and not error:
