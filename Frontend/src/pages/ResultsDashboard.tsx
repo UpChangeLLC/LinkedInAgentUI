@@ -21,7 +21,6 @@ import { DisruptionTimelineSection } from '../components/dashboard/DisruptionTim
 import { CareerPathwaysSection } from '../components/dashboard/CareerPathwaysSection';
 import { WhatIfSimulatorSection } from '../components/dashboard/WhatIfSimulatorSection';
 import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSection';
-import { AssessmentHistorySection } from '../components/dashboard/AssessmentHistorySection';
 import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
 import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
 import { ROICalculatorSection } from '../components/dashboard/ROICalculatorSection';
@@ -121,8 +120,6 @@ export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDas
           );
         case 'roadmap':
           return <PersonalRoadmapSection results={results} />;
-        case 'history':
-          return <AssessmentHistorySection urlHash={results.urlHash || ''} />;
         case 'newsfeed':
           return (
             <AINewsFeedSection

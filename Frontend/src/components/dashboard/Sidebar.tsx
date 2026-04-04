@@ -11,7 +11,6 @@ import {
   Grid3X3,
   Clock,
   ListChecks,
-  History,
   Newspaper,
   BookOpen,
   Calculator,
@@ -79,11 +78,6 @@ export function Sidebar({
     id: 'roadmap',
     label: 'Career Roadmap',
     icon: Calendar
-  },
-  {
-    id: 'history',
-    label: 'Assessment History',
-    icon: History
   },
   {
     id: 'newsfeed',

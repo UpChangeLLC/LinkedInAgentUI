@@ -149,10 +149,19 @@ export function SkillGapMatrixSection({ skills }: SkillGapMatrixSectionProps) {
                           </p>
                         )}
                         {skill.learningResource && (
-                          <div className="inline-flex items-center gap-1.5 text-sm font-medium text-dark-accent hover:underline">
+                          <a
+                            href={
+                              skill.learningResource.startsWith('http')
+                                ? skill.learningResource
+                                : `https://www.google.com/search?q=${encodeURIComponent(skill.learningResource)}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-dark-accent hover:underline"
+                          >
                             <ExternalLink className="w-3.5 h-3.5" />
                             {skill.learningResource}
-                          </div>
+                          </a>
                         )}
                       </div>
                     </div>

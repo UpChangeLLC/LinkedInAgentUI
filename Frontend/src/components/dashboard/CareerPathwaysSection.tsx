@@ -43,13 +43,14 @@ export function CareerPathwaysSection({ pathways, currentRole }: CareerPathwaysS
               onClick={() => setSelectedIdx(isSelected ? null : idx)}
             >
               <Card
+                allowOverflow
                 className={`p-6 h-full flex flex-col relative transition-all duration-200 ${
                   path.recommended
                     ? 'border-dark-accent border-2 shadow-[0_0_20px_rgba(20,184,166,0.15)]'
                     : 'border-dark-border'
                 } ${
                   isSelected ? 'ring-1 ring-dark-accent/30' : ''
-                } hover:-translate-y-0.5 hover:border-dark-borderHov`}
+                } hover:-translate-y-1 hover:border-dark-borderHov hover:bg-dark-elevated/30 hover:shadow-lg hover:shadow-dark-accent/5`}
               >
                 {path.recommended && (
                   <div className="absolute -top-3 left-4">

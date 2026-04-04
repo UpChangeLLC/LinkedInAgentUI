@@ -51,6 +51,7 @@ export function App() {
     rejectProfile,
     goToResults,
     goBack,
+    goToLanding,
     retrySubmit
   } = useAppState();
   return (
@@ -91,7 +92,7 @@ export function App() {
               key="results"
               results={results}
               formData={formData}
-              onBackToHome={goBack} />
+              onBackToHome={goToLanding} />
           </Suspense>
           }
 

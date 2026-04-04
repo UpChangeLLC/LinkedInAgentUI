@@ -158,6 +158,10 @@ export function useAppState() {
     if (currentPage === 'error') setCurrentPage('landing');
   }, [currentPage]);
 
+  const goToLanding = useCallback(() => {
+    setCurrentPage('landing');
+  }, []);
+
   const retrySubmit = useCallback(() => {
     if (formData?.linkedinUrl || formData?.linkedin_url) {
       submitForm(formData);
@@ -181,6 +185,7 @@ export function useAppState() {
     rejectProfile,
     goToResults,
     goBack,
+    goToLanding,
     retrySubmit,
   };
 }

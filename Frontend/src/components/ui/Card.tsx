@@ -10,6 +10,7 @@ interface CardProps {
   className?: string;
   elevated?: boolean;
   hoverable?: boolean;
+  allowOverflow?: boolean;
   onClick?: () => void;
 }
 export function Card({
@@ -17,6 +18,7 @@ export function Card({
   className,
   elevated = false,
   hoverable = false,
+  allowOverflow = false,
   onClick
 }: CardProps) {
   return (
@@ -35,7 +37,8 @@ export function Card({
       }}
       onClick={onClick}
       className={cn(
-        'bg-dark-card rounded-xl border border-dark-border overflow-hidden',
+        'bg-dark-card rounded-xl border border-dark-border',
+        allowOverflow ? 'overflow-visible' : 'overflow-hidden',
         elevated ? 'shadow-lg shadow-black/20' : '',
         hoverable ? 'cursor-pointer hover:border-dark-borderHov' : '',
         className
