@@ -12,7 +12,7 @@ RUN apt-get update \
   && apt-get autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 COPY Frontend/package.json Frontend/package-lock.json ./
-RUN npm ci
+RUN npm install
 COPY Frontend/ ./
 # Same-origin API in container (browser calls /mcp/run on this host)
 ARG VITE_MCP_BASE_URL=
