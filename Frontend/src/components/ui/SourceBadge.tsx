@@ -3,26 +3,26 @@ import type { DataSourceType } from '../../data/mockResults';
 const SOURCE_CONFIG: Record<DataSourceType, { label: string; bg: string; text: string; tooltip: string }> = {
   linkedin: {
     label: 'LinkedIn',
-    bg: 'bg-blue-50 border-blue-200',
-    text: 'text-blue-700',
+    bg: 'bg-blue-500/10 border-blue-500/20',
+    text: 'text-blue-400',
     tooltip: 'Data extracted from LinkedIn profile',
   },
   resume: {
     label: 'Resume',
-    bg: 'bg-green-50 border-green-200',
-    text: 'text-green-700',
+    bg: 'bg-dark-green/10 border-dark-green/20',
+    text: 'text-dark-green',
     tooltip: 'Data extracted from uploaded resume',
   },
   ai_inferred: {
     label: 'AI Inferred',
-    bg: 'bg-amber-50 border-amber-200',
-    text: 'text-amber-700',
+    bg: 'bg-dark-amber/10 border-dark-amber/20',
+    text: 'text-dark-amber',
     tooltip: 'Inferred by AI analysis based on available data',
   },
   market_data: {
     label: 'Market Data',
-    bg: 'bg-purple-50 border-purple-200',
-    text: 'text-purple-700',
+    bg: 'bg-purple-500/10 border-purple-500/20',
+    text: 'text-purple-400',
     tooltip: 'Based on industry and market intelligence',
   },
 };

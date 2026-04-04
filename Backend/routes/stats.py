@@ -312,16 +312,17 @@ async def get_community_insights() -> JSONResponse:
             total_this_month = (await session.execute(count_stmt)).scalar() or 0
 
             # Average score by role category
+            role_col = AnalyticsEvent.event_metadata["role_category"].astext
             role_stmt = (
                 select(
-                    AnalyticsEvent.event_metadata["role_category"].astext.label("role"),
+                    role_col.label("role"),
                     func.avg(AnalyticsEvent.event_metadata["score"].astext.cast(SqlInt)).label("avg_score"),
                 )
                 .where(
                     AnalyticsEvent.event_type == "assessment_completed",
-                    AnalyticsEvent.event_metadata["role_category"].astext != "",
+                    role_col != "",
                 )
-                .group_by(AnalyticsEvent.event_metadata["role_category"].astext)
+                .group_by(role_col)
                 .limit(10)
             )
             role_rows = (await session.execute(role_stmt)).all()

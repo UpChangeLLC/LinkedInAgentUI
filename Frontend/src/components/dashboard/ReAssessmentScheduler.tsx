@@ -74,12 +74,12 @@ export function ReAssessmentScheduler({ assessmentUrl }: Props) {
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 bg-linkedin/10 rounded-lg flex items-center justify-center">
-          <CalendarPlus className="w-5 h-5 text-linkedin" />
+        <div className="w-10 h-10 bg-dark-accentDim rounded-lg flex items-center justify-center">
+          <CalendarPlus className="w-5 h-5 text-dark-accent" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Schedule Your Next Assessment</h3>
-          <p className="text-sm text-gray-500">
+          <h3 className="text-lg font-semibold text-dark-textPri">Schedule Your Next Assessment</h3>
+          <p className="text-sm text-dark-textMuted">
             Regular reassessments help you track progress and stay on top of AI readiness.
           </p>
         </div>
@@ -98,14 +98,14 @@ export function ReAssessmentScheduler({ assessmentUrl }: Props) {
             }}
             className={`p-4 rounded-lg border-2 text-left transition-colors ${
               selectedDays === opt.days
-                ? 'border-linkedin bg-linkedin/5'
-                : 'border-gray-200 hover:border-gray-300'
+                ? 'border-dark-accent bg-dark-accent/5'
+                : 'border-dark-border hover:border-dark-border'
             }`}
           >
-            <div className="text-lg font-bold text-gray-900">{opt.label}</div>
-            <div className="text-xs text-gray-500 mt-1">{opt.description}</div>
+            <div className="text-lg font-bold text-dark-textPri">{opt.label}</div>
+            <div className="text-xs text-dark-textMuted mt-1">{opt.description}</div>
             {selectedDays === opt.days && (
-              <div className="flex items-center gap-1 mt-2 text-xs text-linkedin font-medium">
+              <div className="flex items-center gap-1 mt-2 text-xs text-dark-accent font-medium">
                 <Check className="w-3 h-3" /> Selected
               </div>
             )}
@@ -118,12 +118,12 @@ export function ReAssessmentScheduler({ assessmentUrl }: Props) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+          className="bg-dark-elevated rounded-lg p-4 border border-dark-border"
         >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <div className="text-sm text-gray-500">Your next assessment is scheduled for:</div>
-              <div className="text-lg font-bold text-gray-900 mt-1">
+              <div className="text-sm text-dark-textMuted">Your next assessment is scheduled for:</div>
+              <div className="text-lg font-bold text-dark-textPri mt-1">
                 {formatDate(scheduledDate)}
               </div>
             </div>
@@ -132,7 +132,7 @@ export function ReAssessmentScheduler({ assessmentUrl }: Props) {
               className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-colors ${
                 downloaded
                   ? 'bg-green-500 text-white'
-                  : 'bg-linkedin hover:bg-[#004182] text-white'
+                  : 'bg-dark-accent hover:bg-[#004182] text-white'
               }`}
             >
               {downloaded ? (

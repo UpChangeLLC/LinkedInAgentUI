@@ -28,13 +28,13 @@ interface TeamLeaderboardProps {
 
 function getRankIcon(rank: number) {
   if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
-  if (rank === 2) return <Medal className="w-5 h-5 text-gray-400" />;
-  if (rank === 3) return <Award className="w-5 h-5 text-amber-600" />;
-  return <span className="w-5 h-5 flex items-center justify-center text-sm font-bold text-gray-400">{rank}</span>;
+  if (rank === 2) return <Medal className="w-5 h-5 text-dark-textMuted" />;
+  if (rank === 3) return <Award className="w-5 h-5 text-dark-amber" />;
+  return <span className="w-5 h-5 flex items-center justify-center text-sm font-bold text-dark-textMuted">{rank}</span>;
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 70) return 'bg-green-500';
+  if (score >= 70) return 'bg-dark-green';
   if (score >= 50) return 'bg-yellow-500';
   if (score >= 30) return 'bg-orange-500';
   return 'bg-red-500';
@@ -45,12 +45,12 @@ export function TeamLeaderboard({ teamName, members, stats, currentUrlHash }: Te
     <Card className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-xl font-bold text-gray-900">{teamName}</h3>
-          <p className="text-sm text-gray-500">{stats.count} members | Avg score: {stats.avg_score}</p>
+          <h3 className="text-xl font-bold text-dark-textPri">{teamName}</h3>
+          <p className="text-sm text-dark-textMuted">{stats.count} members | Avg score: {stats.avg_score}</p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-gray-400">Score gap</p>
-          <p className="text-lg font-bold text-gray-700">{stats.score_gap} pts</p>
+          <p className="text-xs text-dark-textMuted">Score gap</p>
+          <p className="text-lg font-bold text-dark-textSec">{stats.score_gap} pts</p>
         </div>
       </div>
 
@@ -67,7 +67,7 @@ export function TeamLeaderboard({ teamName, members, stats, currentUrlHash }: Te
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
               className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                isCurrentUser ? 'bg-linkedin/5 border border-linkedin/20' : 'bg-gray-50 hover:bg-gray-100'
+                isCurrentUser ? 'bg-dark-accentDim border border-dark-accent/20' : 'bg-dark-elevated hover:bg-dark-elevated'
               }`}
             >
               <div className="flex-shrink-0 w-8 flex justify-center">
@@ -76,19 +76,19 @@ export function TeamLeaderboard({ teamName, members, stats, currentUrlHash }: Te
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-gray-900 truncate">
+                  <span className="font-semibold text-dark-textPri truncate">
                     {member.display_name}
                   </span>
                   {isCurrentUser && (
-                    <span className="text-xs bg-linkedin text-white px-2 py-0.5 rounded-full">You</span>
+                    <span className="text-xs bg-dark-accent text-white px-2 py-0.5 rounded-full">You</span>
                   )}
                   {member.role_category && (
-                    <span className="text-xs text-gray-400 truncate">{member.role_category}</span>
+                    <span className="text-xs text-dark-textMuted truncate">{member.role_category}</span>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-dark-elevated rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${barWidth}%` }}
@@ -96,7 +96,7 @@ export function TeamLeaderboard({ teamName, members, stats, currentUrlHash }: Te
                       className={`h-full rounded-full ${getScoreColor(member.score)}`}
                     />
                   </div>
-                  <span className="text-sm font-bold text-gray-700 w-10 text-right">
+                  <span className="text-sm font-bold text-dark-textSec w-10 text-right">
                     {member.score}
                   </span>
                 </div>

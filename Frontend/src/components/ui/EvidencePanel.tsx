@@ -11,9 +11,9 @@ interface EvidencePanelProps {
 }
 
 const CONFIDENCE_CONFIG = {
-  high: { label: 'High Confidence', color: 'text-green-600', bg: 'bg-green-50' },
-  medium: { label: 'Medium Confidence', color: 'text-yellow-600', bg: 'bg-yellow-50' },
-  low: { label: 'Low Confidence', color: 'text-red-600', bg: 'bg-red-50' },
+  high: { label: 'High Confidence', color: 'text-dark-green', bg: 'bg-dark-green/10' },
+  medium: { label: 'Medium Confidence', color: 'text-dark-amber', bg: 'bg-dark-amber/10' },
+  low: { label: 'Low Confidence', color: 'text-dark-red', bg: 'bg-dark-red/10' },
 };
 
 export function EvidencePanel({ evidence, confidence, narrative }: EvidencePanelProps) {
@@ -26,7 +26,7 @@ export function EvidencePanel({ evidence, confidence, narrative }: EvidencePanel
     <div className="mt-2">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+        className="flex items-center gap-1.5 text-xs text-dark-textMuted hover:text-dark-textSec transition-colors"
       >
         <FileText className="w-3 h-3" />
         <span>
@@ -53,20 +53,20 @@ export function EvidencePanel({ evidence, confidence, narrative }: EvidencePanel
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="mt-2 pl-3 border-l-2 border-gray-200 space-y-2">
+            <div className="mt-2 pl-3 border-l-2 border-dark-border space-y-2">
               {/* Narrative */}
               {narrative && (
-                <p className="text-xs text-gray-600 italic">{narrative}</p>
+                <p className="text-xs text-dark-textSec italic">{narrative}</p>
               )}
 
               {/* Evidence items */}
               {evidence.map((item, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <span className="text-xs text-gray-500 mt-0.5 flex-shrink-0">
+                  <span className="text-xs text-dark-textMuted mt-0.5 flex-shrink-0">
                     &bull;
                   </span>
                   <div className="flex-1 min-w-0">
-                    <span className="text-xs text-gray-700">{item.text}</span>
+                    <span className="text-xs text-dark-textSec">{item.text}</span>
                     <span className="ml-1.5 inline-block">
                       <SourceBadge source={item.source} size="sm" />
                     </span>
@@ -77,7 +77,7 @@ export function EvidencePanel({ evidence, confidence, narrative }: EvidencePanel
               {/* Confidence badge */}
               {confidence && (
                 <div className="flex items-center gap-1.5 pt-1">
-                  <Shield className="w-3 h-3 text-gray-400" />
+                  <Shield className="w-3 h-3 text-dark-textMuted" />
                   <span
                     className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
                       CONFIDENCE_CONFIG[confidence]?.bg || ''

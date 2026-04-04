@@ -47,9 +47,9 @@ export function AssessmentHistorySection({ urlHash }: Props) {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">Assessment History</h2>
+        <h2 className="text-2xl font-bold text-dark-textPri">Assessment History</h2>
         <Card className="p-8">
-          <div className="flex items-center justify-center text-gray-400">
+          <div className="flex items-center justify-center text-dark-textMuted">
             <Clock className="w-5 h-5 mr-2 animate-spin" />
             Loading history...
           </div>
@@ -189,12 +189,12 @@ export function AssessmentHistorySection({ urlHash }: Props) {
           <motion.div
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-0 left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-10 min-w-[200px]"
+            className="absolute top-0 left-1/2 -translate-x-1/2 bg-dark-card border border-dark-border rounded-lg shadow-lg p-3 z-10 min-w-[200px]"
           >
-            <div className="text-sm font-bold text-gray-900">
+            <div className="text-sm font-bold text-dark-textPri">
               Score: {points[hoveredIndex].score}
             </div>
-            <div className="text-xs text-gray-500 mt-0.5">
+            <div className="text-xs text-dark-textMuted mt-0.5">
               {formatDate(points[hoveredIndex].date)}
             </div>
             <Badge variant={riskBandVariant(points[hoveredIndex].riskBand)} className="mt-1">
@@ -204,8 +204,8 @@ export function AssessmentHistorySection({ urlHash }: Props) {
               <div className="mt-2 space-y-1">
                 {Object.entries(points[hoveredIndex].dimensions!).slice(0, 4).map(([dim, data]) => (
                   <div key={dim} className="flex justify-between text-xs">
-                    <span className="text-gray-500 truncate max-w-[120px]">{dim}</span>
-                    <span className="font-medium text-gray-700">
+                    <span className="text-dark-textMuted truncate max-w-[120px]">{dim}</span>
+                    <span className="font-medium text-dark-textSec">
                       {typeof data === 'object' ? (data as any).score ?? '-' : data}
                     </span>
                   </div>
@@ -221,35 +221,35 @@ export function AssessmentHistorySection({ urlHash }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Assessment History</h2>
-        <p className="text-gray-600 mt-2">
+        <h2 className="text-2xl font-bold text-dark-textPri">Assessment History</h2>
+        <p className="text-dark-textSec mt-2">
           Track your AI Resilience Score over time and see how you are progressing.
         </p>
       </div>
 
       {assessments.length === 0 ? (
         <Card className="p-8 text-center">
-          <Clock className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-gray-700">No Assessment History Yet</h3>
-          <p className="text-gray-500 mt-2">
+          <Clock className="w-10 h-10 text-dark-elevated mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-dark-textSec">No Assessment History Yet</h3>
+          <p className="text-dark-textMuted mt-2">
             Complete your first assessment to start tracking your progress.
           </p>
         </Card>
       ) : assessments.length === 1 ? (
         <Card className="p-8">
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 bg-linkedin/10 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Info className="w-5 h-5 text-linkedin" />
+            <div className="w-10 h-10 bg-dark-accentDim rounded-lg flex items-center justify-center flex-shrink-0">
+              <Info className="w-5 h-5 text-dark-accent" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">This Is Your First Assessment</h3>
-              <p className="text-gray-600 mt-1">
-                Your score: <span className="font-bold text-linkedin">{assessments[0].score}</span>{' '}
+              <h3 className="text-lg font-semibold text-dark-textPri">This Is Your First Assessment</h3>
+              <p className="text-dark-textSec mt-1">
+                Your score: <span className="font-bold text-dark-accent">{assessments[0].score}</span>{' '}
                 <Badge variant={riskBandVariant(assessments[0].risk_band)} className="ml-1">
                   {assessments[0].risk_band}
                 </Badge>
               </p>
-              <p className="text-gray-500 mt-3 text-sm">
+              <p className="text-dark-textMuted mt-3 text-sm">
                 Come back in 30 days to track your progress. We will calculate your improvement
                 trajectory and project when you will reach Low Risk status.
               </p>
@@ -260,7 +260,7 @@ export function AssessmentHistorySection({ urlHash }: Props) {
         <>
           {/* Score Trend Chart */}
           <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Score Trend</h3>
+            <h3 className="text-lg font-semibold text-dark-textPri mb-4">Score Trend</h3>
             {renderChart()}
           </Card>
 
@@ -279,32 +279,32 @@ export function AssessmentHistorySection({ urlHash }: Props) {
                   }}
                 >
                   {trajectory.current_trend === 'improving' ? (
-                    <TrendingUp className="w-5 h-5 text-green-600" />
+                    <TrendingUp className="w-5 h-5 text-dark-green" />
                   ) : trajectory.current_trend === 'declining' ? (
-                    <TrendingDown className="w-5 h-5 text-red-600" />
+                    <TrendingDown className="w-5 h-5 text-dark-red" />
                   ) : (
-                    <Minus className="w-5 h-5 text-blue-600" />
+                    <Minus className="w-5 h-5 text-blue-400" />
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Trajectory Projection</h3>
+                  <h3 className="text-lg font-semibold text-dark-textPri">Trajectory Projection</h3>
                   {trajectory.current_trend === 'improving' && trajectory.projected_low_risk_date ? (
-                    <p className="text-gray-600 mt-1">
+                    <p className="text-dark-textSec mt-1">
                       At this rate, you will reach{' '}
-                      <span className="font-semibold text-green-600">Low Risk</span> by{' '}
+                      <span className="font-semibold text-dark-green">Low Risk</span> by{' '}
                       <span className="font-bold">{trajectory.projected_low_risk_date}</span>.
                     </p>
                   ) : trajectory.current_trend === 'already_low_risk' ? (
-                    <p className="text-gray-600 mt-1">
-                      You are already in the <span className="font-semibold text-green-600">Low Risk</span> zone.
+                    <p className="text-dark-textSec mt-1">
+                      You are already in the <span className="font-semibold text-dark-green">Low Risk</span> zone.
                       Keep it up!
                     </p>
                   ) : (
-                    <p className="text-gray-600 mt-1">
+                    <p className="text-dark-textSec mt-1">
                       Your score trend is declining. Review your action items to get back on track.
                     </p>
                   )}
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className="text-xs text-dark-textMuted mt-2">
                     Trend: {Math.abs(trajectory.slope_per_day).toFixed(2)} points/day{' '}
                     {trajectory.current_trend === 'improving' ? 'upward' : 'downward'}
                   </p>
@@ -315,7 +315,7 @@ export function AssessmentHistorySection({ urlHash }: Props) {
 
           {/* Assessment List */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">All Assessments</h3>
+            <h3 className="text-lg font-semibold text-dark-textPri mb-3">All Assessments</h3>
             <div className="space-y-3">
               {assessments.map((a, i) => (
                 <motion.div
@@ -327,28 +327,28 @@ export function AssessmentHistorySection({ urlHash }: Props) {
                   <Card className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-linkedin/10 flex items-center justify-center">
-                          <span className="text-lg font-bold text-linkedin">{a.score}</span>
+                        <div className="w-12 h-12 rounded-full bg-dark-accentDim flex items-center justify-center">
+                          <span className="text-lg font-bold text-dark-accent">{a.score}</span>
                         </div>
                         <div>
                           <Badge variant={riskBandVariant(a.risk_band)}>{a.risk_band}</Badge>
-                          <p className="text-xs text-gray-500 mt-1">{formatDate(a.created_at)}</p>
+                          <p className="text-xs text-dark-textMuted mt-1">{formatDate(a.created_at)}</p>
                         </div>
                       </div>
                       {i < assessments.length - 1 && (
                         <div className="text-sm">
                           {a.score > assessments[i + 1].score ? (
-                            <span className="text-green-600 font-medium flex items-center gap-1">
+                            <span className="text-dark-green font-medium flex items-center gap-1">
                               <TrendingUp className="w-4 h-4" />+
                               {a.score - assessments[i + 1].score}
                             </span>
                           ) : a.score < assessments[i + 1].score ? (
-                            <span className="text-red-600 font-medium flex items-center gap-1">
+                            <span className="text-dark-red font-medium flex items-center gap-1">
                               <TrendingDown className="w-4 h-4" />
                               {a.score - assessments[i + 1].score}
                             </span>
                           ) : (
-                            <span className="text-gray-400 font-medium flex items-center gap-1">
+                            <span className="text-dark-textMuted font-medium flex items-center gap-1">
                               <Minus className="w-4 h-4" />0
                             </span>
                           )}

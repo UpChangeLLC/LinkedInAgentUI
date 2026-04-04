@@ -37,35 +37,35 @@ export function PersonalOverviewSection({
           opacity: 1,
           y: 0
         }}
-        className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm border-l-4 border-l-linkedin">
-        
-        <h3 className="text-xl font-bold text-gray-900 mb-4">
+        className="bg-dark-card rounded-xl border border-dark-border p-8 border-l-4 border-l-dark-accent">
+
+        <h3 className="text-xl font-bold text-dark-textPri mb-4">
           Executive Assessment for {personalProfile.name}
         </h3>
-        <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-line">
+        <p className="text-dark-textSec text-lg leading-relaxed whitespace-pre-line">
           {personalNarrative}
         </p>
       </motion.div>
 
       {/* Profile Header Card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex flex-col md:flex-row gap-6 items-start">
-        <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-500 flex-shrink-0 border-4 border-gray-50">
+      <div className="bg-dark-card rounded-xl border border-dark-border p-6 flex flex-col md:flex-row gap-6 items-start">
+        <div className="w-24 h-24 rounded-full bg-dark-elevated flex items-center justify-center text-2xl font-bold text-dark-textMuted flex-shrink-0 border-4 border-dark-elevated">
           {personalProfile.photoPlaceholder}
         </div>
         <div className="flex-1">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-bold text-dark-textPri">
                 {personalProfile.name}
               </h2>
-              <p className="text-lg text-gray-600">
+              <p className="text-lg text-dark-textSec">
                 {personalProfile.title} at {personalProfile.company}
               </p>
             </div>
             <Badge
               variant="success"
               className="text-base px-3 py-1 self-start md:self-center">
-              
+
               {personalRisk.personalRiskBand}
             </Badge>
           </div>
@@ -76,19 +76,19 @@ export function PersonalOverviewSection({
             <DetailPill
               icon={Briefcase}
               label={`Reports to ${personalProfile.reportsTo}`} />
-            
+
             <DetailPill
               icon={Users}
               label={`${personalProfile.directReports} Direct Reports`} />
-            
+
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Personal Score */}
-        <Card className="p-6 flex flex-col items-center justify-center col-span-1 border-t-4 border-t-linkedin">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">
+        <Card className="p-6 flex flex-col items-center justify-center col-span-1 border-t-4 border-t-dark-accent">
+          <h3 className="text-lg font-bold text-dark-textPri mb-4">
             AI Readiness Score
           </h3>
           <ScoreGauge
@@ -100,7 +100,7 @@ export function PersonalOverviewSection({
             <div className="mt-3 flex flex-col items-center gap-1">
               <DeltaBadge delta={scoreDelta.scoreDelta} label="points" size="md" />
               {scoreDelta.daysSinceLast > 0 && (
-                <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                <span className="text-[10px] text-dark-textMuted flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   since {scoreDelta.daysSinceLast} days ago
                 </span>
@@ -116,30 +116,30 @@ export function PersonalOverviewSection({
             value={personalRisk.roleAutomationRisk}
             detail="34% of your core tasks are automatable. Lower than average for COOs — your strategic focus protects you."
             inverse />
-          
+
           <MetricCard
             title="Adaptability Index"
             value={personalRisk.adaptabilityIndex}
             detail="Strong change management background and cross-functional experience give you high adaptability." />
-          
+
           <MetricCard
             title="Network Leverage"
             value={personalRisk.networkLeverage}
             detail="500+ connections with strong C-suite density. Your network is a significant asset for AI adoption." />
-          
+
           <MetricCard
             title="Leadership Readiness"
             value={personalRisk.leadershipAIReadiness}
             detail="Team AI literacy and governance gaps are holding back your leadership readiness score."
             warning />
-          
+
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <Card className="p-8">
-          <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-sm">
+          <h3 className="text-lg font-bold text-dark-textPri mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-dark-green/10 text-dark-green flex items-center justify-center text-sm">
               ✓
             </span>
             Key Strengths
@@ -147,10 +147,10 @@ export function PersonalOverviewSection({
           <ul className="space-y-6">
             {personalRisk.keyStrengths.map((strength, i) =>
             <li key={i} className="group">
-                <div className="font-bold text-gray-900 mb-1 group-hover:text-linkedin transition-colors">
+                <div className="font-bold text-dark-textPri mb-1 group-hover:text-dark-accent transition-colors">
                   {strength.title}
                 </div>
-                <div className="text-gray-600 text-sm leading-relaxed">
+                <div className="text-dark-textSec text-sm leading-relaxed">
                   {strength.detail}
                 </div>
               </li>
@@ -159,8 +159,8 @@ export function PersonalOverviewSection({
         </Card>
 
         <Card className="p-8">
-          <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm">
+          <h3 className="text-lg font-bold text-dark-textPri mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-dark-red/10 text-dark-red flex items-center justify-center text-sm">
               !
             </span>
             Critical Vulnerabilities
@@ -169,12 +169,12 @@ export function PersonalOverviewSection({
             {personalRisk.vulnerabilities.map((vuln, i) =>
             <li key={i} className="group">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="font-bold text-gray-900 group-hover:text-red-600 transition-colors">
+                  <div className="font-bold text-dark-textPri group-hover:text-dark-red transition-colors">
                     {vuln.title}
                   </div>
                   <UrgencyBadge level={vuln.urgency} />
                 </div>
-                <div className="text-gray-600 text-sm leading-relaxed">
+                <div className="text-dark-textSec text-sm leading-relaxed">
                   {vuln.detail}
                 </div>
               </li>
@@ -184,20 +184,20 @@ export function PersonalOverviewSection({
       </div>
 
       {/* Industry Context Card */}
-      <Card className="p-8 bg-gray-50 border-gray-200">
+      <Card className="p-8 bg-dark-elevated border-dark-border">
         <div className="flex items-center gap-3 mb-6">
-          <Building2 className="w-6 h-6 text-gray-400" />
-          <h3 className="text-lg font-bold text-gray-900">
+          <Building2 className="w-6 h-6 text-dark-textMuted" />
+          <h3 className="text-lg font-bold text-dark-textPri">
             Industry Context: {industryContext.name}
           </h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="text-center p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div className="text-3xl font-bold text-linkedin mb-1">
+          <div className="text-center p-4 bg-dark-card rounded-lg border border-dark-border">
+            <div className="text-3xl font-bold text-dark-accent mb-1">
               {industryContext.aiAdoptionRate}%
             </div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
+            <div className="text-xs text-dark-textMuted uppercase tracking-wide font-semibold">
               Sector Adoption Rate
             </div>
           </div>
@@ -206,10 +206,10 @@ export function PersonalOverviewSection({
             <div className="flex gap-4 items-start">
               <div className="w-1 h-12 bg-red-400 rounded-full flex-shrink-0" />
               <div>
-                <div className="text-xs font-bold text-red-600 uppercase tracking-wide mb-1">
+                <div className="text-xs font-bold text-dark-red uppercase tracking-wide mb-1">
                   Top Threat
                 </div>
-                <p className="text-gray-800 font-medium">
+                <p className="text-dark-textPri font-medium">
                   {industryContext.topThreat}
                 </p>
               </div>
@@ -217,10 +217,10 @@ export function PersonalOverviewSection({
             <div className="flex gap-4 items-start">
               <div className="w-1 h-12 bg-green-400 rounded-full flex-shrink-0" />
               <div>
-                <div className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">
+                <div className="text-xs font-bold text-dark-green uppercase tracking-wide mb-1">
                   Top Opportunity
                 </div>
-                <p className="text-gray-800 font-medium">
+                <p className="text-dark-textPri font-medium">
                   {industryContext.topOpportunity}
                 </p>
               </div>
@@ -233,22 +233,22 @@ export function PersonalOverviewSection({
 }
 function DetailPill({ icon: Icon, label }: {icon: any;label: string;}) {
   return (
-    <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm border border-gray-200">
-      <Icon className="w-3.5 h-3.5 mr-2 text-gray-400" />
+    <span className="inline-flex items-center px-3 py-1 rounded-full bg-dark-elevated text-dark-textSec text-sm border border-dark-border">
+      <Icon className="w-3.5 h-3.5 mr-2 text-dark-textMuted" />
       {label}
     </span>);
 
 }
 function UrgencyBadge({ level }: {level: 'high' | 'medium' | 'low';}) {
   const styles = {
-    high: 'bg-red-100 text-red-700 border-red-200',
-    medium: 'bg-amber-100 text-amber-700 border-amber-200',
-    low: 'bg-green-100 text-green-700 border-green-200'
+    high: 'bg-dark-red/10 text-dark-red border-dark-red/20',
+    medium: 'bg-dark-amber/10 text-dark-amber border-dark-amber/20',
+    low: 'bg-dark-green/10 text-dark-green border-dark-green/20'
   };
   return (
     <span
       className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${styles[level]}`}>
-      
+
       {level} Urgency
     </span>);
 
@@ -259,17 +259,11 @@ function MetricCard({
   detail,
   inverse,
   warning
-
-
-
-
-
-
 }: {title: string;value: number;detail: string;inverse?: boolean;warning?: boolean;}) {
   const getStatus = () => {
     if (warning)
     return {
-      color: 'text-amber-600',
+      color: 'text-dark-amber',
       bg: 'bg-amber-600',
       bar: 'bg-amber-500',
       icon: AlertTriangle,
@@ -279,7 +273,7 @@ function MetricCard({
     if (inverse) {
       return value > 50 ?
       {
-        color: 'text-red-600',
+        color: 'text-dark-red',
         bg: 'bg-red-600',
         bar: 'bg-red-500',
         icon: ShieldAlert,
@@ -287,7 +281,7 @@ function MetricCard({
         label: 'High Risk'
       } :
       {
-        color: 'text-green-600',
+        color: 'text-dark-green',
         bg: 'bg-green-600',
         bar: 'bg-green-500',
         icon: CheckCircle2,
@@ -297,7 +291,7 @@ function MetricCard({
     }
     return value > 70 ?
     {
-      color: 'text-green-600',
+      color: 'text-dark-green',
       bg: 'bg-green-600',
       bar: 'bg-green-500',
       icon: CheckCircle2,
@@ -306,7 +300,7 @@ function MetricCard({
     } :
     value > 50 ?
     {
-      color: 'text-gray-900',
+      color: 'text-dark-textPri',
       bg: 'bg-gray-700',
       bar: 'bg-gray-500',
       icon: AlertTriangle,
@@ -314,7 +308,7 @@ function MetricCard({
       label: 'Moderate'
     } :
     {
-      color: 'text-red-600',
+      color: 'text-dark-red',
       bg: 'bg-red-600',
       bar: 'bg-red-500',
       icon: ShieldAlert,
@@ -327,12 +321,12 @@ function MetricCard({
   return (
     <Card className="p-5 flex flex-col justify-between">
       <div className="flex justify-between items-start mb-3">
-        <span className="text-sm text-gray-500 font-semibold">{title}</span>
+        <span className="text-sm text-dark-textMuted font-semibold">{title}</span>
         <div className="flex items-center gap-1.5">
           <StatusIcon className={`w-4 h-4 ${status.iconColor}`} />
           <span
             className={`text-[10px] font-bold uppercase tracking-wider ${status.iconColor}`}>
-            
+
             {status.label}
           </span>
         </div>
@@ -343,17 +337,17 @@ function MetricCard({
       </div>
 
       <div className="mb-3">
-        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-2 w-full bg-dark-elevated rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full ${status.bar}`}
             style={{
               width: `${value}%`
             }} />
-          
+
         </div>
       </div>
 
-      <p className="text-xs text-gray-500 leading-relaxed">{detail}</p>
+      <p className="text-xs text-dark-textMuted leading-relaxed">{detail}</p>
     </Card>);
 
 }

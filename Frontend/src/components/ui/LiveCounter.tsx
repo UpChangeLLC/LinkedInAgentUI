@@ -32,16 +32,16 @@ export function LiveCounter() {
   if (count === null || count === 0) return null;
 
   return (
-    <div className="hidden md:flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+    <div className="hidden md:flex items-center gap-2 bg-dark-elevated px-3 py-1.5 rounded-full border border-dark-border">
       <div className="relative">
-        <Users className="w-4 h-4 text-gray-500" />
-        <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+        <Users className="w-4 h-4 text-dark-textMuted" />
+        <span className="absolute -top-1 -right-1 w-2 h-2 bg-dark-green rounded-full border-2 border-dark-bg animate-pulse"></span>
       </div>
       <div className="flex items-baseline gap-1">
-        <span className="text-sm font-bold text-gray-900 tabular-nums">
+        <span className="text-sm font-bold text-dark-textPri tabular-nums">
           {count.toLocaleString()}
         </span>
-        <span className="text-xs text-gray-500 font-medium">
+        <span className="text-xs text-dark-textMuted font-medium">
           execs analyzed
         </span>
       </div>

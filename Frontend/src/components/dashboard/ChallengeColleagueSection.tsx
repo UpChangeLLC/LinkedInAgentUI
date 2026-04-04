@@ -143,17 +143,17 @@ export function ChallengeColleagueSection({
     return (
       <div className="space-y-6">
         {/* Invite link banner */}
-        <Card className="p-4 bg-gradient-to-r from-linkedin/5 to-linkedin/10 border-linkedin/20">
+        <Card className="p-4 bg-gradient-to-r from-dark-accent/5 to-dark-accent/10 border-dark-accent/20">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
-              <Trophy className="w-6 h-6 text-linkedin" />
+              <Trophy className="w-6 h-6 text-dark-accent" />
               <div>
-                <h3 className="font-bold text-gray-900">{team.name}</h3>
-                <p className="text-sm text-gray-600">Share the link below to invite colleagues</p>
+                <h3 className="font-bold text-dark-textPri">{team.name}</h3>
+                <p className="text-sm text-dark-textSec">Share the link below to invite colleagues</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <code className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 font-mono max-w-xs truncate">
+              <code className="bg-dark-card border border-dark-border rounded-lg px-3 py-1.5 text-sm text-dark-textSec font-mono max-w-xs truncate">
                 {inviteLink}
               </code>
               <Button
@@ -162,7 +162,7 @@ export function ChallengeColleagueSection({
                 onClick={handleCopy}
                 className="flex items-center gap-1.5"
               >
-                {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                {copied ? <Check className="w-4 h-4 text-dark-green" /> : <Copy className="w-4 h-4" />}
                 {copied ? 'Copied' : 'Copy'}
               </Button>
             </div>
@@ -186,7 +186,7 @@ export function ChallengeColleagueSection({
   // Default: creation + promo view
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <Card className="p-8 bg-gradient-to-br from-linkedin to-linkedin-dark text-white border-none">
+      <Card className="p-8 bg-gradient-to-br from-dark-accent to-dark-accent text-white border-none">
         <div className="flex items-center gap-3 mb-4">
           <Trophy className="w-8 h-8 text-yellow-300" />
           <h2 className="text-2xl font-bold">Team Challenge</h2>
@@ -200,12 +200,12 @@ export function ChallengeColleagueSection({
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="w-10 h-10 rounded-full border-2 border-linkedin-dark bg-white/20 flex items-center justify-center text-xs font-bold"
+              className="w-10 h-10 rounded-full border-2 border-dark-accent bg-white/20 flex items-center justify-center text-xs font-bold"
             >
               {String.fromCharCode(64 + i)}
             </div>
           ))}
-          <div className="w-10 h-10 rounded-full border-2 border-linkedin-dark bg-white flex items-center justify-center text-xs font-bold text-linkedin-dark">
+          <div className="w-10 h-10 rounded-full border-2 border-dark-accent bg-white flex items-center justify-center text-xs font-bold text-dark-accent">
             +12
           </div>
         </div>
@@ -219,21 +219,21 @@ export function ChallengeColleagueSection({
       <Card className="p-8 flex flex-col justify-center">
         {loading ? (
           <div className="flex flex-col items-center gap-3 py-8">
-            <Loader2 className="w-8 h-8 text-linkedin animate-spin" />
-            <p className="text-gray-600">Joining team...</p>
+            <Loader2 className="w-8 h-8 text-dark-accent animate-spin" />
+            <p className="text-dark-textSec">Joining team...</p>
           </div>
         ) : (
           <>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
+            <h3 className="text-xl font-bold text-dark-textPri mb-2">
               Create a Team
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-dark-textSec mb-6">
               Start a team challenge and get a shareable invite link. Members
               see a live leaderboard comparing AI resilience scores.
             </p>
 
             {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+              <div className="mb-4 bg-dark-red/10 border border-dark-red/20 rounded-lg p-3 text-sm text-dark-red">
                 {error}
               </div>
             )}
@@ -243,12 +243,12 @@ export function ChallengeColleagueSection({
                 placeholder="e.g. Leadership Team Q2"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
-                className="bg-gray-50"
+                className="bg-dark-elevated"
                 disabled={creating}
               />
               <Button
                 fullWidth
-                className="bg-linkedin hover:bg-linkedin-dark"
+                className="bg-dark-accent hover:bg-dark-accent"
                 disabled={creating || !teamName.trim()}
               >
                 {creating ? (

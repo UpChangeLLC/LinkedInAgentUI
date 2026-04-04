@@ -8,24 +8,24 @@ describe('DeltaBadge', () => {
     const badge = container.querySelector('span')!;
     expect(badge.textContent).toContain('+');
     expect(badge.textContent).toContain('12');
-    expect(badge.className).toContain('text-green-700');
-    expect(badge.className).toContain('bg-green-50');
+    expect(badge.className).toContain('text-dark-green');
+    expect(badge.className).toContain('bg-dark-green/10');
   });
 
   it('renders negative delta with red styling', () => {
     const { container } = render(<DeltaBadge delta={-5} />);
     const badge = container.querySelector('span')!;
     expect(badge.textContent).toContain('-5');
-    expect(badge.className).toContain('text-red-700');
-    expect(badge.className).toContain('bg-red-50');
+    expect(badge.className).toContain('text-dark-red');
+    expect(badge.className).toContain('bg-dark-red/10');
   });
 
   it('renders zero delta with neutral styling', () => {
     const { container } = render(<DeltaBadge delta={0} />);
     const badge = container.querySelector('span')!;
     expect(badge.textContent).toContain('0');
-    expect(badge.className).toContain('text-gray-500');
-    expect(badge.className).toContain('bg-gray-50');
+    expect(badge.className).toContain('text-dark-textMuted');
+    expect(badge.className).toContain('bg-dark-elevated');
   });
 
   it('renders label when provided', () => {

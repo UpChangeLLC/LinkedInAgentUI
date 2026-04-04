@@ -116,11 +116,11 @@ export function WhatIfSimulatorSection({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-dark-textPri flex items-center gap-2">
           <Lightbulb className="w-5 h-5 text-yellow-500" />
           What-If Simulator
         </h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-dark-textMuted mt-1">
           Toggle scenarios to see how your score could change
         </p>
       </div>
@@ -136,16 +136,16 @@ export function WhatIfSimulatorSection({
                 <Card
                   className={`p-4 cursor-pointer transition-all ${
                     isActive
-                      ? 'border-linkedin bg-blue-50/50 shadow-sm'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-dark-accent bg-blue-500/10'
+                      : 'border-dark-border hover:border-dark-border'
                   }`}
                 >
                   <div className="flex items-center gap-3" onClick={() => toggle(scenario.id)}>
                     <button
                       className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
                         isActive
-                          ? 'bg-linkedin text-white'
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                          ? 'bg-dark-accent text-white'
+                          : 'bg-dark-elevated text-dark-textMuted hover:bg-dark-elevated'
                       }`}
                     >
                       {isActive ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
@@ -153,17 +153,17 @@ export function WhatIfSimulatorSection({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm">{CATEGORY_ICONS[scenario.category]}</span>
-                        <span className="text-sm font-semibold text-gray-900">
+                        <span className="text-sm font-semibold text-dark-textPri">
                           {scenario.title}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-dark-textMuted mt-0.5">
                         {scenario.description}
                       </p>
                     </div>
                     <span
                       className={`text-sm font-bold flex-shrink-0 ${
-                        isActive ? 'text-green-600' : 'text-gray-400'
+                        isActive ? 'text-dark-green' : 'text-dark-textMuted'
                       }`}
                     >
                       +{scenario.scoreDelta}
@@ -176,7 +176,7 @@ export function WhatIfSimulatorSection({
                       e.stopPropagation();
                       setExpandedScenario(isExpanded ? null : scenario.id);
                     }}
-                    className="mt-2 text-xs text-linkedin hover:underline flex items-center gap-1"
+                    className="mt-2 text-xs text-dark-accent hover:underline flex items-center gap-1"
                   >
                     How to achieve this
                     <ArrowUpRight className="w-3 h-3" />
@@ -190,7 +190,7 @@ export function WhatIfSimulatorSection({
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        <p className="text-xs text-gray-600 mt-2 pt-2 border-t border-gray-200">
+                        <p className="text-xs text-dark-textSec mt-2 pt-2 border-t border-dark-border">
                           {scenario.howTo}
                         </p>
                       </motion.div>
@@ -206,7 +206,7 @@ export function WhatIfSimulatorSection({
         <div className="lg:w-72 flex-shrink-0">
           <Card className="p-6 sticky top-4">
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+              <p className="text-xs font-medium text-dark-textMuted uppercase tracking-wide mb-3">
                 {activeScenarios.size > 0 ? 'Projected Score' : 'Current Score'}
               </p>
               <ScoreGauge score={projectedScore} riskBand={projectedBand} />
@@ -215,7 +215,7 @@ export function WhatIfSimulatorSection({
                 <motion.div
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 inline-flex items-center gap-1 bg-green-50 text-green-700 text-sm font-bold px-3 py-1 rounded-full"
+                  className="mt-3 inline-flex items-center gap-1 bg-dark-green/10 text-dark-green text-sm font-bold px-3 py-1 rounded-full"
                 >
                   <ArrowUpRight className="w-4 h-4" />
                   +{totalDelta} points
@@ -224,12 +224,12 @@ export function WhatIfSimulatorSection({
 
               {activeScenarios.size > 0 && (
                 <div className="mt-4">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-dark-textMuted">
                     {activeScenarios.size} scenario{activeScenarios.size > 1 ? 's' : ''} selected
                   </p>
                   <button
                     onClick={() => setActiveScenarios(new Set())}
-                    className="mt-2 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 mx-auto"
+                    className="mt-2 text-xs text-dark-textMuted hover:text-dark-textSec flex items-center gap-1 mx-auto"
                   >
                     <RotateCcw className="w-3 h-3" />
                     Reset all

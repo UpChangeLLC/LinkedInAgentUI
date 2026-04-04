@@ -63,8 +63,8 @@ function RangeSlider({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700">{label}</label>
-        <span className="text-sm font-semibold text-gray-900">
+        <label className="text-sm font-medium text-dark-textSec">{label}</label>
+        <span className="text-sm font-semibold text-dark-textPri">
           {unit === '$' ? `$${value}` : `${value}${unit}`}
         </span>
       </div>
@@ -75,12 +75,12 @@ function RangeSlider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-linkedin"
+        className="w-full h-2 bg-dark-elevated rounded-lg appearance-none cursor-pointer accent-dark-accent"
         style={{
-          background: `linear-gradient(to right, #0a66c2 0%, #0a66c2 ${pct}%, #e5e7eb ${pct}%, #e5e7eb 100%)`,
+          background: `linear-gradient(to right, #0a66c2 0%, #0a66c2 ${pct}%, #374151 ${pct}%, #374151 100%)`,
         }}
       />
-      <div className="flex justify-between text-xs text-gray-400">
+      <div className="flex justify-between text-xs text-dark-textMuted">
         <span>
           {unit === '$' ? `$${min}` : `${min}${unit}`}
         </span>
@@ -135,11 +135,11 @@ export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProp
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Calculator className="w-6 h-6 text-linkedin" />
+        <h2 className="text-2xl font-bold text-dark-textPri flex items-center gap-2">
+          <Calculator className="w-6 h-6 text-dark-accent" />
           Workflow ROI Calculator
         </h2>
-        <p className="text-gray-600 mt-1">
+        <p className="text-dark-textSec mt-1">
           Estimate the financial impact of automating your team's manual
           workflows with AI.
         </p>
@@ -148,7 +148,7 @@ export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProp
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Input Panel */}
         <Card className="p-6 space-y-6">
-          <h3 className="font-semibold text-gray-900">Adjust Parameters</h3>
+          <h3 className="font-semibold text-dark-textPri">Adjust Parameters</h3>
 
           <RangeSlider
             label="Hours/week on manual tasks"
@@ -161,7 +161,7 @@ export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProp
           />
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-dark-textSec">
               Average hourly cost ($)
             </label>
             <input
@@ -174,7 +174,7 @@ export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProp
                   Math.max(10, Math.min(500, Number(e.target.value) || 50))
                 )
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-linkedin/30 focus:border-linkedin"
+              className="w-full px-3 py-2 border border-dark-border rounded-lg text-sm bg-dark-card text-dark-textPri focus:ring-2 focus:ring-dark-accent/30 focus:border-dark-accent"
             />
           </div>
 
@@ -189,8 +189,8 @@ export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProp
           />
 
           {workflowItems && workflowItems.length > 0 && (
-            <div className="mt-2 p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700">
+            <div className="mt-2 p-3 bg-blue-500/10 rounded-lg">
+              <p className="text-xs text-blue-400">
                 Default automation % is derived from your{' '}
                 {workflowItems.length} identified workflow
                 {workflowItems.length !== 1 ? 's' : ''} (avg{' '}
@@ -203,15 +203,15 @@ export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProp
         {/* Results Panel */}
         <div className="space-y-4">
           {/* Big savings number */}
-          <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <Card className="p-6 bg-gradient-to-br from-dark-green/10 to-dark-green/10 border-dark-green/20">
             <div className="text-center">
-              <p className="text-sm font-medium text-green-700 mb-1">
+              <p className="text-sm font-medium text-dark-green mb-1">
                 Estimated Annual Savings
               </p>
-              <p className="text-4xl font-bold text-green-800">
+              <p className="text-4xl font-bold text-dark-green">
                 <AnimatedCounter value={Math.round(annualSavings)} prefix="$" />
               </p>
-              <p className="text-sm text-green-600 mt-1">
+              <p className="text-sm text-dark-green mt-1">
                 ${Math.round(monthlySavings).toLocaleString()} / month
               </p>
             </div>
@@ -220,43 +220,43 @@ export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProp
           {/* Metrics row */}
           <div className="grid grid-cols-3 gap-3">
             <Card className="p-4 text-center">
-              <Clock className="w-5 h-5 text-linkedin mx-auto mb-1" />
-              <p className="text-lg font-bold text-gray-900">
+              <Clock className="w-5 h-5 text-dark-accent mx-auto mb-1" />
+              <p className="text-lg font-bold text-dark-textPri">
                 {Math.round(hoursRecovered).toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500">Hours recovered/year</p>
+              <p className="text-xs text-dark-textMuted">Hours recovered/year</p>
             </Card>
             <Card className="p-4 text-center">
-              <TrendingUp className="w-5 h-5 text-linkedin mx-auto mb-1" />
-              <p className="text-lg font-bold text-gray-900">
+              <TrendingUp className="w-5 h-5 text-dark-accent mx-auto mb-1" />
+              <p className="text-lg font-bold text-dark-textPri">
                 {paybackMonths}
               </p>
-              <p className="text-xs text-gray-500">Months payback</p>
+              <p className="text-xs text-dark-textMuted">Months payback</p>
             </Card>
             <Card className="p-4 text-center">
-              <DollarSign className="w-5 h-5 text-linkedin mx-auto mb-1" />
-              <p className="text-lg font-bold text-gray-900">
+              <DollarSign className="w-5 h-5 text-dark-accent mx-auto mb-1" />
+              <p className="text-lg font-bold text-dark-textPri">
                 {Math.round((annualSavings / (hoursPerWeek * 52 * hourlyRate)) * 100)}%
               </p>
-              <p className="text-xs text-gray-500">Cost reduction</p>
+              <p className="text-xs text-dark-textMuted">Cost reduction</p>
             </Card>
           </div>
 
           {/* Simple bar chart comparison */}
           <Card className="p-5">
-            <h4 className="text-sm font-semibold text-gray-700 mb-4">
+            <h4 className="text-sm font-semibold text-dark-textSec mb-4">
               Annual Cost Comparison
             </h4>
             <div className="space-y-4">
               {barData.map((bar) => (
                 <div key={bar.label}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-600">{bar.label}</span>
-                    <span className="text-xs font-semibold text-gray-900">
+                    <span className="text-xs text-dark-textSec">{bar.label}</span>
+                    <span className="text-xs font-semibold text-dark-textPri">
                       ${Math.round(bar.value).toLocaleString()}
                     </span>
                   </div>
-                  <div className="h-6 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-6 bg-dark-elevated rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-700 ease-out"
                       style={{
@@ -268,11 +268,11 @@ export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProp
                 </div>
               ))}
             </div>
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-600">
+            <div className="mt-4 p-3 bg-dark-elevated rounded-lg">
+              <p className="text-xs text-dark-textSec">
                 By automating {automationPct}% of {hoursPerWeek} weekly hours at
                 ${hourlyRate}/hr, you save{' '}
-                <span className="font-semibold text-green-700">
+                <span className="font-semibold text-dark-green">
                   ${Math.round(annualSavings).toLocaleString()}
                 </span>{' '}
                 annually with an estimated payback of {paybackMonths} months.

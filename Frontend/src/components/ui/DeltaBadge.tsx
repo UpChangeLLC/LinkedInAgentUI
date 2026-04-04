@@ -24,10 +24,10 @@ export function DeltaBadge({ delta, label, size = 'md' }: DeltaBadgeProps) {
   };
 
   const colorClasses = isPositive
-    ? 'bg-green-50 text-green-700 border-green-200'
+    ? 'bg-dark-green/10 text-dark-green border-dark-green/20'
     : isNegative
-    ? 'bg-red-50 text-red-700 border-red-200'
-    : 'bg-gray-50 text-gray-500 border-gray-200';
+    ? 'bg-dark-red/10 text-dark-red border-dark-red/20'
+    : 'bg-dark-elevated text-dark-textMuted border-dark-border';
 
   const Icon = isPositive ? ArrowUpRight : isNegative ? ArrowDownRight : Minus;
 

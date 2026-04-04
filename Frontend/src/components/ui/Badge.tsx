@@ -15,11 +15,11 @@ export function Badge({
   className
 }: BadgeProps) {
   const variants = {
-    default: 'bg-accent/10 text-accent border-accent/20',
-    success: 'bg-green-50 text-green-700 border-green-200',
-    warning: 'bg-amber-50 text-amber-700 border-amber-200',
-    danger: 'bg-red-50 text-red-700 border-red-200',
-    neutral: 'bg-gray-100 text-gray-700 border-gray-200'
+    default: 'bg-dark-accentDim text-dark-accent border-dark-accent/20',
+    success: 'bg-dark-green/10 text-dark-green border-dark-green/20',
+    warning: 'bg-dark-amber/10 text-dark-amber border-dark-amber/20',
+    danger: 'bg-dark-red/10 text-dark-red border-dark-red/20',
+    neutral: 'bg-dark-elevated text-dark-textSec border-dark-border'
   };
   return (
     <span

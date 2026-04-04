@@ -15,10 +15,10 @@ const ResultsDashboard = React.lazy(() =>
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linkedin-bg">
+    <div className="min-h-screen flex items-center justify-center bg-dark-bg">
       <div className="text-center">
-        <div className="w-8 h-8 border-4 border-linkedin border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-500 text-sm">Loading dashboard...</p>
+        <div className="w-8 h-8 border-4 border-dark-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-dark-textMuted text-sm">Loading dashboard...</p>
       </div>
     </div>
   );
@@ -26,11 +26,11 @@ function LoadingFallback() {
 
 function PreviewLoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linkedin-bg">
+    <div className="min-h-screen flex items-center justify-center bg-dark-bg">
       <div className="text-center">
-        <div className="w-10 h-10 border-4 border-linkedin border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-700 font-medium">Fetching your profile...</p>
-        <p className="text-gray-500 text-sm mt-1">This usually takes 5-10 seconds</p>
+        <div className="w-10 h-10 border-4 border-dark-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-dark-textPri font-medium">Fetching your profile...</p>
+        <p className="text-dark-textMuted text-sm mt-1">This usually takes 5-10 seconds</p>
       </div>
     </div>
   );
@@ -90,7 +90,8 @@ export function App() {
             <ResultsDashboard
               key="results"
               results={results}
-              formData={formData} />
+              formData={formData}
+              onBackToHome={goBack} />
           </Suspense>
           }
 

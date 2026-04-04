@@ -35,20 +35,20 @@ interface ActionTrackerSectionProps {
 }
 
 const CATEGORY_CONFIG = {
-  learning: { icon: BookOpen, label: 'Learning', color: 'text-blue-600 bg-blue-50 border-blue-200' },
-  networking: { icon: Users, label: 'Networking', color: 'text-purple-600 bg-purple-50 border-purple-200' },
-  projects: { icon: Briefcase, label: 'Projects', color: 'text-green-600 bg-green-50 border-green-200' },
-  governance: { icon: Shield, label: 'Governance', color: 'text-amber-600 bg-amber-50 border-amber-200' },
+  learning: { icon: BookOpen, label: 'Learning', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+  networking: { icon: Users, label: 'Networking', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+  projects: { icon: Briefcase, label: 'Projects', color: 'text-dark-green bg-dark-green/10 border-dark-green/20' },
+  governance: { icon: Shield, label: 'Governance', color: 'text-dark-amber bg-dark-amber/10 border-dark-amber/20' },
 };
 
 const PRIORITY_CONFIG = {
-  high: { label: 'High', color: 'bg-red-100 text-red-700' },
-  medium: { label: 'Medium', color: 'bg-amber-100 text-amber-700' },
-  low: { label: 'Low', color: 'bg-green-100 text-green-700' },
+  high: { label: 'High', color: 'bg-dark-red/10 text-dark-red' },
+  medium: { label: 'Medium', color: 'bg-dark-amber/10 text-dark-amber' },
+  low: { label: 'Low', color: 'bg-dark-green/10 text-dark-green' },
 };
 
 const STATUS_CONFIG = {
-  pending: { icon: Circle, label: 'To Do', color: 'text-gray-400' },
+  pending: { icon: Circle, label: 'To Do', color: 'text-dark-textMuted' },
   in_progress: { icon: Clock, label: 'In Progress', color: 'text-blue-500' },
   completed: { icon: CheckCircle2, label: 'Done', color: 'text-green-500' },
 };
@@ -140,8 +140,8 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-        <span className="ml-2 text-gray-500">Loading action items...</span>
+        <Loader2 className="w-6 h-6 animate-spin text-dark-textMuted" />
+        <span className="ml-2 text-dark-textMuted">Loading action items...</span>
       </div>
     );
   }
@@ -149,7 +149,7 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
   if (actions.length === 0) {
     return (
       <Card className="p-8 text-center">
-        <p className="text-gray-500">No action items generated for this assessment.</p>
+        <p className="text-dark-textMuted">No action items generated for this assessment.</p>
       </Card>
     );
   }
@@ -159,14 +159,14 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
       {/* Progress Bar */}
       <Card className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-gray-700">
+          <span className="text-sm font-semibold text-dark-textSec">
             Overall Progress
           </span>
-          <span className="text-sm font-bold text-gray-900">
+          <span className="text-sm font-bold text-dark-textPri">
             {completedCount} / {actions.length} completed
           </span>
         </div>
-        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-3 bg-dark-elevated rounded-full overflow-hidden">
           <motion.div
             className="h-full bg-green-500 rounded-full"
             initial={{ width: 0 }}
@@ -174,7 +174,7 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
             transition={{ duration: 0.5 }}
           />
         </div>
-        <p className="text-xs text-gray-400 mt-1">{progressPct}% complete</p>
+        <p className="text-xs text-dark-textMuted mt-1">{progressPct}% complete</p>
       </Card>
 
       {/* Category Filter */}
@@ -246,8 +246,8 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
                         <span
                           className={`text-sm font-semibold ${
                             action.status === 'completed'
-                              ? 'line-through text-gray-400'
-                              : 'text-gray-900'
+                              ? 'line-through text-dark-textMuted'
+                              : 'text-dark-textPri'
                           }`}
                         >
                           {action.title}
@@ -264,7 +264,7 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
                       {/* Expandable details */}
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : action.id)}
-                        className="mt-1 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-0.5"
+                        className="mt-1 text-xs text-dark-textMuted hover:text-dark-textSec flex items-center gap-0.5"
                       >
                         {isExpanded ? (
                           <>
@@ -285,11 +285,11 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                           >
-                            <div className="mt-2 pt-2 border-t border-gray-100 space-y-2">
+                            <div className="mt-2 pt-2 border-t border-dark-border space-y-2">
                               {action.description && (
-                                <p className="text-xs text-gray-600">{action.description}</p>
+                                <p className="text-xs text-dark-textSec">{action.description}</p>
                               )}
-                              <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <div className="flex items-center gap-4 text-xs text-dark-textMuted">
                                 {action.estimated_hours > 0 && (
                                   <span className="flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
@@ -302,7 +302,7 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
                                   href={action.resource_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-xs text-linkedin hover:underline"
+                                  className="inline-flex items-center gap-1 text-xs text-dark-accent hover:underline"
                                 >
                                   <ExternalLink className="w-3 h-3" />
                                   {action.resource_title || 'View Resource'}
@@ -316,7 +316,7 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
 
                     {/* Time estimate badge */}
                     {action.estimated_hours > 0 && !isExpanded && (
-                      <span className="text-[10px] text-gray-400 flex-shrink-0">
+                      <span className="text-[10px] text-dark-textMuted flex-shrink-0">
                         ~{action.estimated_hours}h
                       </span>
                     )}
@@ -347,8 +347,8 @@ function FilterPill({
       onClick={onClick}
       className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
         active
-          ? 'bg-linkedin text-white border-linkedin'
-          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+          ? 'bg-dark-accent text-white border-dark-accent'
+          : 'bg-dark-card text-dark-textSec border-dark-border hover:border-dark-border'
       }`}
     >
       {label} ({count})

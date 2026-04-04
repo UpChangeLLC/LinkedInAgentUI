@@ -104,24 +104,24 @@ export function PeerBenchmarkSection({ results }: PeerBenchmarkSectionProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-dark-textPri">
             Peer Benchmarking
           </h2>
-          <p className="text-gray-600">
+          <p className="text-dark-textSec">
             {hasRealData
               ? `Based on ${sampleSize.toLocaleString()} assessed professionals.`
               : `See how you stack up against ${sampleSize.toLocaleString()} other executives.`
             }
           </p>
           {dateRangeLabel && (
-            <p className="text-xs text-gray-400 mt-1">Data from {dateRangeLabel}</p>
+            <p className="text-xs text-dark-textMuted mt-1">Data from {dateRangeLabel}</p>
           )}
         </div>
       </div>
 
       {/* Limited data warning */}
       {isLimitedData && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-center gap-2 bg-dark-amber/10 border border-dark-amber/20 rounded-lg px-4 py-3 text-sm text-dark-amber">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <span>
             Limited data: Only {benchmark.sample_size} matching profiles found.
@@ -162,7 +162,7 @@ export function PeerBenchmarkSection({ results }: PeerBenchmarkSectionProps) {
 
       {/* Distribution Graph */}
       <Card className="p-6 md:p-8">
-        <h3 className="font-bold text-gray-900 mb-6">
+        <h3 className="font-bold text-dark-textPri mb-6">
           Score Distribution: {personalProfile.title}s in{' '}
           {personalProfile.industry}
         </h3>
@@ -182,10 +182,10 @@ export function PeerBenchmarkSection({ results }: PeerBenchmarkSectionProps) {
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="absolute -top-10 left-1/2 -translate-x-1/2 bg-linkedin text-white text-xs font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap z-10"
+                      className="absolute -top-10 left-1/2 -translate-x-1/2 bg-dark-accent text-white text-xs font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap z-10"
                     >
                       You ({score})
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-linkedin rotate-45"></div>
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-dark-accent rotate-45"></div>
                     </motion.div>
                   )}
                   <motion.div
@@ -194,8 +194,8 @@ export function PeerBenchmarkSection({ results }: PeerBenchmarkSectionProps) {
                     transition={{ duration: 0.8, delay: i * 0.05 }}
                     className={`w-full rounded-t-sm ${
                       isUserBucket
-                        ? 'bg-linkedin'
-                        : 'bg-gray-200 group-hover:bg-gray-300'
+                        ? 'bg-dark-accent'
+                        : 'bg-dark-elevated group-hover:bg-dark-elevated'
                     } transition-colors`}
                   />
                 </div>
@@ -203,7 +203,7 @@ export function PeerBenchmarkSection({ results }: PeerBenchmarkSectionProps) {
             }
           )}
         </div>
-        <div className="flex justify-between mt-2 text-xs text-gray-400 font-mono border-t border-gray-100 pt-2">
+        <div className="flex justify-between mt-2 text-xs text-dark-textMuted font-mono border-t border-dark-border pt-2">
           <span>0</span>
           <span>25</span>
           <span>50</span>
@@ -213,7 +213,7 @@ export function PeerBenchmarkSection({ results }: PeerBenchmarkSectionProps) {
 
         {/* P25/P75 markers when real data available */}
         {hasRealData && (
-          <div className="flex items-center justify-center gap-6 mt-3 text-xs text-gray-500">
+          <div className="flex items-center justify-center gap-6 mt-3 text-xs text-dark-textMuted">
             <span>P25: {benchmark.p25}</span>
             <span>Median: {benchmark.median}</span>
             <span>P75: {benchmark.p75}</span>
@@ -244,25 +244,25 @@ function BenchmarkCard({
   return (
     <Card className="p-6">
       <div className="flex items-start justify-between mb-4">
-        <div className="p-2 bg-gray-50 rounded-lg">
-          <Icon className="w-5 h-5 text-gray-600" />
+        <div className="p-2 bg-dark-elevated rounded-lg">
+          <Icon className="w-5 h-5 text-dark-textSec" />
         </div>
-        <span className="bg-green-50 text-green-700 text-xs font-bold px-2 py-1 rounded-full">
+        <span className="bg-dark-green/10 text-dark-green text-xs font-bold px-2 py-1 rounded-full">
           {percentile}
         </span>
       </div>
 
-      <h3 className="font-semibold text-gray-900">{title}</h3>
-      <p className="text-xs text-gray-500 mb-4">{subtitle}</p>
+      <h3 className="font-semibold text-dark-textPri">{title}</h3>
+      <p className="text-xs text-dark-textMuted mb-4">{subtitle}</p>
 
       <div className="flex items-end gap-2 mb-2">
-        <span className="text-3xl font-bold text-gray-900">{userScore}</span>
-        <span className="text-sm text-gray-500 mb-1">vs {avgScore} avg</span>
+        <span className="text-3xl font-bold text-dark-textPri">{userScore}</span>
+        <span className="text-sm text-dark-textMuted mb-1">vs {avgScore} avg</span>
       </div>
 
       <div
         className={`text-xs font-medium ${
-          isPositive ? 'text-green-600' : 'text-red-600'
+          isPositive ? 'text-dark-green' : 'text-dark-red'
         } flex items-center gap-1`}
       >
         {isPositive ? '+' : ''}

@@ -21,18 +21,17 @@ import { DisruptionTimelineSection } from '../components/dashboard/DisruptionTim
 import { CareerPathwaysSection } from '../components/dashboard/CareerPathwaysSection';
 import { WhatIfSimulatorSection } from '../components/dashboard/WhatIfSimulatorSection';
 import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSection';
-import { ExportSection } from '../components/dashboard/ExportSection';
 import { AssessmentHistorySection } from '../components/dashboard/AssessmentHistorySection';
 import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
-import { CommunityInsightsSection } from '../components/dashboard/CommunityInsightsSection';
 import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
 import { ROICalculatorSection } from '../components/dashboard/ROICalculatorSection';
 import { MockResults } from '../data/mockResults';
 interface ResultsDashboardProps {
   results: MockResults;
   formData: any;
+  onBackToHome?: () => void;
 }
-export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
+export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDashboardProps) {
   const [showReveal, setShowReveal] = useState(true);
   const [activeSection, setActiveSection] = useState('overview');
   const [view, setView] = useState<'personal' | 'corporate'>('personal');
@@ -120,13 +119,6 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
               })) || []}
             />
           );
-        case 'export':
-          return (
-            <ExportSection
-              runId={results.urlHash || formData?.backend?.run_id || ''}
-              results={results}
-            />
-          );
         case 'roadmap':
           return <PersonalRoadmapSection results={results} />;
         case 'history':
@@ -136,10 +128,9 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
             <AINewsFeedSection
               role={results.personalProfile?.title}
               industry={results.personalProfile?.industry}
+              topSkillGaps={results.skillGapMatrix?.slice(0, 3).map((s) => s.name)}
             />
           );
-        case 'community':
-          return <CommunityInsightsSection />;
         case 'learning':
           return <LearningResourcesSection skills={results.skillGapMatrix} />;
         case 'next':
@@ -177,7 +168,7 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
         }
       </AnimatePresence>
 
-      <div className="flex flex-col h-screen bg-linkedin-bg overflow-hidden">
+      <div className="flex flex-col h-screen bg-dark-bg overflow-hidden">
         <LinkedInNav />
 
         <div className="flex flex-1 overflow-hidden">
@@ -188,13 +179,14 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
             onClose={() => setIsSidebarOpen(false)}
             view={view}
             onViewChange={setView}
-            results={results} />
+            results={results}
+            onBackToHome={onBackToHome} />
 
 
           <div className="flex-1 flex flex-col h-full overflow-hidden relative">
             {/* Mobile Header Toggle */}
             <button
-              className="lg:hidden absolute top-4 right-4 z-40 p-2 bg-white rounded-md shadow-sm border border-gray-200"
+              className="lg:hidden absolute top-4 right-4 z-40 p-2 bg-dark-card rounded-md border border-dark-border text-dark-textSec"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
 
               {isSidebarOpen ?
@@ -209,11 +201,11 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
               <div className="max-w-5xl mx-auto space-y-8 pb-28">
                 {/* Backend Executive Summary (if available) */}
                 {formData?.backend?.result && (
-                  <div className="mb-6 p-4 rounded-md border border-emerald-200 bg-emerald-50">
-                    <div className="text-sm text-emerald-700 font-semibold mb-1">
+                  <div className="mb-6 p-4 rounded-md border border-dark-accent/20 bg-dark-accentDim">
+                    <div className="text-sm text-dark-accent font-semibold mb-1">
                       Live Analysis Summary
                     </div>
-                    <div className="text-emerald-900 text-sm whitespace-pre-line">
+                    <div className="text-dark-textPri text-sm whitespace-pre-line">
                       {formData.backend.result.executive_summary ||
                         formData.backend.result.summary ||
                         'Analysis completed.'}
@@ -221,10 +213,10 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
                   </div>
                 )}
                 <div className="mb-8">
-                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-2 uppercase tracking-wider font-semibold">
+                  <div className="flex items-center gap-2 text-[11px] text-dark-accent mb-2 uppercase tracking-widest font-semibold">
                     {view} Dashboard
                   </div>
-                  <h1 className="text-3xl font-bold text-gray-900 capitalize">
+                  <h1 className="text-3xl font-bold font-serif text-dark-textPri capitalize">
                     {activeSection === 'plan' ?
                       '30-Day Plan' :
                       activeSection === 'next' ?
@@ -233,19 +225,15 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
                           'Share & Compare' :
                           activeSection === 'actions' ?
                             'Action Tracker' :
-                            activeSection === 'export' ?
-                              'Export & Share' :
-                              activeSection === 'history' ?
-                                'Assessment History' :
-                                activeSection === 'newsfeed' ?
-                                  'AI News Feed' :
-                                  activeSection === 'community' ?
-                                    'Community Insights' :
-                                    activeSection === 'learning' ?
-                                      'Learning Resources' :
-                                      activeSection === 'roi' ?
-                                        'ROI Calculator' :
-                                        activeSection.replace(/([A-Z])/g, ' $1').trim()}
+                            activeSection === 'history' ?
+                              'Assessment History' :
+                              activeSection === 'newsfeed' ?
+                                'AI News Feed' :
+                                activeSection === 'learning' ?
+                                  'Learning Resources' :
+                                  activeSection === 'roi' ?
+                                    'ROI Calculator' :
+                                    activeSection.replace(/([A-Z])/g, ' $1').trim()}
                   </h1>
                 </div>
 

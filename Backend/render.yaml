@@ -13,7 +13,7 @@ services:
       - key: AI_CLIENT
         value: openai
       - key: OPENAI_MODEL
-        value: gpt-4o-mini
+        value: gpt-4.1-mini
       - key: APIFY_ACTOR_ID
         value: supreme_coder/linkedin-profile-scraper
       - key: AI_CLIENT_TIMEOUT_SEC

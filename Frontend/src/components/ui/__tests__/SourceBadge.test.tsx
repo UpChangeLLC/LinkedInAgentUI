@@ -7,7 +7,7 @@ describe('SourceBadge', () => {
     const { container } = render(<SourceBadge source="linkedin" />);
     const badge = container.querySelector('span')!;
     expect(badge.textContent).toBe('LinkedIn');
-    expect(badge.className).toContain('text-blue-700');
+    expect(badge.className).toContain('text-blue-400');
     expect(badge.getAttribute('title')).toContain('LinkedIn');
   });
 
@@ -15,20 +15,20 @@ describe('SourceBadge', () => {
     const { container } = render(<SourceBadge source="resume" />);
     const badge = container.querySelector('span')!;
     expect(badge.textContent).toBe('Resume');
-    expect(badge.className).toContain('text-green-700');
+    expect(badge.className).toContain('text-dark-green');
   });
 
   it('renders ai_inferred badge', () => {
     const { container } = render(<SourceBadge source="ai_inferred" />);
     const badge = container.querySelector('span')!;
     expect(badge.textContent).toBe('AI Inferred');
-    expect(badge.className).toContain('text-amber-700');
+    expect(badge.className).toContain('text-dark-amber');
   });
 
   it('renders market_data badge', () => {
     const { container } = render(<SourceBadge source="market_data" />);
     const badge = container.querySelector('span')!;
     expect(badge.textContent).toBe('Market Data');
-    expect(badge.className).toContain('text-purple-700');
+    expect(badge.className).toContain('text-purple-400');
   });
 });

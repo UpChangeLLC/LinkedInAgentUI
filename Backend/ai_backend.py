@@ -135,16 +135,17 @@ def load_mcp_config() -> MCPConfig:
 
 def get_openai_client() -> AsyncOpenAI:
     """Initialize OpenAI-compatible client for selected OpenAI endpoint."""
+    import httpx as _httpx
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is not set")
     base_url = os.getenv("OPENAI_BASE_URL", "").strip() or None
-    timeout = float(os.getenv("AI_CLIENT_TIMEOUT_SEC", "60"))
-    max_retries = int(os.getenv("AI_CLIENT_MAX_RETRIES", "2"))
+    timeout_sec = float(os.getenv("AI_CLIENT_TIMEOUT_SEC", "300"))
+    max_retries = int(os.getenv("AI_CLIENT_MAX_RETRIES", "3"))
     return AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
-        timeout=timeout,
+        timeout=_httpx.Timeout(timeout_sec, connect=10.0),
         max_retries=max_retries,
     )
 
@@ -154,13 +155,14 @@ def get_groq_client() -> AsyncOpenAI:
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise RuntimeError("GROQ_API_KEY is not set")
+    import httpx as _httpx
     base_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-    timeout = float(os.getenv("AI_CLIENT_TIMEOUT_SEC", "60"))
-    max_retries = int(os.getenv("AI_CLIENT_MAX_RETRIES", "2"))
+    timeout_sec = float(os.getenv("AI_CLIENT_TIMEOUT_SEC", "300"))
+    max_retries = int(os.getenv("AI_CLIENT_MAX_RETRIES", "3"))
     return AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
-        timeout=timeout,
+        timeout=_httpx.Timeout(timeout_sec, connect=10.0),
         max_retries=max_retries,
     )
 
@@ -168,9 +170,10 @@ def get_groq_client() -> AsyncOpenAI:
 def get_azure_openai_client() -> AsyncAzureOpenAI:
     api_key = os.getenv("AZURE_OPENAI_API_KEY")
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    import httpx as _httpx
     api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
-    timeout = float(os.getenv("AI_CLIENT_TIMEOUT_SEC", "60"))
-    max_retries = int(os.getenv("AI_CLIENT_MAX_RETRIES", "2"))
+    timeout_sec = float(os.getenv("AI_CLIENT_TIMEOUT_SEC", "300"))
+    max_retries = int(os.getenv("AI_CLIENT_MAX_RETRIES", "3"))
     if not api_key:
         raise RuntimeError("AZURE_OPENAI_API_KEY is not set")
     if not endpoint:
@@ -179,7 +182,7 @@ def get_azure_openai_client() -> AsyncAzureOpenAI:
         api_key=api_key,
         azure_endpoint=endpoint,
         api_version=api_version,
-        timeout=timeout,
+        timeout=_httpx.Timeout(timeout_sec, connect=10.0),
         max_retries=max_retries,
     )
 
@@ -199,19 +202,20 @@ def get_selected_ai_client() -> Tuple[str, Optional[Union[AsyncOpenAI, AsyncAzur
 
 
 def get_selected_model(ai_client: str) -> str:
-    """Return model name for the selected provider."""
-    if ai_client == "openai":
-        return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    if ai_client == "groq":
-        return os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
-    if ai_client == "azure":
-        model = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-        if not model:
-            raise RuntimeError("AZURE_OPENAI_DEPLOYMENT is not set")
-        return model
-    if ai_client == "anthropic":
-        return os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
-    raise RuntimeError(f"Invalid AI_CLIENT='{ai_client}'")
+    """Return model name for the selected provider (set in config.env)."""
+    env_map = {
+        "openai": "OPENAI_MODEL",
+        "groq": "GROQ_MODEL",
+        "azure": "AZURE_OPENAI_DEPLOYMENT",
+        "anthropic": "ANTHROPIC_MODEL",
+    }
+    env_key = env_map.get(ai_client)
+    if not env_key:
+        raise RuntimeError(f"Invalid AI_CLIENT='{ai_client}'")
+    model = os.getenv(env_key, "").strip()
+    if not model:
+        raise RuntimeError(f"{env_key} is not set in config.env")
+    return model
 
 
 # ── Resume extraction ─────────────────────────────────────────────────────────
@@ -470,22 +474,30 @@ async def llm_json_completion(system_prompt: str, user_prompt: str) -> Dict[str,
     """Call selected AI provider and return parsed JSON."""
     provider, client = get_selected_ai_client()
     model = get_selected_model(provider)
+    logger.info("LLM call: provider=%s model=%s sys_prompt_len=%d user_prompt_len=%d",
+                provider, model, len(system_prompt), len(user_prompt))
     if provider == "anthropic":
         text = await asyncio.to_thread(_run_provider_sync, provider, system_prompt, user_prompt, False)
         return _extract_json_from_text(text)
     if client is None:
         raise RuntimeError(f"No client initialized for provider '{provider}'")
-    response = await client.chat.completions.create(
-        model=model,
-        response_format={"type": "json_object"},
-        temperature=0.1,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-    content = response.choices[0].message.content or "{}"
-    return json.loads(content)
+    try:
+        response = await client.chat.completions.create(
+            model=model,
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        content = response.choices[0].message.content or "{}"
+        logger.info("LLM response received: %d chars, usage=%s", len(content),
+                     getattr(response, 'usage', 'N/A'))
+        return json.loads(content)
+    except Exception as exc:
+        logger.error("LLM call failed: %s: %s", type(exc).__name__, str(exc)[:300])
+        raise
 
 
 # ── Input sanitization ────────────────────────────────────────────────────────
