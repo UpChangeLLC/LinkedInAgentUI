@@ -560,6 +560,19 @@ async def analyze_profile(merged_profile: Dict[str, Any], data_source: str) -> D
             "recommendation": "",
             "risk_drivers": [],
         }
+    # Safety defaults for extended v2 fields (new field groups)
+    result.setdefault("competitor_intel", [])
+    result.setdefault("industry_benchmarks", [])
+    result.setdefault("industry_ai_adoption_rate", 0)
+    result.setdefault("top_industry_threat", "")
+    result.setdefault("top_industry_opportunity", "")
+    result.setdefault("regulatory_note", "")
+    result.setdefault("score_breakdown_list", [])
+    result.setdefault("company_analysis", "")
+    result.setdefault("personal_narrative", "")
+    result.setdefault("workflow_items", [])
+    result.setdefault("leverage_items", [])
+    result.setdefault("governance_items", [])
     return result
 
 

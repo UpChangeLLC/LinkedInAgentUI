@@ -392,7 +392,58 @@ Return ONLY valid JSON with this exact structure and types. No markdown, no comm
     "day_0_30":  ["Action A", "Action B", "Action C"],
     "day_31_60": ["Action D", "Action E", "Action F"],
     "day_61_90": ["Action G", "Action H", "Action I"]
-  }
+  },
+
+  "personal_narrative": "3-5 sentences addressed directly to the person by first name, summarizing their position and most important next move",
+  "company_analysis": "3-5 sentences about the company's AI posture; avoid invented internal metrics unless visible in the profile",
+
+  "industry_ai_adoption_rate": 0,
+  "top_industry_threat": "Single sentence: the biggest AI-driven threat to this person's industry or role",
+  "top_industry_opportunity": "Single sentence: the biggest AI-driven opportunity for this person",
+  "regulatory_note": "Single sentence about relevant AI regulation, or empty string if none applies",
+
+  "competitor_intel": [
+    {"name": "Competitor 1", "initiative": "Their specific AI initiative or strategy", "impact": "How it threatens or affects this person's company/role"},
+    {"name": "Competitor 2", "initiative": "Their AI initiative", "impact": "Impact statement"},
+    {"name": "Competitor 3", "initiative": "Their AI initiative", "impact": "Impact statement"}
+  ],
+
+  "industry_benchmarks": [
+    {"metric": "Metric label", "industry_avg": 0, "user_value": 0, "insight": "One-line comparison insight"},
+    {"metric": "Metric label", "industry_avg": 0, "user_value": 0, "insight": "One-line insight"},
+    {"metric": "Metric label", "industry_avg": 0, "user_value": 0, "insight": "One-line insight"},
+    {"metric": "Metric label", "industry_avg": 0, "user_value": 0, "insight": "One-line insight"}
+  ],
+
+  "score_breakdown_list": [
+    {"name": "Factor name", "weight": "High", "value": 0, "explanation": "1-2 sentences", "personal_context": "1-2 sentences specific to this person"},
+    {"name": "Factor name", "weight": "High", "value": 0, "explanation": "", "personal_context": ""},
+    {"name": "Factor name", "weight": "Med",  "value": 0, "explanation": "", "personal_context": ""},
+    {"name": "Factor name", "weight": "Med",  "value": 0, "explanation": "", "personal_context": ""},
+    {"name": "Factor name", "weight": "Low",  "value": 0, "explanation": "", "personal_context": ""},
+    {"name": "Factor name", "weight": "High", "value": 0, "explanation": "", "personal_context": ""}
+  ],
+
+  "workflow_items": [
+    {"name": "Workflow name", "explanation": "Why this matters", "first_step": "Immediate next step", "estimated_savings": "$0k/yr", "current_pain_point": "Current problem", "automation_percentage": 0},
+    {"name": "", "explanation": "", "first_step": "", "estimated_savings": "", "current_pain_point": "", "automation_percentage": 0},
+    {"name": "", "explanation": "", "first_step": "", "estimated_savings": "", "current_pain_point": "", "automation_percentage": 0},
+    {"name": "", "explanation": "", "first_step": "", "estimated_savings": "", "current_pain_point": "", "automation_percentage": 0},
+    {"name": "", "explanation": "", "first_step": "", "estimated_savings": "", "current_pain_point": "", "automation_percentage": 0}
+  ],
+
+  "leverage_items": [
+    {"title": "Leverage opportunity", "why_it_matters": "Business impact", "example_use_case": "Concrete example", "time_to_implement": "30 Days", "estimated_roi": "3.0x", "company_specific_context": "How this applies to their company"},
+    {"title": "", "why_it_matters": "", "example_use_case": "", "time_to_implement": "", "estimated_roi": "", "company_specific_context": ""},
+    {"title": "", "why_it_matters": "", "example_use_case": "", "time_to_implement": "", "estimated_roi": "", "company_specific_context": ""}
+  ],
+
+  "governance_items": [
+    {"control": "Policy name", "why_it_matters": "Risk it mitigates", "policy_suggestion": "Specific action", "current_status": "missing", "risk_level": "critical", "industry_context": "Industry relevance"},
+    {"control": "", "why_it_matters": "", "policy_suggestion": "", "current_status": "missing", "risk_level": "high", "industry_context": ""},
+    {"control": "", "why_it_matters": "", "policy_suggestion": "", "current_status": "partial", "risk_level": "medium", "industry_context": ""},
+    {"control": "", "why_it_matters": "", "policy_suggestion": "", "current_status": "implemented", "risk_level": "low", "industry_context": ""}
+  ]
 }
 
 ---
@@ -440,6 +491,20 @@ ARRAY COMPLETENESS (must not be empty):
 - job_recommendations: provide at least 3; each includes role, reason, and fit_score (0–100 integer).
 - upskilling_plan: provide at least 3; each includes skill, priority (High|Medium|Low), and why.
 - action_timeline_30_60_90: provide at least 3 actionable items in each of day_0_30, day_31_60, day_61_90.
+- competitor_intel: exactly 3 entries. Infer competitors from the person's company and industry. If company is unknown, use industry-level competitors.
+- industry_benchmarks: exactly 4 entries. industry_avg and user_value are integers 0-100 representing a normalized comparison scale. Never return strings or percentages with "%" signs.
+- score_breakdown_list: exactly 6 entries representing key scoring dimensions. value is an integer 0-100 (NOT the 1-5 rubric scale). weight must be exactly "High", "Med", or "Low". personal_context should be 1-2 sentences specific to this person.
+- workflow_items: exactly 5 entries based on inferred role responsibilities. automation_percentage is an integer 0-100.
+- leverage_items: exactly 3 entries.
+- governance_items: exactly 4 entries. current_status must be exactly "missing" | "partial" | "implemented". risk_level must be exactly "critical" | "high" | "medium" | "low".
+
+ADDITIONAL FIELD RULES:
+- personal_narrative: addressed directly to the person by first name, 3-5 sentences.
+- company_analysis: 3-5 sentences about the company's AI posture. Do not invent internal metrics unless visible in the profile.
+- industry_ai_adoption_rate: integer 0-100 representing estimated AI adoption percentage for this industry.
+- top_industry_threat / top_industry_opportunity: single sentence each.
+- regulatory_note: single sentence about relevant AI regulation or empty string if none applies.
+- estimated_savings and estimated_roi are strings (e.g., "$45k/yr", "3.0x", "Unknown").
 """
 
 AI_READINESS_SYSTEM_PROMPT_v3 = """

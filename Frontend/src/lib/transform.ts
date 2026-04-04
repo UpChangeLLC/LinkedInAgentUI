@@ -76,8 +76,8 @@ export function toMockResults(backend: any): MockResults {
         })),
         industryBenchmarks: (Array.isArray(r.industry_benchmarks) ? r.industry_benchmarks : []).map((x: any) => ({
             metric: asString(x?.metric, ''),
-            industryAvg: asString(x?.industry_avg, ''),
-            userValue: asString(x?.user_value, ''),
+            industryAvg: asNumber(x?.industry_avg, 0),
+            userValue: asNumber(x?.user_value, 0),
             insight: asString(x?.insight, '')
         })),
         // Score factors from either score_breakdown_list (preferred) or dimension_scores (fallback object)
@@ -85,20 +85,34 @@ export function toMockResults(backend: any): MockResults {
             const byList = (Array.isArray(r.score_breakdown_list) ? r.score_breakdown_list : []).map((x: any) => ({
                 name: asString(x?.name, ''),
                 weight: asString(x?.weight || x?.importance || '', ''),
-                value: asNumber(x?.score, 0),
+                value: asNumber(x?.value ?? x?.score, 0),
                 explanation: asString(x?.why || x?.explanation, ''),
-                personalContext: asString(x?.context || '', '')
+                personalContext: asString(x?.personal_context || x?.context || '', '')
             }))
             if (byList.length) return byList
+            // Fallback: derive from dimension_scores (1-5 scale → 0-100)
+            const dimWeightMap: Record<string, string> = {
+                ai_fluency: 'High', technical_proximity: 'High',
+                governance_awareness: 'Med', learning_velocity: 'Med',
+                leadership_readiness: 'High', network_relevance: 'Low',
+                automation_exposure: 'High', execution_credibility: 'Med'
+            }
+            const dimNameMap: Record<string, string> = {
+                ai_fluency: 'AI Fluency', technical_proximity: 'Technical Proximity',
+                governance_awareness: 'Governance Awareness', learning_velocity: 'Learning Velocity',
+                leadership_readiness: 'Leadership Readiness', network_relevance: 'Network Relevance',
+                automation_exposure: 'Automation Exposure', execution_credibility: 'Execution Credibility'
+            }
             const dims = r.dimension_scores && typeof r.dimension_scores === 'object' ? r.dimension_scores : {}
             return Object.keys(dims).map((k) => {
                 const v = (dims as any)[k] || {}
+                const raw = asNumber(v.score, 0)
                 return {
-                    name: asString(k, ''),
-                    weight: '',
-                    value: asNumber(v.score, 0),
+                    name: dimNameMap[k] || asString(k, ''),
+                    weight: dimWeightMap[k] || 'Med',
+                    value: Math.round(raw * 20),
                     explanation: asString(v.rationale, ''),
-                    personalContext: ''
+                    personalContext: asString(v.rationale, '')
                 }
             })
         })(),
@@ -245,7 +259,17 @@ export function toMockResults(backend: any): MockResults {
     const merged: MockResults = {
         ...fallbackMock,
         ...out,
-        industryContext: { ...fallbackMock.industryContext, ...out.industryContext },
+        industryContext: {
+            name: out.industryContext.name && out.industryContext.name !== '—'
+                ? out.industryContext.name : fallbackMock.industryContext.name,
+            aiAdoptionRate: out.industryContext.aiAdoptionRate > 0
+                ? out.industryContext.aiAdoptionRate : fallbackMock.industryContext.aiAdoptionRate,
+            avgScore: out.industryContext.avgScore > 0
+                ? out.industryContext.avgScore : fallbackMock.industryContext.avgScore,
+            topThreat: out.industryContext.topThreat || fallbackMock.industryContext.topThreat,
+            topOpportunity: out.industryContext.topOpportunity || fallbackMock.industryContext.topOpportunity,
+            regulatoryNote: out.industryContext.regulatoryNote || fallbackMock.industryContext.regulatoryNote,
+        },
         competitorIntel: out.competitorIntel?.length ? out.competitorIntel : fallbackMock.competitorIntel,
         industryBenchmarks: out.industryBenchmarks?.length ? out.industryBenchmarks : fallbackMock.industryBenchmarks,
         scoreFactors: out.scoreFactors?.length ? out.scoreFactors : fallbackMock.scoreFactors,

@@ -85,8 +85,8 @@ export interface CompetitorIntel {
 
 export interface IndustryBenchmark {
   metric: string;
-  industryAvg: string;
-  userValue: string;
+  industryAvg: number;
+  userValue: number;
   insight: string;
 }
 
@@ -156,27 +156,27 @@ export const mockResults: MockResults = {
   industryBenchmarks: [
   {
     metric: 'AI Budget %',
-    industryAvg: '12%',
-    userValue: '4%',
-    insight: ' significantly underinvesting vs peers'
+    industryAvg: 12,
+    userValue: 4,
+    insight: 'Significantly underinvesting vs peers'
   },
   {
     metric: 'Data Readiness',
-    industryAvg: '7.2/10',
-    userValue: '5.5/10',
-    insight: ' lagging due to siloed customer data'
+    industryAvg: 72,
+    userValue: 55,
+    insight: 'Lagging due to siloed customer data'
   },
   {
     metric: 'Talent Density',
-    industryAvg: '18%',
-    userValue: '22%',
-    insight: ' strong engineering talent base to leverage'
+    industryAvg: 18,
+    userValue: 22,
+    insight: 'Strong engineering talent base to leverage'
   },
   {
     metric: 'Gov. Maturity',
-    industryAvg: 'Level 3',
-    userValue: 'Level 1',
-    insight: ' critical vulnerability in policy enforcement'
+    industryAvg: 60,
+    userValue: 20,
+    insight: 'Critical vulnerability in policy enforcement'
   }],
 
   scoreFactors: [
