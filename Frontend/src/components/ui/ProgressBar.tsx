@@ -12,8 +12,8 @@ export function ProgressBar({
 }: ProgressBarProps) {
   return (
     <div
-      className={`h-2 w-full bg-surface-muted rounded-full overflow-hidden ${className}`}>
-      
+      className={`h-2 w-full bg-dark-elevated rounded-full overflow-hidden ${className}`}>
+
       <motion.div
         initial={{
           width: 0
@@ -25,7 +25,7 @@ export function ProgressBar({
           duration: 0.5,
           ease: 'easeInOut'
         }}
-        className={`h-full bg-accent rounded-full ${animated ? 'animate-pulse' : ''}`} />
+        className={`h-full bg-dark-accent rounded-full ${animated ? 'animate-pulse' : ''}`} />
       
     </div>);
 

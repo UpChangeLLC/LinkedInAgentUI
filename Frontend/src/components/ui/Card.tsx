@@ -10,6 +10,7 @@ interface CardProps {
   className?: string;
   elevated?: boolean;
   hoverable?: boolean;
+  allowOverflow?: boolean;
   onClick?: () => void;
 }
 export function Card({
@@ -17,6 +18,7 @@ export function Card({
   className,
   elevated = false,
   hoverable = false,
+  allowOverflow = false,
   onClick
 }: CardProps) {
   return (
@@ -24,9 +26,9 @@ export function Card({
       whileHover={
       hoverable ?
       {
-        y: -4,
+        y: -2,
         boxShadow:
-        '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+        '0 0 20px rgba(20, 184, 166, 0.08)'
       } :
       undefined
       }
@@ -35,9 +37,10 @@ export function Card({
       }}
       onClick={onClick}
       className={cn(
-        'bg-white rounded-xl border border-surface-border overflow-hidden',
-        elevated ? 'shadow-md' : 'shadow-sm',
-        hoverable ? 'cursor-pointer' : '',
+        'bg-dark-card rounded-xl border border-dark-border',
+        allowOverflow ? 'overflow-visible' : 'overflow-hidden',
+        elevated ? 'shadow-lg shadow-black/20' : '',
+        hoverable ? 'cursor-pointer hover:border-dark-borderHov' : '',
         className
       )}>
       

@@ -1,9 +1,19 @@
+export type DataSourceType = 'linkedin' | 'resume' | 'ai_inferred' | 'market_data';
+
+export interface EvidenceItem {
+  text: string;
+  source: DataSourceType;
+}
+
 export interface ScoreFactor {
   name: string;
   weight: string;
   value: number;
   explanation: string;
   personalContext: string;
+  confidence?: 'high' | 'medium' | 'low';
+  evidence?: EvidenceItem[];
+  narrative?: string;
 }
 
 export interface WorkflowItem {
@@ -99,9 +109,59 @@ export interface IndustryContext {
   regulatoryNote: string;
 }
 
+export interface SkillGapItem {
+  name: string;
+  proficiency: number;
+  marketDemand: number;
+  category: 'ai-core' | 'ai-adjacent' | 'foundational';
+  justification: string;
+  learningResource: string;
+}
+
+export interface DisruptionItem {
+  task: string;
+  year: number;
+  automationProbability: number;
+  impact: 'high' | 'medium' | 'low';
+  mitigation: string;
+}
+
+export interface ScoreDelta {
+  previousScore: number;
+  scoreDelta: number;
+  previousRiskBand: string;
+  daysSinceLast: number;
+  dimensionDeltas: Record<string, number>;
+  previousAssessmentDate: string | null;
+}
+
+export interface ActionItemData {
+  id: string;
+  title: string;
+  description: string;
+  category: 'learning' | 'networking' | 'projects' | 'governance';
+  priority: 'high' | 'medium' | 'low';
+  estimatedHours: number;
+  resourceUrl: string;
+  resourceTitle: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  completedAt: string | null;
+}
+
+export interface CareerPathway {
+  name: string;
+  description: string;
+  requiredSkills: string[];
+  timelineMonths: number;
+  difficulty: 'easy' | 'moderate' | 'challenging';
+  salaryImpact: string;
+  recommended: boolean;
+}
+
 export interface MockResults {
   score: number;
   riskBand: string;
+  scoreNarrative: string;
   executiveBrief: string;
   personalNarrative: string;
   companyAnalysis: string;
@@ -115,11 +175,18 @@ export interface MockResults {
   planItems: PlanItem[];
   personalProfile: PersonalProfile;
   personalRisk: PersonalRisk;
+  skillGapMatrix: SkillGapItem[];
+  disruptionTimeline: DisruptionItem[];
+  careerPathways: CareerPathway[];
+  scoreDelta?: ScoreDelta | null;
+  actionItems: ActionItemData[];
+  urlHash?: string;
 }
 
 export const mockResults: MockResults = {
   score: 63,
   riskBand: 'Moderate Risk',
+  scoreNarrative: '',
   executiveBrief:
   "TechCorp is at a pivotal inflection point. While your engineering teams have begun ad-hoc AI adoption, the lack of a centralized governance framework exposes the company to significant IP risk. Your 'Moderate Risk' score reflects this tension: high strategic potential throttled by operational immaturity. Immediate action is required to standardize AI procurement and upskill your 450+ employees before competitors like Salesforce and HubSpot fully operationalize their AI moats.",
   personalNarrative:
@@ -458,5 +525,11 @@ export const mockResults: MockResults = {
       impact: 'Medium'
     }]
 
-  }
+  },
+  skillGapMatrix: [],
+  disruptionTimeline: [],
+  careerPathways: [],
+  scoreDelta: null,
+  actionItems: [],
+  urlHash: '',
 };

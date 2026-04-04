@@ -18,8 +18,17 @@ _session_factory: Optional[async_sessionmaker[AsyncSession]] = None
 
 
 def get_database_url() -> str:
-    """Read DATABASE_URL from environment. Returns empty string if not set."""
-    return (os.getenv("DATABASE_URL") or "").strip()
+    """Read DATABASE_URL from environment. Returns empty string if not set.
+
+    Handles Render's ``postgres://`` scheme by converting to
+    ``postgresql+asyncpg://`` which SQLAlchemy/asyncpg requires.
+    """
+    url = (os.getenv("DATABASE_URL") or "").strip()
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
 
 
 async def init_db() -> None:

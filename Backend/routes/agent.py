@@ -8,10 +8,13 @@ import os
 import time
 from typing import List, Optional, Dict, Any
 
+import json
+
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from sse_starlette.sse import EventSourceResponse
 
 from models import AgentRunRequest, AgentRunResponse, AgentTraceStep
-from ai_backend import extract_text_from_resume, run_pipeline_with_trace
+from ai_backend import extract_text_from_resume, run_pipeline_with_trace, run_pipeline_streaming, run_preview
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +125,81 @@ def _role_category(role: str) -> str:
     return "Individual Contributor"
 
 
+async def _compute_score_delta(url_hash: str, current_score: int, current_dims: dict) -> Optional[Dict[str, Any]]:
+    """Look up previous assessment and compute deltas. Returns None if no history."""
+    from db import db_available, _session_factory
+    if not db_available() or not _session_factory or not url_hash:
+        return None
+    try:
+        from sqlalchemy import select
+        from db_models import AssessmentHistory
+
+        async with _session_factory() as session:
+            stmt = (
+                select(AssessmentHistory)
+                .where(AssessmentHistory.url_hash == url_hash)
+                .order_by(AssessmentHistory.created_at.desc())
+                .limit(1)
+            )
+            prev = (await session.execute(stmt)).scalar_one_or_none()
+            if not prev:
+                return None
+
+            # Compute dimension deltas
+            prev_dims = prev.dimension_scores or {}
+            dim_deltas = {}
+            for key in current_dims:
+                cur_val = current_dims[key].get("score", 0) if isinstance(current_dims[key], dict) else 0
+                prev_val = prev_dims.get(key, {}).get("score", 0) if isinstance(prev_dims.get(key), dict) else 0
+                dim_deltas[key] = round((cur_val - prev_val) * 20)  # 1-5 scale → 0-100
+
+            days_since = (
+                __import__("datetime").datetime.now(__import__("datetime").timezone.utc) - prev.created_at
+            ).days
+
+            return {
+                "previous_score": prev.score,
+                "score_delta": current_score - prev.score,
+                "previous_risk_band": prev.risk_band or "",
+                "days_since_last": days_since,
+                "dimension_deltas": dim_deltas,
+                "previous_assessment_date": prev.created_at.isoformat() if prev.created_at else None,
+            }
+    except Exception:
+        logger.warning("Failed to compute score delta", exc_info=True)
+        return None
+
+
+async def _store_assessment_history(
+    url_hash: str,
+    score: int,
+    dimension_scores: dict,
+    risk_band: str,
+    pipeline_run_id=None,
+) -> None:
+    """Insert a new assessment history entry. Fire-and-forget."""
+    from db import db_available, _session_factory
+    if not db_available() or not _session_factory or not url_hash:
+        return
+    try:
+        from db_models import AssessmentHistory
+        import uuid as _uuid
+
+        entry = AssessmentHistory(
+            id=_uuid.uuid4(),
+            url_hash=url_hash,
+            score=score,
+            dimension_scores=dimension_scores,
+            risk_band=risk_band,
+            pipeline_run_id=pipeline_run_id,
+        )
+        async with _session_factory() as session:
+            session.add(entry)
+            await session.commit()
+    except Exception:
+        logger.warning("Failed to store assessment history", exc_info=True)
+
+
 async def _record_pipeline_run(
     *,
     linkedin_url: str,
@@ -207,6 +285,9 @@ async def _run_agent(
     resume_text: str,
     include_market_signals: bool = False,
     request: Optional[Request] = None,
+    user_context: Optional[Dict[str, Any]] = None,
+    github_url: str = "",
+    website_url: str = "",
 ) -> AgentRunResponse:
     """Run full agent flow with step-level trace output."""
     linkedin = linkedin_url.strip()
@@ -221,7 +302,10 @@ async def _run_agent(
     start = time.perf_counter()
     try:
         result, node_trace = await run_pipeline_with_trace(
-            linkedin_url=linkedin, resume_text=resume
+            linkedin_url=linkedin, resume_text=resume,
+            user_context=user_context,
+            github_url=github_url.strip(),
+            website_url=website_url.strip(),
         )
 
         # Optional market signals enrichment
@@ -248,6 +332,18 @@ async def _run_agent(
             )
         )
 
+        # Include URL hash for frontend action tracker API calls
+        url_hash = _hash_url(linkedin) if linkedin else None
+        if url_hash:
+            result["_url_hash"] = url_hash
+
+        # F22: Compute score delta from previous assessment
+        current_score = int(result.get("profile_score", 0))
+        current_dims = result.get("dimension_scores", {}) or {}
+        delta_data = await _compute_score_delta(url_hash, current_score, current_dims)
+        if delta_data:
+            result["score_delta"] = delta_data
+
         # Record to database (fire-and-forget)
         await _record_pipeline_run(
             linkedin_url=linkedin,
@@ -257,6 +353,23 @@ async def _run_agent(
             duration_ms=duration_ms,
             request=request,
         )
+
+        # F22: Store assessment history for future delta computations
+        if url_hash:
+            overall = result.get("overall_assessment", {}) or {}
+            risk_band = overall.get("ai_readiness", "")
+            await _store_assessment_history(
+                url_hash=url_hash,
+                score=current_score,
+                dimension_scores=current_dims,
+                risk_band=risk_band,
+            )
+
+        # F24: Store action items if present in result
+        action_items_data = result.get("action_items", [])
+        if action_items_data and url_hash:
+            from routes.actions import store_action_items
+            await store_action_items(url_hash, action_items_data)
 
         return AgentRunResponse(
             status="ok",
@@ -300,9 +413,13 @@ async def _run_agent(
 async def mcp_run(payload: AgentRunRequest, request: Request) -> AgentRunResponse:
     """Primary JSON API endpoint (used by frontend SPA)."""
     include_market = _env_bool("MARKET_SIGNALS_ENABLE", False)
+    ctx = payload.user_context.model_dump() if payload.user_context else None
     return await _run_agent(
         payload.linkedin_url, payload.resume_text,
         include_market_signals=include_market, request=request,
+        user_context=ctx,
+        github_url=payload.github_url,
+        website_url=payload.website_url,
     )
 
 
@@ -310,9 +427,13 @@ async def mcp_run(payload: AgentRunRequest, request: Request) -> AgentRunRespons
 async def agent_run(payload: AgentRunRequest, request: Request) -> AgentRunResponse:
     """JSON API for agent execution (alias)."""
     include_market = _env_bool("MARKET_SIGNALS_ENABLE", False)
+    ctx = payload.user_context.model_dump() if payload.user_context else None
     return await _run_agent(
         payload.linkedin_url, payload.resume_text,
         include_market_signals=include_market, request=request,
+        user_context=ctx,
+        github_url=payload.github_url,
+        website_url=payload.website_url,
     )
 
 
@@ -341,3 +462,57 @@ async def agent_run_form(
     except Exception as exc:
         logger.exception("Form agent execution failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/mcp/run/stream")
+async def mcp_run_stream(payload: AgentRunRequest, request: Request):
+    """SSE endpoint that streams real-time pipeline progress events.
+
+    Each event is a JSON-encoded PipelineEvent. The final event has
+    event_type='pipeline_complete' and includes the full result payload.
+    """
+    linkedin_url = (payload.linkedin_url or "").strip()
+    resume_text = (payload.resume_text or "").strip()
+    if not linkedin_url and not resume_text:
+        raise HTTPException(status_code=400, detail="Provide linkedin_url or resume_text.")
+
+    ctx = payload.user_context.model_dump() if payload.user_context else None
+
+    async def event_generator():
+        async for event_dict in run_pipeline_streaming(
+            linkedin_url=linkedin_url,
+            resume_text=resume_text,
+            user_context=ctx,
+            github_url=(payload.github_url or "").strip(),
+            website_url=(payload.website_url or "").strip(),
+        ):
+            yield {
+                "event": event_dict.get("event_type", "message"),
+                "data": json.dumps(event_dict),
+            }
+
+    return EventSourceResponse(event_generator())
+
+
+@router.post("/mcp/preview")
+async def mcp_preview(payload: AgentRunRequest, request: Request):
+    """Fast profile preview — runs fetch + extract only (no LLM analysis).
+
+    Returns a lightweight profile summary with completeness score so the user
+    can confirm the right profile before committing to the full analysis.
+    """
+    linkedin_url = (payload.linkedin_url or "").strip()
+    resume_text = (payload.resume_text or "").strip()
+    if not linkedin_url and not resume_text:
+        raise HTTPException(status_code=400, detail="Provide linkedin_url or resume_text.")
+
+    try:
+        preview = await run_preview(linkedin_url=linkedin_url, resume_text=resume_text)
+        return {"status": "ok", "preview": preview}
+    except Exception as exc:
+        logger.exception("Preview failed")
+        friendly = _normalize_error_message(str(exc))
+        raise HTTPException(
+            status_code=400,
+            detail={"message": friendly, "raw_error": str(exc), "retryable": True},
+        ) from exc

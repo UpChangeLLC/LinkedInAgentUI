@@ -118,6 +118,122 @@ class AnalyticsEvent(Base):
     )
 
 
+class AssessmentHistory(Base):
+    """Tracks score history per LinkedIn URL for delta computation (F22)."""
+
+    __tablename__ = "assessment_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    url_hash = Column(String(64), nullable=False, index=True)
+
+    # Score snapshot
+    score = Column(Integer, nullable=False)
+    dimension_scores = Column(JSONB, nullable=True)  # {dim_name: {score, ...}}
+    risk_band = Column(String(100), nullable=True)
+
+    # Link to the pipeline run that produced this score
+    pipeline_run_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("pipeline_runs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+
+    __table_args__ = (
+        Index("idx_assessment_history_url_created", "url_hash", "created_at"),
+    )
+
+
+class ActionItem(Base):
+    """Personalized action items generated per assessment (F24)."""
+
+    __tablename__ = "action_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    url_hash = Column(String(64), nullable=False, index=True)
+
+    # Action details
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(50), nullable=False)  # learning, networking, projects, governance
+    priority = Column(String(20), nullable=True)  # high, medium, low
+    estimated_hours = Column(Integer, nullable=True)
+    resource_url = Column(String(2000), nullable=True)
+    resource_title = Column(String(500), nullable=True)
+
+    # Status tracking
+    status = Column(String(20), nullable=False, default="pending")  # pending, in_progress, completed
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Link to source assessment
+    pipeline_run_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("pipeline_runs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        Index("idx_action_items_url_status", "url_hash", "status"),
+    )
+
+
+class Team(Base):
+    """Team for group challenge leaderboard (F25)."""
+
+    __tablename__ = "teams"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(200), nullable=False)
+    created_by_url_hash = Column(String(64), nullable=False)
+    invite_code = Column(String(20), nullable=False, unique=True, index=True)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class TeamMember(Base):
+    """Individual member of a team challenge (F25)."""
+
+    __tablename__ = "team_members"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    team_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    url_hash = Column(String(64), nullable=False)
+    display_name = Column(String(200), nullable=False)
+    score = Column(Integer, nullable=False, default=0)
+    role_category = Column(String(100), nullable=True)
+
+    joined_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        Index("idx_team_members_team_id", "team_id"),
+    )
+
+
 class MarketEmbedding(Base):
     """Market signal vector store — replaces Data/market_vectors.jsonl."""
 

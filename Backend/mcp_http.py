@@ -13,6 +13,24 @@ from dotenv import load_dotenv
 load_dotenv()
 load_dotenv("config.env", override=False)
 
+# ---------------------------------------------------------------------------
+# Sentry error monitoring (no-op if SENTRY_DSN is not set)
+# ---------------------------------------------------------------------------
+_sentry_dsn = (os.getenv("SENTRY_DSN") or "").strip()
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[StarletteIntegration(), FastApiIntegration()],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.2")),
+        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
+        environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
+        send_default_pii=False,
+    )
+
 from logging_config import setup_logging  # noqa: E402
 
 setup_logging()
@@ -36,9 +54,16 @@ from routes.health import router as health_router  # noqa: E402
 from routes.agent import router as agent_router  # noqa: E402
 from routes.stats import router as stats_router  # noqa: E402
 
+from routes.actions import router as actions_router  # noqa: E402
+from routes.teams import router as teams_router  # noqa: E402
+from routes.reports import router as reports_router  # noqa: E402
+
 app.include_router(health_router)
 app.include_router(agent_router)
 app.include_router(stats_router)
+app.include_router(actions_router)
+app.include_router(teams_router)
+app.include_router(reports_router)
 
 
 # ---------------------------------------------------------------------------

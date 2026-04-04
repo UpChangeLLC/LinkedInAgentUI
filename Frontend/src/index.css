@@ -1,8 +1,25 @@
 /* URL IMPORTS (SUCH AS FONT IMPORTS) SHOULD BE KEPT ABOVE TAILWIND IMPORTS - DO NOT DELETE THIS COMMENT */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Cormorant:wght@400;500;600;700&display=swap');
 
 /* PLEASE NOTE: THESE TAILWIND IMPORTS SHOULD NEVER BE DELETED - DO NOT DELETE THIS COMMENT */
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 /* DO NOT DELETE THESE TAILWIND IMPORTS, OTHERWISE THE STYLING WILL NOT RENDER AT ALL - DO NOT DELETE THIS COMMENT */
+
+:root {
+  --bg: #0B1120;
+  --bg-card: #111827;
+  --bg-elevated: #1E293B;
+  --accent: #14B8A6;
+  --accent-dim: rgba(20,184,166,0.12);
+  --text-pri: #E2E8F0;
+  --text-sec: #94A3B8;
+  --text-muted: #64748B;
+  --border: rgba(148,163,184,0.08);
+  --border-hov: rgba(148,163,184,0.15);
+  --green: #34D399;
+  --amber: #FBBF24;
+  --red: #F87171;
+}

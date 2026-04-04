@@ -96,17 +96,20 @@ def get_selected_ai_client() -> Tuple[str, Union[AsyncOpenAI, AsyncAzureOpenAI]]
 
 
 def get_selected_model(ai_client: str) -> str:
-    """Return model name for the selected provider."""
-    if ai_client == "openai":
-        return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    if ai_client == "groq":
-        return os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
-    if ai_client == "azure":
-        model = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-        if not model:
-            raise RuntimeError("AZURE_OPENAI_DEPLOYMENT is not set")
-        return model
-    raise RuntimeError(f"Invalid AI_CLIENT='{ai_client}'")
+    """Return model name for the selected provider (set in config.env)."""
+    env_map = {
+        "openai": "OPENAI_MODEL",
+        "groq": "GROQ_MODEL",
+        "azure": "AZURE_OPENAI_DEPLOYMENT",
+        "anthropic": "ANTHROPIC_MODEL",
+    }
+    env_key = env_map.get(ai_client)
+    if not env_key:
+        raise RuntimeError(f"Invalid AI_CLIENT='{ai_client}'")
+    model = os.getenv(env_key, "").strip()
+    if not model:
+        raise RuntimeError(f"{env_key} is not set in config.env")
+    return model
 
 
 # ── Resume extraction ─────────────────────────────────────────────────────────
