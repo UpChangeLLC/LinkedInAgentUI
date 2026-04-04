@@ -36,9 +36,16 @@ from routes.health import router as health_router  # noqa: E402
 from routes.agent import router as agent_router  # noqa: E402
 from routes.stats import router as stats_router  # noqa: E402
 
+from routes.actions import router as actions_router  # noqa: E402
+from routes.teams import router as teams_router  # noqa: E402
+from routes.reports import router as reports_router  # noqa: E402
+
 app.include_router(health_router)
 app.include_router(agent_router)
 app.include_router(stats_router)
+app.include_router(actions_router)
+app.include_router(teams_router)
+app.include_router(reports_router)
 
 
 # ---------------------------------------------------------------------------

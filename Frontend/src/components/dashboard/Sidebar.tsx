@@ -7,7 +7,16 @@ import {
   Calendar,
   ArrowRight,
   User,
-  Share2 } from
+  Share2,
+  Grid3X3,
+  Clock,
+  ListChecks,
+  FileDown,
+  History,
+  Newspaper,
+  Users,
+  BookOpen,
+  Calculator } from
 'lucide-react';
 import { clsx } from 'clsx';
 import { MockResults } from '../../data/mockResults';
@@ -36,14 +45,64 @@ export function Sidebar({
     icon: User
   },
   {
+    id: 'skills',
+    label: 'Skill Gap Matrix',
+    icon: Grid3X3
+  },
+  {
+    id: 'disruption',
+    label: 'Disruption Timeline',
+    icon: Clock
+  },
+  {
+    id: 'pathways',
+    label: 'Career Pathways',
+    icon: ArrowRight
+  },
+  {
+    id: 'whatif',
+    label: 'What-If Simulator',
+    icon: Zap
+  },
+  {
+    id: 'actions',
+    label: 'Action Tracker',
+    icon: ListChecks
+  },
+  {
     id: 'share',
     label: 'Share & Compare',
     icon: Share2
   },
   {
+    id: 'export',
+    label: 'Export & Share',
+    icon: FileDown
+  },
+  {
     id: 'roadmap',
     label: 'Career Roadmap',
     icon: Calendar
+  },
+  {
+    id: 'history',
+    label: 'Assessment History',
+    icon: History
+  },
+  {
+    id: 'newsfeed',
+    label: 'AI News Feed',
+    icon: Newspaper
+  },
+  {
+    id: 'community',
+    label: 'Community Insights',
+    icon: Users
+  },
+  {
+    id: 'learning',
+    label: 'Learning Resources',
+    icon: BookOpen
   },
   {
     id: 'next',
@@ -76,6 +135,11 @@ export function Sidebar({
     id: 'plan',
     label: '30-Day Plan',
     icon: Calendar
+  },
+  {
+    id: 'roi',
+    label: 'ROI Calculator',
+    icon: Calculator
   },
   {
     id: 'next',

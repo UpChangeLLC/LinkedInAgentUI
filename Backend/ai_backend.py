@@ -61,16 +61,21 @@ class AnalysisGraphState(TypedDict):
 
     linkedin_url: str
     resume_text: str
+    github_url: str
+    website_url: str
     linkedin_raw: str
     linkedin_source: str
     linkedin_profile: Dict[str, Any]
     resume_profile: Dict[str, Any]
+    github_profile: Dict[str, Any]
+    website_content: Dict[str, Any]
     merged_profile: Dict[str, Any]
     data_source: str
     fetch_failed: bool
     trace: List[Dict[str, Any]]
     result: Dict[str, Any]
     error: str
+    user_context: Optional[Dict[str, Any]]
 
 
 # ── AI client factory ─────────────────────────────────────────────────────────
@@ -509,19 +514,27 @@ async def extract_profile_structured(source_name: str, raw_text: str) -> Dict[st
 async def merge_profiles(
     linkedin_profile: Optional[Dict[str, Any]],
     resume_profile: Optional[Dict[str, Any]],
+    github_profile: Optional[Dict[str, Any]] = None,
+    website_content: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Merge LinkedIn and resume profiles, preferring most recent/detailed data."""
-    if not linkedin_profile and not resume_profile:
-        return {}
-    if linkedin_profile and not resume_profile:
-        return linkedin_profile
-    if resume_profile and not linkedin_profile:
-        return resume_profile
+    """Merge LinkedIn, resume, GitHub, and website profiles, preferring most recent/detailed data."""
+    sources: Dict[str, Any] = {}
+    if linkedin_profile:
+        sources["linkedin"] = linkedin_profile
+    if resume_profile:
+        sources["resume"] = resume_profile
+    if github_profile:
+        sources["github"] = github_profile
+    if website_content:
+        sources["website"] = website_content
 
-    raw = json.dumps(
-        {"linkedin": linkedin_profile, "resume": resume_profile},
-        ensure_ascii=True,
-    )
+    if not sources:
+        return {}
+    # If only one source and it's linkedin or resume, return directly
+    if len(sources) == 1:
+        return next(iter(sources.values()))
+
+    raw = json.dumps(sources, ensure_ascii=True)
     user_prompt = f"<user_input>\n{sanitize_for_llm(raw, max_chars=20_000)}\n</user_input>"
     result = await llm_json_completion(PROFILE_MERGE_SYSTEM_PROMPT, user_prompt)
     return result.get("merged_profile", {})
@@ -529,14 +542,31 @@ async def merge_profiles(
 
 # ── Career analysis ───────────────────────────────────────────────────────────
 
-async def analyze_profile(merged_profile: Dict[str, Any], data_source: str) -> Dict[str, Any]:
+async def analyze_profile(
+    merged_profile: Dict[str, Any],
+    data_source: str,
+    user_context: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """Generate structured career analysis from merged profile."""
+    from prompts import build_user_context_block
+
     profile_json = sanitize_for_llm(json.dumps(merged_profile, ensure_ascii=True), max_chars=14_000)
     user_prompt = (
         f"data_source: {data_source}\n\n"
         f"<user_input>\n{profile_json}\n</user_input>"
     )
-    result = await llm_json_completion(AI_READINESS_SYSTEM_PROMPT_v2, user_prompt)
+
+    # Inject user context into system prompt if provided
+    system_prompt = AI_READINESS_SYSTEM_PROMPT_v2
+    if user_context:
+        # Build a lightweight object that has attribute access
+        from types import SimpleNamespace
+        ctx = SimpleNamespace(**user_context)
+        context_block = build_user_context_block(ctx)
+        if context_block:
+            system_prompt = system_prompt + context_block
+
+    result = await llm_json_completion(system_prompt, user_prompt)
     result["data_source"] = data_source
     # Backward compatibility: older UI code expects strengths/gaps at top level.
     insights = result.get("insights", {}) if isinstance(result.get("insights", {}), dict) else {}
@@ -670,11 +700,55 @@ def route_after_validate(state: AnalysisGraphState) -> Literal["error_node", "fe
 
 
 async def fetch_sources_node(state: AnalysisGraphState) -> AnalysisGraphState:
-    """Primary LinkedIn fetch node: try Apify first with dataset cache reuse."""
+    """Primary LinkedIn fetch node: try Apify first with dataset cache reuse.
+
+    Also fetches GitHub profile and website content if URLs are provided (F2).
+    """
     start_time = asyncio.get_running_loop().time()
     linkedin_url = state.get("linkedin_url", "")
+    github_url = state.get("github_url", "")
+    website_url = state.get("website_url", "")
+
+    # --- Fetch GitHub and website in parallel with LinkedIn ---
+    extra_tasks = []
+    if github_url:
+        from services.github_service import fetch_github_profile
+        extra_tasks.append(("github", fetch_github_profile(github_url)))
+    if website_url:
+        from services.website_service import fetch_website_content
+        extra_tasks.append(("website", fetch_website_content(website_url)))
+
+    github_profile: Dict[str, Any] = {}
+    website_content: Dict[str, Any] = {}
+
+    # Fire off extra fetches concurrently
+    if extra_tasks:
+        extra_results = await asyncio.gather(
+            *(task for _, task in extra_tasks),
+            return_exceptions=True,
+        )
+        for (label, _), result in zip(extra_tasks, extra_results):
+            if isinstance(result, Exception):
+                logger.warning("    %s fetch failed: %s", label, result)
+            elif isinstance(result, dict) and not result.get("error"):
+                if label == "github":
+                    github_profile = result
+                    logger.info("    GitHub fetch succeeded for: %s", github_url)
+                elif label == "website":
+                    website_content = result
+                    logger.info("    Website fetch succeeded for: %s", website_url)
+            elif isinstance(result, dict) and result.get("error"):
+                logger.warning("    %s fetch error: %s", label, result["error"])
+
     if not linkedin_url:
-        next_state = {**state, "linkedin_raw": "", "linkedin_source": "", "fetch_failed": False}
+        next_state = {
+            **state,
+            "linkedin_raw": "",
+            "linkedin_source": "",
+            "fetch_failed": False,
+            "github_profile": github_profile,
+            "website_content": website_content,
+        }
         return _append_trace(
             next_state,
             step="fetch_sources_node",
@@ -687,7 +761,14 @@ async def fetch_sources_node(state: AnalysisGraphState) -> AnalysisGraphState:
         raw = await fetch_linkedin_via_apify(linkedin_url)
         if raw and len(raw) > 100:
             logger.info("    Apify fetch succeeded.")
-            next_state = {**state, "linkedin_raw": raw, "linkedin_source": "apify", "fetch_failed": False}
+            next_state = {
+                **state,
+                "linkedin_raw": raw,
+                "linkedin_source": "apify",
+                "fetch_failed": False,
+                "github_profile": github_profile,
+                "website_content": website_content,
+            }
             return _append_trace(
                 next_state,
                 step="fetch_sources_node",
@@ -697,7 +778,14 @@ async def fetch_sources_node(state: AnalysisGraphState) -> AnalysisGraphState:
             )
     except Exception as exc:
         logger.warning("    Apify fetch failed: %s. Will try web search.", exc)
-    next_state = {**state, "linkedin_raw": "", "linkedin_source": "", "fetch_failed": True}
+    next_state = {
+        **state,
+        "linkedin_raw": "",
+        "linkedin_source": "",
+        "fetch_failed": True,
+        "github_profile": github_profile,
+        "website_content": website_content,
+    }
     return _append_trace(
         next_state,
         step="fetch_sources_node",
@@ -793,11 +881,13 @@ async def extract_profiles_node(state: AnalysisGraphState) -> AnalysisGraphState
 
 
 async def merge_profiles_node(state: AnalysisGraphState) -> AnalysisGraphState:
-    """Merge LinkedIn + resume profiles into a single canonical profile."""
+    """Merge LinkedIn + resume + GitHub + website profiles into a single canonical profile."""
     start_time = asyncio.get_running_loop().time()
     merged = await merge_profiles(
         state.get("linkedin_profile") or None,
         state.get("resume_profile") or None,
+        github_profile=state.get("github_profile") or None,
+        website_content=state.get("website_content") or None,
     )
     if not merged:
         next_state = {**state, "error": "No profile data available for analysis."}
@@ -829,6 +919,7 @@ async def analyze_node_graph(state: AnalysisGraphState) -> AnalysisGraphState:
     result = await analyze_profile(
         merged_profile=state.get("merged_profile", {}),
         data_source=state.get("data_source", "none"),
+        user_context=state.get("user_context"),
     )
     next_state = {**state, "result": result}
     return _append_trace(
@@ -912,27 +1003,41 @@ def build_analysis_graph():
     return compiled
 
 
-def _initial_analysis_state(linkedin_url: str, resume_text: str) -> AnalysisGraphState:
+def _initial_analysis_state(
+    linkedin_url: str,
+    resume_text: str,
+    user_context: Optional[Dict[str, Any]] = None,
+    github_url: str = "",
+    website_url: str = "",
+) -> AnalysisGraphState:
     """Create the initial state object for LangGraph invocation."""
     return {
         "linkedin_url": linkedin_url,
         "resume_text": resume_text,
+        "github_url": github_url,
+        "website_url": website_url,
         "linkedin_raw": "",
         "linkedin_source": "",
         "linkedin_profile": {},
         "resume_profile": {},
+        "github_profile": {},
+        "website_content": {},
         "merged_profile": {},
         "data_source": "none",
         "fetch_failed": False,
         "trace": [],
         "result": {},
         "error": "",
+        "user_context": user_context,
     }
 
 
 async def run_pipeline_with_trace(
     linkedin_url: str = "",
     resume_text: str = "",
+    user_context: Optional[Dict[str, Any]] = None,
+    github_url: str = "",
+    website_url: str = "",
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Run pipeline and return (result, node_trace)."""
     # async def _broadcast_to_mcp_payload(result: Dict[str, Any], trace: List[Dict[str, Any]]) -> None:
@@ -965,7 +1070,10 @@ async def run_pipeline_with_trace(
     #             logger.warning("MCP webhook POST failed to '%s': %s", webhook_url, exc)
 
     app = build_analysis_graph()
-    final_state = await app.ainvoke(_initial_analysis_state(linkedin_url, resume_text))
+    final_state = await app.ainvoke(_initial_analysis_state(
+        linkedin_url, resume_text, user_context=user_context,
+        github_url=github_url, website_url=website_url,
+    ))
     if final_state.get("error"):
         raise RuntimeError(final_state["error"])
     result = final_state.get("result", {})
@@ -983,10 +1091,296 @@ async def run_pipeline_with_trace(
 async def run_pipeline(
     linkedin_url: str = "",
     resume_text: str = "",
+    github_url: str = "",
+    website_url: str = "",
 ) -> Dict[str, Any]:
     """Run the single LangGraph pipeline and return analyzed profile JSON."""
-    result, _ = await run_pipeline_with_trace(linkedin_url=linkedin_url, resume_text=resume_text)
+    result, _ = await run_pipeline_with_trace(
+        linkedin_url=linkedin_url, resume_text=resume_text,
+        github_url=github_url, website_url=website_url,
+    )
     return result
+
+
+async def run_preview(linkedin_url: str = "", resume_text: str = "") -> Dict[str, Any]:
+    """Run only fetch + extract nodes and return a lightweight profile preview.
+
+    This is much faster than the full pipeline since it skips the expensive
+    LLM analysis step. Used by the profile preview/confirmation step.
+    """
+    from langgraph.graph import END, StateGraph
+
+    graph = StateGraph(AnalysisGraphState)
+    graph.add_node("validate_input_node", validate_input_node)
+    graph.add_node("fetch_sources_node", fetch_sources_node)
+    graph.add_node("web_search_node", web_search_node)
+    graph.add_node("extract_profiles_node", extract_profiles_node)
+    graph.add_node("error_node", error_node)
+
+    graph.set_entry_point("validate_input_node")
+    graph.add_conditional_edges(
+        "validate_input_node",
+        route_after_validate,
+        {"fetch_sources_node": "fetch_sources_node", "error_node": "error_node"},
+    )
+    graph.add_conditional_edges(
+        "fetch_sources_node",
+        route_after_primary_fetch,
+        {"web_search_node": "web_search_node", "extract_profiles_node": "extract_profiles_node"},
+    )
+    graph.add_edge("web_search_node", "extract_profiles_node")
+    graph.add_edge("extract_profiles_node", END)
+    graph.add_edge("error_node", END)
+
+    compiled = graph.compile()
+    final = await compiled.ainvoke(_initial_analysis_state(linkedin_url, resume_text))
+
+    if final.get("error"):
+        raise RuntimeError(final["error"])
+
+    profile = final.get("linkedin_profile") or final.get("resume_profile") or {}
+    if not profile:
+        raise RuntimeError("Could not extract profile data.")
+
+    # Compute completeness score
+    completeness, missing = compute_profile_completeness(profile)
+
+    exps = profile.get("experiences", [])
+    skills = profile.get("skills", [])
+    certs = profile.get("certifications", [])
+    education = profile.get("education", [])
+
+    # Estimate years of experience
+    years_exp = 0
+    for exp in exps:
+        start = str(exp.get("start", ""))
+        end = str(exp.get("end", ""))
+        try:
+            s = int(start[:4]) if len(start) >= 4 else 0
+            e = int(end[:4]) if len(end) >= 4 else 2026
+            years_exp += max(0, e - s)
+        except ValueError:
+            pass
+
+    return {
+        "name": profile.get("name", ""),
+        "title": profile.get("title", ""),
+        "company": exps[0].get("company", "") if exps else "",
+        "location": profile.get("location", ""),
+        "summary": profile.get("summary", ""),
+        "years_experience": years_exp,
+        "skills_count": len(skills),
+        "skills": skills[:10],  # Top 10 for preview
+        "certifications_count": len(certs),
+        "education_count": len(education),
+        "experience_count": len(exps),
+        "completeness_score": completeness,
+        "missing_fields": missing,
+        "data_source": final.get("data_source", ""),
+    }
+
+
+def compute_profile_completeness(profile: Dict[str, Any]) -> tuple:
+    """Compute a 0-100 completeness score and list of missing fields.
+
+    Weights:
+      name 5, title 10, company 10, summary 15,
+      experiences 20, skills 15, education 10, certifications 10, projects 5
+    """
+    weights = {
+        "name": 5, "title": 10, "summary": 15,
+        "experiences": 20, "skills": 15, "education": 10,
+        "certifications": 10, "projects": 5,
+    }
+    # Company is derived from experiences
+    score = 0
+    missing = []
+
+    for field, weight in weights.items():
+        val = profile.get(field, "")
+        if isinstance(val, list):
+            if len(val) > 0:
+                score += weight
+            else:
+                missing.append(field)
+        elif isinstance(val, str) and val.strip():
+            score += weight
+        else:
+            missing.append(field)
+
+    # Company check (from first experience)
+    exps = profile.get("experiences", [])
+    if exps and exps[0].get("company", "").strip():
+        score += 10  # company weight
+    else:
+        missing.append("company")
+
+    return min(score, 100), missing
+
+
+# ── Streaming pipeline (SSE) ────────────────────────────────────────────────
+
+# Node ordering and progress mapping for SSE events
+_NODE_PROGRESS: Dict[str, int] = {
+    "validate_input_node": 5,
+    "fetch_sources_node": 25,
+    "web_search_node": 35,
+    "extract_profiles_node": 55,
+    "merge_profiles_node": 70,
+    "analyze_node_graph": 95,
+    "error_node": 100,
+}
+
+_NODE_LABELS: Dict[str, str] = {
+    "validate_input_node": "Validating profile URL",
+    "fetch_sources_node": "Fetching LinkedIn profile data",
+    "web_search_node": "Searching for profile data (fallback)",
+    "extract_profiles_node": "Extracting skills and experience",
+    "merge_profiles_node": "Merging profile sources",
+    "analyze_node_graph": "Computing AI Resilience Score",
+    "error_node": "Error",
+}
+
+
+async def run_pipeline_streaming(
+    linkedin_url: str = "",
+    resume_text: str = "",
+    user_context: Optional[Dict[str, Any]] = None,
+    github_url: str = "",
+    website_url: str = "",
+):
+    """Run pipeline and yield PipelineEvent dicts as each node completes.
+
+    This is an async generator meant to be consumed by an SSE endpoint.
+    """
+    from models import PipelineEvent
+
+    app = build_analysis_graph()
+    initial = _initial_analysis_state(
+        linkedin_url, resume_text, user_context=user_context,
+        github_url=github_url, website_url=website_url,
+    )
+
+    # Yield start event
+    yield PipelineEvent(
+        event_type="pipeline_start",
+        node="pipeline",
+        status="running",
+        progress=0,
+        info="Analysis pipeline started",
+    ).model_dump()
+
+    last_trace_len = 0
+    final_state: Dict[str, Any] = {}
+
+    try:
+        # Use astream to get state snapshots after each node
+        async for state_snapshot in app.astream(initial, stream_mode="values"):
+            final_state = state_snapshot
+            trace = state_snapshot.get("trace", [])
+
+            # Emit events for any new trace entries since last yield
+            while last_trace_len < len(trace):
+                entry = trace[last_trace_len]
+                node_name = entry.get("step", "unknown")
+                success = entry.get("success", True)
+                duration = entry.get("duration_ms", 0)
+                info = entry.get("info", "")
+                progress = _NODE_PROGRESS.get(node_name, 0)
+
+                # Build partial result data for some nodes
+                partial = {}
+                data_points = 0
+                if node_name == "fetch_sources_node" and success:
+                    raw = state_snapshot.get("linkedin_raw", "")
+                    data_points = len(raw) if raw else 0
+                elif node_name == "extract_profiles_node":
+                    lp = state_snapshot.get("linkedin_profile", {})
+                    rp = state_snapshot.get("resume_profile", {})
+                    skills = lp.get("skills", []) or rp.get("skills", [])
+                    data_points = len(skills)
+                    partial = {
+                        "name": lp.get("name", rp.get("name", "")),
+                        "title": lp.get("title", rp.get("title", "")),
+                        "company": (lp.get("experiences", [{}])[0].get("company", "")
+                                    if lp.get("experiences") else ""),
+                        "skills_count": len(skills),
+                    }
+                elif node_name == "merge_profiles_node":
+                    mp = state_snapshot.get("merged_profile", {})
+                    data_points = len(mp.get("skills", []))
+                elif node_name == "analyze_node_graph":
+                    result = state_snapshot.get("result", {})
+                    if result:
+                        partial = {
+                            "score": result.get("profile_score", 0),
+                            "name": result.get("name", ""),
+                            "industry": result.get("industry", ""),
+                        }
+
+                label = _NODE_LABELS.get(node_name, node_name)
+
+                yield PipelineEvent(
+                    event_type="node_complete",
+                    node=node_name,
+                    status="success" if success else "error",
+                    duration_ms=duration,
+                    info=info or label,
+                    data_points=data_points,
+                    progress=progress,
+                    partial_result=partial,
+                ).model_dump()
+
+                last_trace_len += 1
+
+        # Check for error in final state
+        if final_state.get("error"):
+            yield PipelineEvent(
+                event_type="pipeline_error",
+                node="pipeline",
+                status="error",
+                progress=100,
+                info=final_state["error"],
+            ).model_dump()
+            return
+
+        result = final_state.get("result", {})
+        if not result:
+            yield PipelineEvent(
+                event_type="pipeline_error",
+                node="pipeline",
+                status="error",
+                progress=100,
+                info="Pipeline completed without result.",
+            ).model_dump()
+            return
+
+        # Yield final complete event with full result
+        trace = final_state.get("trace", [])
+        total_ms = sum(t.get("duration_ms", 0) for t in trace)
+        yield PipelineEvent(
+            event_type="pipeline_complete",
+            node="pipeline",
+            status="success",
+            duration_ms=total_ms,
+            progress=100,
+            info=f"Analysis complete in {total_ms / 1000:.1f}s",
+            partial_result={
+                "status": "ok",
+                "data_source": result.get("data_source", ""),
+                "trace": trace,
+                "result": result,
+            },
+        ).model_dump()
+
+    except Exception as exc:
+        yield PipelineEvent(
+            event_type="pipeline_error",
+            node="pipeline",
+            status="error",
+            progress=100,
+            info=str(exc),
+        ).model_dump()
 
 
 # ── CLI entry point ───────────────────────────────────────────────────────────

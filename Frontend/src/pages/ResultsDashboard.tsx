@@ -16,6 +16,17 @@ import { PeerBenchmarkSection } from '../components/dashboard/PeerBenchmarkSecti
 import { ChallengeColleagueSection } from '../components/dashboard/ChallengeColleagueSection';
 import { ScoreReveal } from '../components/dashboard/ScoreReveal';
 import { StickyShareBar } from '../components/dashboard/StickyShareBar';
+import { SkillGapMatrixSection } from '../components/dashboard/SkillGapMatrixSection';
+import { DisruptionTimelineSection } from '../components/dashboard/DisruptionTimelineSection';
+import { CareerPathwaysSection } from '../components/dashboard/CareerPathwaysSection';
+import { WhatIfSimulatorSection } from '../components/dashboard/WhatIfSimulatorSection';
+import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSection';
+import { ExportSection } from '../components/dashboard/ExportSection';
+import { AssessmentHistorySection } from '../components/dashboard/AssessmentHistorySection';
+import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
+import { CommunityInsightsSection } from '../components/dashboard/CommunityInsightsSection';
+import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
+import { ROICalculatorSection } from '../components/dashboard/ROICalculatorSection';
 import { MockResults } from '../data/mockResults';
 interface ResultsDashboardProps {
   results: MockResults;
@@ -59,11 +70,78 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
             <div className="space-y-12">
               <ShareScoreCard results={results} />
               <PeerBenchmarkSection results={results} />
-              <ChallengeColleagueSection />
+              <ChallengeColleagueSection
+                urlHash={results.urlHash}
+                score={results.score}
+                displayName={results.personalProfile?.name || 'You'}
+                roleCategory={results.personalProfile?.title || ''}
+              />
             </div>);
 
+        case 'skills':
+          return <SkillGapMatrixSection skills={results.skillGapMatrix} />;
+        case 'disruption':
+          return (
+            <DisruptionTimelineSection
+              items={results.disruptionTimeline}
+              roleName={results.personalProfile?.title}
+            />
+          );
+        case 'pathways':
+          return (
+            <CareerPathwaysSection
+              pathways={results.careerPathways}
+              currentRole={results.personalProfile?.title}
+            />
+          );
+        case 'whatif':
+          return (
+            <WhatIfSimulatorSection
+              currentScore={results.score}
+              riskBand={results.riskBand}
+              currentRole={results.personalProfile?.title}
+            />
+          );
+        case 'actions':
+          return (
+            <ActionTrackerSection
+              urlHash={results.urlHash || ''}
+              fallbackActions={results.actionItems?.map((a) => ({
+                id: a.id,
+                title: a.title,
+                description: a.description,
+                category: a.category,
+                priority: a.priority,
+                estimated_hours: a.estimatedHours,
+                resource_url: a.resourceUrl,
+                resource_title: a.resourceTitle,
+                status: a.status,
+                completed_at: a.completedAt,
+              })) || []}
+            />
+          );
+        case 'export':
+          return (
+            <ExportSection
+              runId={results.urlHash || formData?.backend?.run_id || ''}
+              results={results}
+            />
+          );
         case 'roadmap':
           return <PersonalRoadmapSection results={results} />;
+        case 'history':
+          return <AssessmentHistorySection urlHash={results.urlHash || ''} />;
+        case 'newsfeed':
+          return (
+            <AINewsFeedSection
+              role={results.personalProfile?.title}
+              industry={results.personalProfile?.industry}
+            />
+          );
+        case 'community':
+          return <CommunityInsightsSection />;
+        case 'learning':
+          return <LearningResourcesSection skills={results.skillGapMatrix} />;
         case 'next':
           return <NextStepsSection />;
         default:
@@ -81,6 +159,8 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
           return <GovernanceSection results={results} />;
         case 'plan':
           return <ThirtyDayPlanSection results={results} />;
+        case 'roi':
+          return <ROICalculatorSection workflowItems={results.workflowItems} />;
         case 'next':
           return <NextStepsSection />;
         default:
@@ -151,7 +231,21 @@ export function ResultsDashboard({ results, formData }: ResultsDashboardProps) {
                         'Next Steps' :
                         activeSection === 'share' ?
                           'Share & Compare' :
-                          activeSection.replace(/([A-Z])/g, ' $1').trim()}
+                          activeSection === 'actions' ?
+                            'Action Tracker' :
+                            activeSection === 'export' ?
+                              'Export & Share' :
+                              activeSection === 'history' ?
+                                'Assessment History' :
+                                activeSection === 'newsfeed' ?
+                                  'AI News Feed' :
+                                  activeSection === 'community' ?
+                                    'Community Insights' :
+                                    activeSection === 'learning' ?
+                                      'Learning Resources' :
+                                      activeSection === 'roi' ?
+                                        'ROI Calculator' :
+                                        activeSection.replace(/([A-Z])/g, ' $1').trim()}
                   </h1>
                 </div>
 

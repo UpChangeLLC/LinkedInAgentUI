@@ -13,15 +13,17 @@ import {
   CheckCircle2,
   AlertTriangle,
   ShieldAlert,
-  TrendingDown } from
+  TrendingDown,
+  Calendar } from
 'lucide-react';
+import { DeltaBadge } from '../ui/DeltaBadge';
 interface PersonalOverviewSectionProps {
   results: MockResults;
 }
 export function PersonalOverviewSection({
   results
 }: PersonalOverviewSectionProps) {
-  const { personalProfile, personalRisk, personalNarrative, industryContext } =
+  const { personalProfile, personalRisk, personalNarrative, industryContext, scoreDelta } =
   results;
   return (
     <div className="space-y-8">
@@ -92,7 +94,19 @@ export function PersonalOverviewSection({
           <ScoreGauge
             score={personalRisk.skillRelevanceScore}
             riskBand={personalRisk.personalRiskBand} />
-          
+
+          {/* F22: Score delta from previous assessment */}
+          {scoreDelta && scoreDelta.scoreDelta !== 0 && (
+            <div className="mt-3 flex flex-col items-center gap-1">
+              <DeltaBadge delta={scoreDelta.scoreDelta} label="points" size="md" />
+              {scoreDelta.daysSinceLast > 0 && (
+                <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  since {scoreDelta.daysSinceLast} days ago
+                </span>
+              )}
+            </div>
+          )}
         </Card>
 
         {/* Key Metrics */}

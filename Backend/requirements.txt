@@ -26,5 +26,12 @@ pgvector==0.3.6
 # Cache
 redis[hiredis]==5.2.1
 
+# SSE
+sse-starlette==2.2.1
+
 # Logging
 structlog==24.4.0
+
+# PDF / Image generation (F29, F26)
+reportlab==4.4.0
+Pillow==11.2.1

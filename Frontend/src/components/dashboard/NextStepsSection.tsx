@@ -11,9 +11,13 @@ import {
 import { Card } from '../ui/Card';
 import { EXTERNAL_LINKS } from '../../lib/config';
 import { Badge } from '../ui/Badge';
+import { ReAssessmentScheduler } from './ReAssessmentScheduler';
 export function NextStepsSection() {
   return (
     <div className="space-y-8">
+      {/* Re-Assessment Scheduler */}
+      <ReAssessmentScheduler />
+
       {/* Section Intro */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">

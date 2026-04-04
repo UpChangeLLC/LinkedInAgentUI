@@ -1,0 +1,78 @@
+{
+  "ai-core": {
+    "description": "Core AI/ML skills",
+    "skills": {
+      "machine learning": ["ml", "machine-learning"],
+      "deep learning": ["dl", "deep-learning", "neural networks"],
+      "natural language processing": ["nlp", "text analytics", "language models"],
+      "computer vision": ["cv", "image recognition", "object detection"],
+      "large language models": ["llm", "llms", "gpt", "chatgpt", "generative ai", "gen ai"],
+      "reinforcement learning": ["rl"],
+      "prompt engineering": ["prompting"],
+      "tensorflow": ["tf"],
+      "pytorch": ["torch"],
+      "scikit-learn": ["sklearn"],
+      "hugging face": ["transformers"],
+      "langchain": ["langchain"],
+      "mlops": ["ml ops", "model deployment"],
+      "data science": ["data scientist"],
+      "ai strategy": ["ai governance strategy"],
+      "responsible ai": ["ethical ai", "ai ethics", "fair ai"]
+    }
+  },
+  "ai-adjacent": {
+    "description": "Skills that complement AI work",
+    "skills": {
+      "python": ["python3"],
+      "r programming": ["r", "rstudio"],
+      "sql": ["postgresql", "mysql", "database"],
+      "data analysis": ["data analytics", "business analytics"],
+      "data engineering": ["etl", "data pipelines"],
+      "cloud computing": ["aws", "azure", "gcp", "google cloud"],
+      "statistics": ["statistical analysis", "statistical modeling"],
+      "data visualization": ["tableau", "power bi", "matplotlib"],
+      "api development": ["rest api", "graphql", "api design"],
+      "automation": ["rpa", "robotic process automation", "workflow automation"],
+      "product management": ["product strategy", "product development"],
+      "agile": ["scrum", "kanban"],
+      "devops": ["ci/cd", "docker", "kubernetes"],
+      "cybersecurity": ["security", "infosec"],
+      "big data": ["hadoop", "spark", "distributed computing"]
+    }
+  },
+  "foundational": {
+    "description": "Core professional skills",
+    "skills": {
+      "leadership": ["team leadership", "people management"],
+      "project management": ["program management", "pmp"],
+      "strategic planning": ["strategy", "business strategy"],
+      "communication": ["public speaking", "presentation"],
+      "stakeholder management": ["client management"],
+      "change management": ["transformation"],
+      "financial analysis": ["budgeting", "forecasting"],
+      "marketing": ["digital marketing", "brand management"],
+      "sales": ["business development", "account management"],
+      "operations": ["operations management", "process improvement"],
+      "consulting": ["management consulting"],
+      "negotiation": ["contract negotiation"],
+      "coaching": ["mentoring", "talent development"],
+      "problem solving": ["critical thinking", "analytical thinking"],
+      "design thinking": ["innovation"]
+    }
+  },
+  "ai-vulnerable": {
+    "description": "Skills at high risk of AI displacement",
+    "skills": {
+      "data entry": ["manual data processing"],
+      "basic reporting": ["routine reporting", "standard reports"],
+      "transcription": ["manual transcription"],
+      "basic translation": ["simple translation"],
+      "bookkeeping": ["basic accounting"],
+      "scheduling": ["calendar management"],
+      "document formatting": ["word processing"],
+      "basic customer support": ["ticket triage", "first-line support"],
+      "copy editing": ["proofreading"],
+      "basic research": ["desk research", "internet research"]
+    }
+  }
+}
