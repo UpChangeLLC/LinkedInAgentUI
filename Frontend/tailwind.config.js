@@ -7,7 +7,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['DM Sans', 'Inter', 'sans-serif'],
+        serif: ['Cormorant', 'Georgia', 'serif'],
       },
       colors: {
         navy: {
@@ -40,17 +41,44 @@ export default {
           off: '#F3F2EF', // LinkedIn BG
           muted: '#EBEBEB',
           border: '#E0E0E0',
+        },
+        // Dark premium theme tokens
+        dark: {
+          bg: '#0B1120',
+          card: '#111827',
+          elevated: '#1E293B',
+          sidebar: '#162032',
+          accent: '#14B8A6',
+          accentDim: 'rgba(20,184,166,0.12)',
+          textPri: '#E2E8F0',
+          textSec: '#94A3B8',
+          textMuted: '#64748B',
+          border: 'rgba(148,163,184,0.08)',
+          borderHov: 'rgba(148,163,184,0.15)',
+          green: '#34D399',
+          amber: '#FBBF24',
+          red: '#F87171',
         }
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'stream': 'stream 2s linear infinite',
+        'fade-up': 'fadeUp 0.5s ease-out forwards',
+        'bar-grow': 'barGrow 0.8s ease-out forwards',
       },
       keyframes: {
         stream: {
           '0%': { transform: 'translateY(0)' },
           '100%': { transform: 'translateY(-50%)' },
-        }
+        },
+        fadeUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        barGrow: {
+          '0%': { width: '0%' },
+          '100%': { width: 'var(--bar-width, 100%)' },
+        },
       }
     },
   },

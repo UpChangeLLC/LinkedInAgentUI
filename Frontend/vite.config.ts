@@ -4,6 +4,16 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          sentry: ['@sentry/react'],
+          vendor: ['react', 'react-dom', 'framer-motion'],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/mcp': {

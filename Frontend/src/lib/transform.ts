@@ -51,9 +51,10 @@ export function toMockResults(backend: any): MockResults {
     const readinessBand = asString(overall.ai_readiness, asString(risk.overall_risk, ''))
 
     // Build MockResults with safe fallbacks
-    const out: MockResults = {
+    const out = {
         score: Math.round(asNumber(r.profile_score, derivedProfileScore)),
         riskBand: readinessBand,
+        scoreNarrative: asString(r.score_narrative, ''),
         executiveBrief: asString(r.executive_summary, asString(r.summary, '')),
         // Backend v2 uses executive_summary; Personal Overview binds the letter to personalNarrative
         personalNarrative: asString(
@@ -76,29 +77,58 @@ export function toMockResults(backend: any): MockResults {
         })),
         industryBenchmarks: (Array.isArray(r.industry_benchmarks) ? r.industry_benchmarks : []).map((x: any) => ({
             metric: asString(x?.metric, ''),
-            industryAvg: asString(x?.industry_avg, ''),
-            userValue: asString(x?.user_value, ''),
+            industryAvg: asNumber(x?.industry_avg, 0),
+            userValue: asNumber(x?.user_value, 0),
             insight: asString(x?.insight, '')
         })),
         // Score factors from either score_breakdown_list (preferred) or dimension_scores (fallback object)
         scoreFactors: (() => {
+            // Helper to extract evidence items from dimension data
+            const mapEvidence = (evidenceArr: any[], source: string = 'linkedin') => {
+                if (!Array.isArray(evidenceArr)) return []
+                return evidenceArr
+                    .filter((e: any) => typeof e === 'string' && e.trim())
+                    .map((e: any) => ({ text: String(e), source: source as any }))
+            }
+
             const byList = (Array.isArray(r.score_breakdown_list) ? r.score_breakdown_list : []).map((x: any) => ({
                 name: asString(x?.name, ''),
                 weight: asString(x?.weight || x?.importance || '', ''),
-                value: asNumber(x?.score, 0),
+                value: asNumber(x?.value ?? x?.score, 0),
                 explanation: asString(x?.why || x?.explanation, ''),
-                personalContext: asString(x?.context || '', '')
+                personalContext: asString(x?.personal_context || x?.context || '', ''),
+                confidence: (asString(x?.confidence, '') as any) || undefined,
+                evidence: mapEvidence(x?.evidence, r.data_source?.includes('resume') ? 'resume' : 'linkedin'),
+                narrative: asString(x?.narrative, '') || undefined,
             }))
             if (byList.length) return byList
+            // Fallback: derive from dimension_scores (1-5 scale → 0-100)
+            const dimWeightMap: Record<string, string> = {
+                ai_fluency: 'High', technical_proximity: 'High',
+                governance_awareness: 'Med', learning_velocity: 'Med',
+                leadership_readiness: 'High', network_relevance: 'Low',
+                automation_exposure: 'High', execution_credibility: 'Med'
+            }
+            const dimNameMap: Record<string, string> = {
+                ai_fluency: 'AI Fluency', technical_proximity: 'Technical Proximity',
+                governance_awareness: 'Governance Awareness', learning_velocity: 'Learning Velocity',
+                leadership_readiness: 'Leadership Readiness', network_relevance: 'Network Relevance',
+                automation_exposure: 'Automation Exposure', execution_credibility: 'Execution Credibility'
+            }
             const dims = r.dimension_scores && typeof r.dimension_scores === 'object' ? r.dimension_scores : {}
+            const dataSource = asString(r.data_source, 'linkedin')
             return Object.keys(dims).map((k) => {
                 const v = (dims as any)[k] || {}
+                const raw = asNumber(v.score, 0)
                 return {
-                    name: asString(k, ''),
-                    weight: '',
-                    value: asNumber(v.score, 0),
+                    name: dimNameMap[k] || asString(k, ''),
+                    weight: dimWeightMap[k] || 'Med',
+                    value: Math.round(raw * 20),
                     explanation: asString(v.rationale, ''),
-                    personalContext: ''
+                    personalContext: asString(v.rationale, ''),
+                    confidence: (asString(v.confidence, '') as any) || undefined,
+                    evidence: mapEvidence(v.evidence, dataSource.includes('resume') ? 'resume' : 'linkedin'),
+                    narrative: asString(v.narrative, '') || undefined,
                 }
             })
         })(),
@@ -238,14 +268,95 @@ export function toMockResults(backend: any): MockResults {
                 }))
                 return [...base, ...jobMapped]
             })()
+        },
+        // Initialize Sprint 4-7 fields (populated below)
+        skillGapMatrix: [],
+        disruptionTimeline: [],
+        careerPathways: [],
+        scoreDelta: null,
+        actionItems: [],
+        urlHash: '',
+    } as MockResults
+
+    // Sprint 6: Career Pathways
+    out.careerPathways = (Array.isArray(r.career_pathways) ? r.career_pathways : []).map((x: any) => ({
+        name: asString(x?.name, ''),
+        description: asString(x?.description, ''),
+        requiredSkills: Array.isArray(x?.required_skills) ? x.required_skills.filter((s: any) => typeof s === 'string' && s.trim()) : [],
+        timelineMonths: asNumber(x?.timeline_months, 0),
+        difficulty: (['easy', 'moderate', 'challenging'].includes(asString(x?.difficulty, ''))
+            ? asString(x?.difficulty, 'moderate') : 'moderate') as any,
+        salaryImpact: asString(x?.salary_impact, ''),
+        recommended: Boolean(x?.recommended),
+    }))
+
+    // F22: Score delta from previous assessment
+    const rawDelta = r.score_delta
+    if (rawDelta && typeof rawDelta === 'object') {
+        out.scoreDelta = {
+            previousScore: asNumber(rawDelta.previous_score, 0),
+            scoreDelta: asNumber(rawDelta.score_delta, 0),
+            previousRiskBand: asString(rawDelta.previous_risk_band, ''),
+            daysSinceLast: asNumber(rawDelta.days_since_last, 0),
+            dimensionDeltas: (rawDelta.dimension_deltas && typeof rawDelta.dimension_deltas === 'object')
+                ? rawDelta.dimension_deltas : {},
+            previousAssessmentDate: asString(rawDelta.previous_assessment_date, '') || null,
         }
     }
+
+    // F24: Action items
+    out.actionItems = (Array.isArray(r.action_items) ? r.action_items : []).map((x: any, idx: number) => ({
+        id: asString(x?.id, `action-${idx}`),
+        title: asString(x?.title, ''),
+        description: asString(x?.description, ''),
+        category: (['learning', 'networking', 'projects', 'governance'].includes(asString(x?.category, ''))
+            ? asString(x?.category, 'learning') : 'learning') as any,
+        priority: (['high', 'medium', 'low'].includes(asString(x?.priority, ''))
+            ? asString(x?.priority, 'medium') : 'medium') as any,
+        estimatedHours: asNumber(x?.estimated_hours, 0),
+        resourceUrl: asString(x?.resource_url, ''),
+        resourceTitle: asString(x?.resource_title, ''),
+        status: 'pending' as const,
+        completedAt: null,
+    })).filter((a: any) => a.title.trim().length > 0)
+
+    // Backfill with defaults for new Sprint 4 features
+    out.skillGapMatrix = (Array.isArray(r.skill_gap_matrix) ? r.skill_gap_matrix : []).map((x: any) => ({
+        name: asString(x?.name, ''),
+        proficiency: Math.max(1, Math.min(5, asNumber(x?.proficiency, 1))),
+        marketDemand: Math.max(1, Math.min(5, asNumber(x?.market_demand, 1))),
+        category: (['ai-core', 'ai-adjacent', 'foundational'].includes(asString(x?.category, ''))
+            ? asString(x?.category, 'foundational') : 'foundational') as any,
+        justification: asString(x?.justification, ''),
+        learningResource: asString(x?.learning_resource, ''),
+    }))
+    out.disruptionTimeline = (Array.isArray(r.disruption_timeline) ? r.disruption_timeline : []).map((x: any) => ({
+        task: asString(x?.task, ''),
+        year: asNumber(x?.year, 2026),
+        automationProbability: Math.max(0, Math.min(100, asNumber(x?.automation_probability, 0))),
+        impact: (['high', 'medium', 'low'].includes(asString(x?.impact, ''))
+            ? asString(x?.impact, 'medium') : 'medium') as any,
+        mitigation: asString(x?.mitigation, ''),
+    })).sort((a: any, b: any) => a.year - b.year)
+
+    // Compute URL hash for action tracker API calls
+    out.urlHash = asString(r._url_hash, '')
 
     // Backfill with fallback mock where required by UI
     const merged: MockResults = {
         ...fallbackMock,
         ...out,
-        industryContext: { ...fallbackMock.industryContext, ...out.industryContext },
+        industryContext: {
+            name: out.industryContext.name && out.industryContext.name !== '—'
+                ? out.industryContext.name : fallbackMock.industryContext.name,
+            aiAdoptionRate: out.industryContext.aiAdoptionRate > 0
+                ? out.industryContext.aiAdoptionRate : fallbackMock.industryContext.aiAdoptionRate,
+            avgScore: out.industryContext.avgScore > 0
+                ? out.industryContext.avgScore : fallbackMock.industryContext.avgScore,
+            topThreat: out.industryContext.topThreat || fallbackMock.industryContext.topThreat,
+            topOpportunity: out.industryContext.topOpportunity || fallbackMock.industryContext.topOpportunity,
+            regulatoryNote: out.industryContext.regulatoryNote || fallbackMock.industryContext.regulatoryNote,
+        },
         competitorIntel: out.competitorIntel?.length ? out.competitorIntel : fallbackMock.competitorIntel,
         industryBenchmarks: out.industryBenchmarks?.length ? out.industryBenchmarks : fallbackMock.industryBenchmarks,
         scoreFactors: out.scoreFactors?.length ? out.scoreFactors : fallbackMock.scoreFactors,

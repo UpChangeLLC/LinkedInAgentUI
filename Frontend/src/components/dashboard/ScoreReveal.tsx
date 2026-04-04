@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MockResults } from '../../data/mockResults';
+import { trackEvent } from '../../lib/analytics';
 interface ScoreRevealProps {
   results: MockResults;
   onComplete: () => void;
@@ -23,6 +24,7 @@ export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
         requestAnimationFrame(animate);
       } else {
         setPhase('reveal');
+        trackEvent('score_reveal_completed', { score: targetScore, watch_duration_ms: Date.now() - startTime });
         setTimeout(() => {
           setPhase('done');
           setTimeout(onComplete, 800);
@@ -49,7 +51,7 @@ export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
       exit={{
         opacity: 0
       }}
-      className="fixed inset-0 z-[100] bg-navy-900 flex flex-col items-center justify-center">
+      className="fixed inset-0 z-[100] bg-dark-bg flex flex-col items-center justify-center">
       
       {/* Background pulse */}
       <motion.div
@@ -185,7 +187,7 @@ export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
           transition={{
             delay: 0.3
           }}
-          className="text-gray-400 text-base">
+          className="text-dark-textMuted text-base">
           
           You scored higher than{' '}
           <span className="text-white font-bold">67%</span> of executives in
@@ -206,7 +208,7 @@ export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
             opacity: 0
           }
           }
-          className="text-gray-500 text-sm mt-8 font-mono">
+          className="text-dark-textMuted text-sm mt-8 font-mono">
           
           Loading your full report...
         </motion.p>
