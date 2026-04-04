@@ -13,6 +13,24 @@ from dotenv import load_dotenv
 load_dotenv()
 load_dotenv("config.env", override=False)
 
+# ---------------------------------------------------------------------------
+# Sentry error monitoring (no-op if SENTRY_DSN is not set)
+# ---------------------------------------------------------------------------
+_sentry_dsn = (os.getenv("SENTRY_DSN") or "").strip()
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[StarletteIntegration(), FastApiIntegration()],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.2")),
+        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
+        environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
+        send_default_pii=False,
+    )
+
 from logging_config import setup_logging  # noqa: E402
 
 setup_logging()

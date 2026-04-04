@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import * as Sentry from '@sentry/react';
 import { LandingPage } from './pages/LandingPage';
 import { IntakeFormPage } from './pages/IntakeFormPage';
 import { ProfilePreviewPage } from './pages/ProfilePreviewPage';
@@ -53,6 +54,7 @@ export function App() {
     retrySubmit
   } = useAppState();
   return (
+    <Sentry.ErrorBoundary fallback={<ErrorPage error="An unexpected error occurred." onRetry={() => window.location.reload()} />}>
     <ErrorBoundary>
       <div className="font-sans text-navy-900 antialiased selection:bg-accent/20 selection:text-accent-dark">
         <AnimatePresence mode="wait">
@@ -101,5 +103,6 @@ export function App() {
           }
         </AnimatePresence>
       </div>
-    </ErrorBoundary>);
+    </ErrorBoundary>
+    </Sentry.ErrorBoundary>);
 }

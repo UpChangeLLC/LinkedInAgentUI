@@ -29,9 +29,14 @@ services:
           name: linkedin-agent-redis
           type: redis
           property: connectionString
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: production
       # Set these in Render dashboard as secrets before production use:
       # OPENAI_API_KEY / GROQ_API_KEY / AZURE_OPENAI_API_KEY / ANTHROPIC_API_KEY
       # APIFY_API_TOKEN
+      # SENTRY_DSN (from sentry.io)
 
 databases:
   - name: linkedin-agent-db
