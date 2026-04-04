@@ -3,13 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { LinkedInNav } from '../components/ui/LinkedInNav';
 import { Sidebar } from '../components/dashboard/Sidebar';
-import { OverviewSection } from '../components/dashboard/OverviewSection';
 import { PersonalOverviewSection } from '../components/dashboard/PersonalOverviewSection';
 import { PersonalRoadmapSection } from '../components/dashboard/PersonalRoadmapSection';
-import { WorkflowImpactSection } from '../components/dashboard/WorkflowImpactSection';
-import { LeveragePlaysSection } from '../components/dashboard/LeveragePlaysSection';
-import { GovernanceSection } from '../components/dashboard/GovernanceSection';
-import { ThirtyDayPlanSection } from '../components/dashboard/ThirtyDayPlanSection';
 import { NextStepsSection } from '../components/dashboard/NextStepsSection';
 import { ShareScoreCard } from '../components/dashboard/ShareScoreCard';
 import { PeerBenchmarkSection } from '../components/dashboard/PeerBenchmarkSection';
@@ -23,7 +18,6 @@ import { WhatIfSimulatorSection } from '../components/dashboard/WhatIfSimulatorS
 import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSection';
 import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
 import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
-import { ROICalculatorSection } from '../components/dashboard/ROICalculatorSection';
 import { MockResults } from '../data/mockResults';
 interface ResultsDashboardProps {
   results: MockResults;
@@ -33,7 +27,6 @@ interface ResultsDashboardProps {
 export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDashboardProps) {
   const [showReveal, setShowReveal] = useState(true);
   const [activeSection, setActiveSection] = useState('overview');
-  const [view, setView] = useState<'personal' | 'corporate'>('personal');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const handleRevealComplete = useCallback(() => {
     setShowReveal(false);
@@ -48,10 +41,6 @@ export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDas
       });
     }
   }, [activeSection]);
-  // Reset section when view changes
-  useEffect(() => {
-    setActiveSection('overview');
-  }, [view]);
   // If backend result exists, scroll to top once shown
   useEffect(() => {
     if (formData?.backend?.result) {
@@ -59,101 +48,79 @@ export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDas
     }
   }, [formData]);
   const renderSection = () => {
-    if (view === 'personal') {
-      switch (activeSection) {
-        case 'overview':
-          return <PersonalOverviewSection results={results} />;
-        case 'share':
-          return (
-            <div className="space-y-12">
-              <ShareScoreCard results={results} />
-              <PeerBenchmarkSection results={results} />
-              <ChallengeColleagueSection
-                urlHash={results.urlHash}
-                score={results.score}
-                displayName={results.personalProfile?.name || 'You'}
-                roleCategory={results.personalProfile?.title || ''}
-              />
-            </div>);
-
-        case 'skills':
-          return <SkillGapMatrixSection skills={results.skillGapMatrix} />;
-        case 'disruption':
-          return (
-            <DisruptionTimelineSection
-              items={results.disruptionTimeline}
-              roleName={results.personalProfile?.title}
+    switch (activeSection) {
+      case 'overview':
+        return <PersonalOverviewSection results={results} />;
+      case 'share':
+        return (
+          <div className="space-y-12">
+            <ShareScoreCard results={results} />
+            <PeerBenchmarkSection results={results} />
+            <ChallengeColleagueSection
+              urlHash={results.urlHash}
+              score={results.score}
+              displayName={results.personalProfile?.name || 'You'}
+              roleCategory={results.personalProfile?.title || ''}
             />
-          );
-        case 'pathways':
-          return (
-            <CareerPathwaysSection
-              pathways={results.careerPathways}
-              currentRole={results.personalProfile?.title}
-            />
-          );
-        case 'whatif':
-          return (
-            <WhatIfSimulatorSection
-              currentScore={results.score}
-              riskBand={results.riskBand}
-              currentRole={results.personalProfile?.title}
-            />
-          );
-        case 'actions':
-          return (
-            <ActionTrackerSection
-              urlHash={results.urlHash || ''}
-              fallbackActions={results.actionItems?.map((a) => ({
-                id: a.id,
-                title: a.title,
-                description: a.description,
-                category: a.category,
-                priority: a.priority,
-                estimated_hours: a.estimatedHours,
-                resource_url: a.resourceUrl,
-                resource_title: a.resourceTitle,
-                status: a.status,
-                completed_at: a.completedAt,
-              })) || []}
-            />
-          );
-        case 'roadmap':
-          return <PersonalRoadmapSection results={results} />;
-        case 'newsfeed':
-          return (
-            <AINewsFeedSection
-              role={results.personalProfile?.title}
-              industry={results.personalProfile?.industry}
-              topSkillGaps={results.skillGapMatrix?.slice(0, 3).map((s) => s.name)}
-            />
-          );
-        case 'learning':
-          return <LearningResourcesSection skills={results.skillGapMatrix} />;
-        case 'next':
-          return <NextStepsSection />;
-        default:
-          return <PersonalOverviewSection results={results} />;
-      }
-    } else {
-      switch (activeSection) {
-        case 'overview':
-          return <OverviewSection results={results} />;
-        case 'workflow':
-          return <WorkflowImpactSection results={results} />;
-        case 'leverage':
-          return <LeveragePlaysSection results={results} />;
-        case 'governance':
-          return <GovernanceSection results={results} />;
-        case 'plan':
-          return <ThirtyDayPlanSection results={results} />;
-        case 'roi':
-          return <ROICalculatorSection workflowItems={results.workflowItems} />;
-        case 'next':
-          return <NextStepsSection />;
-        default:
-          return <OverviewSection results={results} />;
-      }
+          </div>);
+      case 'skills':
+        return <SkillGapMatrixSection skills={results.skillGapMatrix} />;
+      case 'disruption':
+        return (
+          <DisruptionTimelineSection
+            items={results.disruptionTimeline}
+            roleName={results.personalProfile?.title}
+          />
+        );
+      case 'pathways':
+        return (
+          <CareerPathwaysSection
+            pathways={results.careerPathways}
+            currentRole={results.personalProfile?.title}
+          />
+        );
+      case 'whatif':
+        return (
+          <WhatIfSimulatorSection
+            currentScore={results.score}
+            riskBand={results.riskBand}
+            currentRole={results.personalProfile?.title}
+          />
+        );
+      case 'actions':
+        return (
+          <ActionTrackerSection
+            urlHash={results.urlHash || ''}
+            fallbackActions={results.actionItems?.map((a) => ({
+              id: a.id,
+              title: a.title,
+              description: a.description,
+              category: a.category,
+              priority: a.priority,
+              estimated_hours: a.estimatedHours,
+              resource_url: a.resourceUrl,
+              resource_title: a.resourceTitle,
+              status: a.status,
+              completed_at: a.completedAt,
+            })) || []}
+          />
+        );
+      case 'roadmap':
+        return <PersonalRoadmapSection results={results} />;
+      case 'newsfeed':
+        return (
+          <AINewsFeedSection
+            role={results.personalProfile?.title}
+            industry={results.personalProfile?.industry}
+            topSkillGaps={results.skillGapMatrix?.slice(0, 3).map((s) => s.name)}
+          />
+        );
+      case 'learning':
+        return <LearningResourcesSection skills={results.skillGapMatrix} />;
+      case 'next':
+        return <NextStepsSection />;
+      default:
+        return <PersonalOverviewSection results={results} />;
     }
   };
   return (
@@ -174,8 +141,6 @@ export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDas
             onNavigate={setActiveSection}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
-            view={view}
-            onViewChange={setView}
             results={results}
             onBackToHome={onBackToHome} />
 
@@ -211,7 +176,7 @@ export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDas
                 )}
                 <div className="mb-8">
                   <div className="flex items-center gap-2 text-[11px] text-dark-accent mb-2 uppercase tracking-widest font-semibold">
-                    {view} Dashboard
+                    Personal Dashboard
                   </div>
                   <h1 className="text-3xl font-bold font-serif text-dark-textPri capitalize">
                     {activeSection === 'plan' ?
@@ -235,7 +200,7 @@ export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDas
                 </div>
 
                 <motion.div
-                  key={`${view}-${activeSection}`}
+                  key={activeSection}
                   initial={{
                     opacity: 0,
                     y: 10

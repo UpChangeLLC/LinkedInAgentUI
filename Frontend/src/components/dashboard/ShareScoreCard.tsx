@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Check, Linkedin, Download, Link2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { trackEvent } from '../../lib/analytics';
@@ -28,11 +29,39 @@ export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    // Capture score card screenshot
+    const el = document.getElementById('score-card-capture');
+    if (el) {
+      try {
+        const canvas = await html2canvas(el as HTMLElement, {
+          backgroundColor: '#0B1120',
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, 'image/png')
+        );
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `AI-Resilience-Score-${score}.png`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+      } catch {
+        // Screenshot capture failed — continue to open LinkedIn
+      }
+    }
+
     const text = `I just analyzed my AI leadership readiness. My AI Resilience Score is ${score}/100 (${personalRisk.personalRiskBand}). \n\nSee how you stack up against other ${personalProfile.title}s in ${personalProfile.industry}.\n\n#AILeadership #ExecutiveResilience #FutureOfWork`;
-    const url = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`;
+    const shareUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`;
     trackEvent('share_linkedin', { score, component: 'share_card' });
-    window.open(url, '_blank');
+    window.open(shareUrl, '_blank');
   };
 
   const handleDownloadPdf = async () => {
@@ -63,6 +92,7 @@ export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
       <div className="flex flex-col md:flex-row gap-8 items-start">
         {/* The Visual Card */}
         <motion.div
+          id="score-card-capture"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="w-full md:w-2/3 aspect-[1.91/1] bg-dark-bg rounded-xl overflow-hidden relative shadow-2xl flex flex-col text-white p-6 md:p-8 border border-dark-border"

@@ -1,10 +1,6 @@
 import React from 'react';
 import {
-  LayoutDashboard,
   Zap,
-  Layers,
-  Shield,
-  Calendar,
   ArrowRight,
   User,
   Share2,
@@ -13,7 +9,7 @@ import {
   ListChecks,
   Newspaper,
   BookOpen,
-  Calculator,
+  Calendar,
   Home } from
 'lucide-react';
 import { clsx } from 'clsx';
@@ -23,8 +19,6 @@ interface SidebarProps {
   onNavigate: (section: string) => void;
   isOpen: boolean;
   onClose: () => void;
-  view: 'personal' | 'corporate';
-  onViewChange: (view: 'personal' | 'corporate') => void;
   results: MockResults;
   onBackToHome?: () => void;
 }
@@ -33,8 +27,6 @@ export function Sidebar({
   onNavigate,
   isOpen,
   onClose,
-  view,
-  onViewChange,
   results,
   onBackToHome
 }: SidebarProps) {
@@ -95,44 +87,7 @@ export function Sidebar({
     icon: ArrowRight
   }];
 
-  const corporateItems = [
-  {
-    id: 'overview',
-    label: 'Corporate Overview',
-    icon: LayoutDashboard
-  },
-  {
-    id: 'workflow',
-    label: 'Workflow Impact',
-    icon: Zap
-  },
-  {
-    id: 'leverage',
-    label: 'Leverage Plays',
-    icon: Layers
-  },
-  {
-    id: 'governance',
-    label: 'Governance',
-    icon: Shield
-  },
-  {
-    id: 'plan',
-    label: '30-Day Plan',
-    icon: Calendar
-  },
-  {
-    id: 'roi',
-    label: 'ROI Calculator',
-    icon: Calculator
-  },
-  {
-    id: 'next',
-    label: 'Next Steps',
-    icon: ArrowRight
-  }];
-
-  const menuItems = view === 'personal' ? personalItems : corporateItems;
+  const menuItems = personalItems;
   return (
     <>
       {/* Mobile Overlay */}
@@ -146,7 +101,7 @@ export function Sidebar({
       {/* Sidebar */}
       <aside
         className={clsx(
-          'fixed top-0 left-0 h-full w-64 bg-dark-bg border-r border-dark-border z-50 transition-transform duration-300 lg:translate-x-0 lg:static flex flex-col',
+          'fixed top-0 left-0 h-full w-64 bg-dark-sidebar border-r border-dark-border z-50 transition-transform duration-300 lg:translate-x-0 lg:static flex flex-col',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}>
 
@@ -174,31 +129,6 @@ export function Sidebar({
             </div>
           </div>
 
-          {/* View Toggle */}
-          <div className="flex bg-dark-elevated p-1 rounded-lg">
-            <button
-              onClick={() => onViewChange('personal')}
-              className={clsx(
-                'flex-1 py-1.5 text-xs font-medium rounded-md transition-all',
-                view === 'personal' ?
-                'bg-dark-accentDim text-dark-accent' :
-                'text-dark-textMuted hover:text-dark-textSec'
-              )}>
-
-              Personal
-            </button>
-            <button
-              onClick={() => onViewChange('corporate')}
-              className={clsx(
-                'flex-1 py-1.5 text-xs font-medium rounded-md transition-all',
-                view === 'corporate' ?
-                'bg-dark-accentDim text-dark-accent' :
-                'text-dark-textMuted hover:text-dark-textSec'
-              )}>
-
-              Corporate
-            </button>
-          </div>
         </div>
 
         <nav className="p-4 space-y-1 flex-1 overflow-y-auto">

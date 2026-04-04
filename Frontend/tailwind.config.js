@@ -47,6 +47,7 @@ export default {
           bg: '#0B1120',
           card: '#111827',
           elevated: '#1E293B',
+          sidebar: '#162032',
           accent: '#14B8A6',
           accentDim: 'rgba(20,184,166,0.12)',
           textPri: '#E2E8F0',
