@@ -23,6 +23,27 @@ class Base(DeclarativeBase):
     pass
 
 
+class Profile(Base):
+    """Central identity for a LinkedIn profile — the canonical entity all tables reference."""
+
+    __tablename__ = "profiles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    url_hash = Column(String(64), nullable=False, unique=True, index=True)
+    linkedin_url = Column(String(500), nullable=True)
+    display_name = Column(String(200), nullable=True)
+    title = Column(String(200), nullable=True)
+    company = Column(String(200), nullable=True)
+    first_assessed_at = Column(DateTime(timezone=True), nullable=True)
+    last_assessed_at = Column(DateTime(timezone=True), nullable=True)
+    assessment_count = Column(Integer, default=0)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
 class PipelineRun(Base):
     """Records every pipeline execution for observability and analytics."""
 
@@ -34,6 +55,12 @@ class PipelineRun(Base):
     linkedin_url = Column(String(500), nullable=True)
     url_hash = Column(String(64), nullable=True, index=True)
     resume_provided = Column(Boolean, default=False)
+    profile_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Pipeline execution metadata
     data_source = Column(String(50), nullable=True)
@@ -137,6 +164,12 @@ class AssessmentHistory(Base):
         ForeignKey("pipeline_runs.id", ondelete="SET NULL"),
         nullable=True,
     )
+    profile_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     created_at = Column(
         DateTime(timezone=True),
@@ -177,6 +210,12 @@ class ActionItem(Base):
         ForeignKey("pipeline_runs.id", ondelete="SET NULL"),
         nullable=True,
     )
+    profile_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     created_at = Column(
         DateTime(timezone=True),
@@ -197,6 +236,11 @@ class Team(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(200), nullable=False)
     created_by_url_hash = Column(String(64), nullable=False)
+    created_by_profile_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("profiles.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     invite_code = Column(String(20), nullable=False, unique=True, index=True)
 
     created_at = Column(
@@ -219,6 +263,12 @@ class TeamMember(Base):
         index=True,
     )
     url_hash = Column(String(64), nullable=False)
+    profile_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     display_name = Column(String(200), nullable=False)
     score = Column(Integer, nullable=False, default=0)
     role_category = Column(String(100), nullable=True)
@@ -235,7 +285,11 @@ class TeamMember(Base):
 
 
 class MarketEmbedding(Base):
-    """Market signal vector store — replaces Data/market_vectors.jsonl."""
+    """Market signal vector store — replaces Data/market_vectors.jsonl.
+
+    NOTE: This table exists in the schema but has no write path yet.
+    Reserved for a future market signal ingestion pipeline.
+    """
 
     __tablename__ = "market_embeddings"
 

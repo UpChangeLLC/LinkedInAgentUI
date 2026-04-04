@@ -152,16 +152,31 @@ async def store_action_items(
     url_hash: str,
     action_items: list,
     pipeline_run_id: Optional[uuid.UUID] = None,
+    profile_id: Optional[uuid.UUID] = None,
 ) -> None:
-    """Persist generated action items to DB. Fire-and-forget; never raises."""
+    """Persist generated action items to DB. Fire-and-forget; never raises.
+
+    Deduplicates by deleting old 'pending' items for the same url_hash
+    before inserting. Items marked 'in_progress' or 'completed' by the
+    user are preserved.
+    """
     from db import db_available, _session_factory
     if not db_available() or not _session_factory:
         return
 
     try:
+        from sqlalchemy import delete
         from db_models import ActionItem
 
         async with _session_factory() as session:
+            # Remove old pending items to avoid duplicates on re-analysis
+            await session.execute(
+                delete(ActionItem).where(
+                    ActionItem.url_hash == url_hash,
+                    ActionItem.status == "pending",
+                )
+            )
+
             for item_data in action_items:
                 if not isinstance(item_data, dict):
                     continue
@@ -177,6 +192,7 @@ async def store_action_items(
                     resource_title=str(item_data.get("resource_title", ""))[:500],
                     status="pending",
                     pipeline_run_id=pipeline_run_id,
+                    profile_id=profile_id,
                 )
                 session.add(action)
             await session.commit()
