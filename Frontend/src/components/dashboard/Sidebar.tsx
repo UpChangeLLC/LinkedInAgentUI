@@ -15,7 +15,7 @@ import {
 import { clsx } from 'clsx';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { MockResults } from '../../data/mockResults';
-import upchangeLogo from '../../assets/upchange-logo.svg';
+import upchangeLogo from '../../assets/upchange-logo.png';
 interface SidebarProps {
   activeSection: string;
   onNavigate: (section: string) => void;
@@ -109,7 +109,7 @@ export function Sidebar({
 
         <div className="p-6 border-b border-dark-border">
           <div className="flex items-center gap-3">
-            <img src={upchangeLogo} alt="UpChange" className="w-8 h-8" />
+            <img src={upchangeLogo} alt="UpChange" className="h-7 w-auto logo-themed" />
             <h1 className="text-lg font-bold text-dark-accent leading-tight">
               AI Resilience
               <br />

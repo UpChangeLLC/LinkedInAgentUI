@@ -115,3 +115,7 @@
 :root:not([data-theme="light"]) .bg-linkedin {
   background-color: rgb(var(--accent)) !important;
 }
+/* Logo: white PNG needs inversion in light mode */
+[data-theme="light"] .logo-themed {
+  filter: brightness(0) saturate(100%);
+}

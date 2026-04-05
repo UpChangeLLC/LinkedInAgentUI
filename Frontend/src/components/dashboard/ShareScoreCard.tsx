@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { trackEvent } from '../../lib/analytics';
 import { MockResults } from '../../data/mockResults';
-import upchangeLogo from '../../assets/upchange-logo.svg';
+import upchangeLogo from '../../assets/upchange-logo.png';
 
 const BASE_URL = (import.meta as any).env?.VITE_MCP_BASE_URL || '';
 
@@ -98,7 +98,7 @@ export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
           {/* Header */}
           <div className="flex justify-between items-center mb-auto relative z-10">
             <div className="flex items-center gap-2">
-              <img src={upchangeLogo} alt="UpChange" className="w-6 h-6" />
+              <img src={upchangeLogo} alt="UpChange" className="h-5 w-auto logo-themed" />
               <span className="font-semibold tracking-wide text-dark-textSec">
                 AI Resilience Score™
               </span>
