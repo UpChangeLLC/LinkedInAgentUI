@@ -18,3 +18,7 @@ __pycache__/
 Thumbs.db
 .idea/
 .vscode/
+
+.playwright*
+.claude/
+Knowledge-Docs/
