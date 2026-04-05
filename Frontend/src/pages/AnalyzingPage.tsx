@@ -53,6 +53,25 @@ export function AnalyzingPage({ onComplete, pipelineProgress }: AnalyzingPagePro
       </div>
 
       <div className="w-full max-w-3xl z-10">
+        {/* Circular Spinner */}
+        <div className="flex justify-center mb-6">
+          <motion.div
+            className="w-24 h-24 relative"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+          >
+            <svg viewBox="0 0 100 100" className="w-full h-full">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="#1E293B" strokeWidth="4" />
+              <circle
+                cx="50" cy="50" r="45" fill="none"
+                stroke="#14B8A6" strokeWidth="4"
+                strokeDasharray="70 213"
+                strokeLinecap="round"
+              />
+            </svg>
+          </motion.div>
+        </div>
+
         {/* Phase header */}
         <div className="text-center mb-8">
           <h2 className="text-linkedin-light font-mono text-sm mb-2 uppercase tracking-widest">
@@ -76,6 +95,9 @@ export function AnalyzingPage({ onComplete, pipelineProgress }: AnalyzingPagePro
               {pipelineProgress.message}
             </motion.p>
           )}
+          <p className="text-gray-500 text-xs font-mono mt-2">
+            Analyzing for {Math.floor(pipelineProgress.elapsedMs / 1000)}s...
+          </p>
         </div>
 
         {/* Real-time pipeline progress */}

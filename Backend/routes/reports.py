@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from uuid import UUID
 
@@ -61,7 +62,7 @@ async def download_pdf_report(run_id: str) -> Response:
     try:
         from services.pdf_service import generate_pdf_report
 
-        pdf_bytes = generate_pdf_report(result)
+        pdf_bytes = await asyncio.to_thread(generate_pdf_report, result)
     except Exception as exc:
         logger.exception("PDF generation failed for run %s", run_id)
         raise HTTPException(status_code=500, detail="PDF generation failed.") from exc
@@ -84,7 +85,7 @@ async def download_certificate(run_id: str) -> Response:
     try:
         from services.certificate_service import generate_certificate
 
-        png_bytes = generate_certificate(result)
+        png_bytes = await asyncio.to_thread(generate_certificate, result)
     except Exception as exc:
         logger.exception("Certificate generation failed for run %s", run_id)
         raise HTTPException(status_code=500, detail="Certificate generation failed.") from exc

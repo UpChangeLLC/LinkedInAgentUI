@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Check, Linkedin, Download, Link2 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { generateShareBadge } from '../../lib/badgeGenerator';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { trackEvent } from '../../lib/analytics';
 import { MockResults } from '../../data/mockResults';
+import upchangeLogo from '../../assets/upchange-logo.png';
 
 const BASE_URL = (import.meta as any).env?.VITE_MCP_BASE_URL || '';
 
@@ -17,7 +18,8 @@ interface ShareScoreCardProps {
 export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const { personalProfile, personalRisk, score } = results;
+  const { personalProfile, personalRisk, score, scoreFactors } = results;
+  const governanceScore = scoreFactors?.find(f => f.name === 'Governance Awareness')?.value ?? 40;
   const effectiveRunId = runId || results.urlHash || '';
 
   const handleCopy = () => {
@@ -30,32 +32,24 @@ export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
   };
 
   const handleShare = async () => {
-    // Capture score card screenshot
-    const el = document.getElementById('score-card-capture');
-    if (el) {
-      try {
-        const canvas = await html2canvas(el as HTMLElement, {
-          backgroundColor: '#0B1120',
-          scale: 2,
-          useCORS: true,
-          logging: false,
-        });
-        const blob = await new Promise<Blob | null>((resolve) =>
-          canvas.toBlob(resolve, 'image/png')
-        );
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `AI-Resilience-Score-${score}.png`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-        }
-      } catch {
-        // Screenshot capture failed — continue to open LinkedIn
-      }
+    // Generate branded share badge
+    try {
+      const blob = await generateShareBadge({
+        score,
+        riskBand: personalRisk.personalRiskBand,
+        name: personalProfile.name,
+        title: `${personalProfile.title} at ${personalProfile.company}`,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AI-Resilience-Score-${score}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Badge generation failed — continue to open LinkedIn
     }
 
     const text = `I just analyzed my AI leadership readiness. My AI Resilience Score is ${score}/100 (${personalRisk.personalRiskBand}). \n\nSee how you stack up against other ${personalProfile.title}s in ${personalProfile.industry}.\n\n#AILeadership #ExecutiveResilience #FutureOfWork`;
@@ -104,9 +98,7 @@ export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
           {/* Header */}
           <div className="flex justify-between items-center mb-auto relative z-10">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-dark-accent rounded-[2px] flex items-center justify-center">
-                <span className="text-dark-bg font-bold text-xs pb-0.5">in</span>
-              </div>
+              <img src={upchangeLogo} alt="UpChange" className="h-5 w-auto logo-themed" />
               <span className="font-semibold tracking-wide text-dark-textSec">
                 AI Resilience Score™
               </span>
@@ -150,7 +142,7 @@ export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
               </div>
               <div className="text-center border-l border-dark-border">
                 <div className="text-xs text-dark-textMuted mb-1">Governance</div>
-                <div className="font-bold text-lg">40</div>
+                <div className="font-bold text-lg">{governanceScore}</div>
               </div>
             </div>
           </div>

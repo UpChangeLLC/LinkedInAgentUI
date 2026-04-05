@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, X, Linkedin, Copy, Check } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { generateShareBadge } from '../../lib/badgeGenerator';
 import { MockResults } from '../../data/mockResults';
 import { trackEvent } from '../../lib/analytics';
 
@@ -14,50 +14,34 @@ export function StickyShareBar({ results }: StickyShareBarProps) {
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
 
-  const captureScoreCard = async (): Promise<Blob | null> => {
-    // Look for the score card element rendered in ShareScoreCard
-    const el =
-      document.getElementById('score-card-capture') ||
-      document.querySelector('[data-score-card]');
-    if (!el) return null;
-
-    try {
-      const canvas = await html2canvas(el as HTMLElement, {
-        backgroundColor: '#0B1120',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-    } catch {
-      return null;
-    }
-  };
-
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-
   const handleShare = async () => {
     setSharing(true);
 
-    // 1. Try to capture & download the score screenshot
-    const blob = await captureScoreCard();
-    if (blob) {
-      const filename = `AI-Resilience-Score-${results.score}.png`;
-      downloadBlob(blob, filename);
+    // 1. Generate branded badge and download
+    let badgeGenerated = false;
+    try {
+      const blob = await generateShareBadge({
+        score: results.score,
+        riskBand: results.personalRisk.personalRiskBand,
+        name: results.personalProfile.name,
+        title: `${results.personalProfile.title} at ${results.personalProfile.company}`,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AI-Resilience-Score-${results.score}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      badgeGenerated = true;
+    } catch {
+      // Badge generation failed — continue to LinkedIn
     }
 
     // 2. Open LinkedIn share compose with pre-filled text
-    const text = `I just scored ${results.score}/100 on the AI Resilience Score™ (${results.personalRisk.personalRiskBand}). How AI-ready are you? 👉 airesiliencescore.com\n\n#AILeadership #FutureOfWork`;
-    trackEvent('share_linkedin', { score: results.score, component: 'sticky_bar', screenshot: !!blob });
+    const text = `I just scored ${results.score}/100 on the AI Resilience Score™ (${results.personalRisk.personalRiskBand}). How AI-ready are you? \u{1F449} airesiliencescore.com\n\n#AILeadership #FutureOfWork`;
+    trackEvent('share_linkedin', { score: results.score, component: 'sticky_bar', screenshot: badgeGenerated });
     window.open(
       `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`,
       '_blank'

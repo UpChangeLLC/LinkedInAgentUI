@@ -16,10 +16,13 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { LinkedInNav } from '../components/ui/LinkedInNav';
+import { ResumeUpload } from '../components/ui/ResumeUpload';
+import { normalizeLinkedInUrl } from '../lib/urlNormalize';
 
 interface IntakeFormPageProps {
   onSubmit: (data: any) => void;
   onBack: () => void;
+  submitting?: boolean;
 }
 
 const CONCERN_OPTIONS = [
@@ -47,11 +50,16 @@ const INDUSTRY_OPTIONS = [
   'Other',
 ];
 
-export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
+export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageProps) {
   const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [originalUrl, setOriginalUrl] = useState('');
+  const [urlCorrections, setUrlCorrections] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const [showContext, setShowContext] = useState(false);
+
+  // Resume upload state
+  const [resumeText, setResumeText] = useState('');
 
   // Multi-signal input state (F2)
   const [githubUrl, setGithubUrl] = useState('');
@@ -98,7 +106,16 @@ export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValidLinkedInUrl(linkedinUrl)) {
+
+    // Auto-correct the URL before validation
+    const { url: normalized, corrections } = normalizeLinkedInUrl(linkedinUrl);
+    if (corrections.length > 0) {
+      setOriginalUrl(linkedinUrl);
+      setLinkedinUrl(normalized);
+      setUrlCorrections(corrections);
+    }
+
+    if (!isValidLinkedInUrl(normalized)) {
       setError('Please enter a valid LinkedIn profile URL (e.g. https://linkedin.com/in/your-name)');
       return;
     }
@@ -126,7 +143,8 @@ export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
     if (!isNaN(yrs) && yrs > 0) userContext.years_in_role = yrs;
 
     onSubmit({
-      linkedinUrl,
+      linkedinUrl: normalized,
+      ...(resumeText ? { resumeText } : {}),
       ...(githubUrl.trim() ? { githubUrl: githubUrl.trim() } : {}),
       ...(websiteUrl.trim() ? { websiteUrl: websiteUrl.trim() } : {}),
       ...(Object.keys(userContext).length > 0 ? { userContext } : {}),
@@ -194,6 +212,21 @@ export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
                     }}
                   />
                   {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                  {urlCorrections.length > 0 && !error && (
+                    <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+                      <span>Auto-corrected: {urlCorrections.join(', ')}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLinkedinUrl(originalUrl);
+                          setUrlCorrections([]);
+                        }}
+                        className="text-xs text-gray-400 hover:text-gray-600 underline"
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Help: Where to find your LinkedIn URL */}
@@ -309,6 +342,14 @@ export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
                   </div>
                 </motion.div>
               )}
+
+              {/* ── Resume Upload ────────────────────────── */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload Resume <span className="text-gray-400 font-normal">(Optional)</span>
+                </label>
+                <ResumeUpload onResumeText={setResumeText} />
+              </div>
 
               {/* ── Multi-Signal Input (F2) ────────────────────────── */}
               <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -553,9 +594,10 @@ export function IntakeFormPage({ onSubmit, onBack }: IntakeFormPageProps) {
                   type="submit"
                   fullWidth
                   size="lg"
-                  className="bg-[#0A66C2] hover:bg-[#004182]"
+                  disabled={submitting}
+                  className="bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Analyze My Profile
+                  {submitting ? 'Submitting...' : 'Analyze My Profile'}
                 </Button>
                 <p className="mt-4 text-center text-xs text-gray-500">
                   We only access your public profile information

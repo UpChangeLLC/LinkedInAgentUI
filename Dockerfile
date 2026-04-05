@@ -50,4 +50,4 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" || exit 1
 
-CMD ["sh", "-c", "python -m alembic upgrade head && python -m uvicorn mcp_http:app --host 0.0.0.0 --port 8001"]
+CMD ["sh", "-c", "python -m alembic upgrade head && python -m uvicorn mcp_http:app --host 0.0.0.0 --port 8001 --workers 4 --limit-concurrency 100 --timeout-graceful-shutdown 30"]

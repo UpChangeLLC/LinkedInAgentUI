@@ -22,7 +22,7 @@ export function Button({
   'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-bg disabled:opacity-50 disabled:pointer-events-none';
   const variants = {
     primary:
-    'bg-dark-accent hover:bg-teal-400 text-dark-bg shadow-md focus:ring-dark-accent',
+    'bg-dark-accent hover:bg-teal-400 text-white shadow-md focus:ring-dark-accent',
     secondary:
     'border border-dark-border bg-dark-elevated text-dark-textPri hover:bg-dark-borderHov focus:ring-dark-accent',
     ghost: 'text-dark-accent hover:bg-dark-accentDim focus:ring-dark-accent'

@@ -13,7 +13,9 @@ import {
   Home } from
 'lucide-react';
 import { clsx } from 'clsx';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { MockResults } from '../../data/mockResults';
+import upchangeLogo from '../../assets/upchange-logo.png';
 interface SidebarProps {
   activeSection: string;
   onNavigate: (section: string) => void;
@@ -106,11 +108,14 @@ export function Sidebar({
         )}>
 
         <div className="p-6 border-b border-dark-border">
-          <h1 className="text-xl font-bold text-dark-accent">
-            AI Resilience
-            <br />
-            <span className="text-dark-textSec font-light">Score™</span>
-          </h1>
+          <div className="flex items-center gap-3">
+            <img src={upchangeLogo} alt="UpChange" className="h-7 w-auto logo-themed" />
+            <h1 className="text-lg font-bold text-dark-accent leading-tight">
+              AI Resilience
+              <br />
+              <span className="text-dark-textSec font-light text-sm">Score™</span>
+            </h1>
+          </div>
         </div>
 
         {/* Profile Summary */}
@@ -158,6 +163,9 @@ export function Sidebar({
         </nav>
 
         <div className="p-4 border-t border-dark-border space-y-3">
+          <div className="flex items-center justify-center">
+            <ThemeToggle />
+          </div>
           {onBackToHome && (
             <button
               onClick={onBackToHome}

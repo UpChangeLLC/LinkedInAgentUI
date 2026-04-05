@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -22,6 +23,7 @@ export function ProfilePreviewPage({
   onReject,
   onBack,
 }: ProfilePreviewPageProps) {
+  const [confirmed, setConfirmed] = useState(false);
   const isLowCompleteness = preview.completeness_score < 30;
 
   return (
@@ -93,14 +95,15 @@ export function ProfilePreviewPage({
             {/* Action buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
-                onClick={onConfirm}
+                onClick={() => { setConfirmed(true); onConfirm(); }}
                 fullWidth
                 size="lg"
-                className="bg-[#0A66C2] hover:bg-[#004182]"
+                disabled={confirmed}
+                className="bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <span className="flex items-center justify-center gap-2">
-                  Yes, Analyze This Profile
-                  <ArrowRight className="w-4 h-4" />
+                  {confirmed ? 'Starting Analysis...' : 'Yes, Analyze This Profile'}
+                  {!confirmed && <ArrowRight className="w-4 h-4" />}
                 </span>
               </Button>
               <Button
@@ -108,6 +111,7 @@ export function ProfilePreviewPage({
                 fullWidth
                 size="lg"
                 variant="secondary"
+                disabled={confirmed}
                 className="border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 <span className="flex items-center justify-center gap-2">

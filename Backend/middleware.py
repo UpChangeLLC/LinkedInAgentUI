@@ -72,7 +72,7 @@ async def api_key_guard(request: Request, call_next):
 
 _RATE_LIMIT_MAX = 5
 _RATE_LIMIT_WINDOW = 60  # seconds
-_RATE_LIMITED_PREFIXES = ("/mcp/run", "/agent/run")
+_RATE_LIMITED_PREFIXES = ("/mcp/run", "/mcp/preview", "/agent/run", "/api/resume/upload")
 
 
 def _ip_hash(request: Request) -> str:
