@@ -42,6 +42,8 @@ RUN adduser --disabled-password --no-create-home --gecos "" appuser
 COPY Backend/ .
 COPY --from=frontend /frontend/dist ./dist
 ENV FRONTEND_DIST=/app/dist
+ENV UVICORN_WORKERS=4
+ENV UVICORN_CONCURRENCY_LIMIT=100
 EXPOSE 8001
 
 # Switch to non-root user
@@ -50,4 +52,4 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" || exit 1
 
-CMD ["sh", "-c", "python -m alembic upgrade head && python -m uvicorn mcp_http:app --host 0.0.0.0 --port 8001 --workers 4 --limit-concurrency 100 --timeout-graceful-shutdown 30"]
+CMD ["sh", "-c", "python -m alembic upgrade head && python -m uvicorn mcp_http:app --host 0.0.0.0 --port 8001 --workers ${UVICORN_WORKERS} --limit-concurrency ${UVICORN_CONCURRENCY_LIMIT} --timeout-graceful-shutdown 30"]
