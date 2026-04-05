@@ -109,7 +109,9 @@ export function Sidebar({
 
         <div className="p-6 border-b border-dark-border">
           <div className="flex items-center gap-3">
-            <img src={upchangeLogo} alt="UpChange" className="h-7 w-auto logo-themed" />
+            <div className="w-8 h-8 overflow-hidden flex-shrink-0">
+              <img src={upchangeLogo} alt="UpChange" className="h-8 w-auto object-cover object-left logo-themed" />
+            </div>
             <h1 className="text-lg font-bold text-dark-accent leading-tight">
               AI Resilience
               <br />
