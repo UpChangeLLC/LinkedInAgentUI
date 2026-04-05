@@ -276,6 +276,7 @@ export function toMockResults(backend: any): MockResults {
         scoreDelta: null,
         actionItems: [],
         urlHash: '',
+        calibrationMetadata: r.calibration_metadata || null,
     } as MockResults
 
     // Sprint 6: Career Pathways

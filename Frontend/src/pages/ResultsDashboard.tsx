@@ -19,6 +19,20 @@ import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSecti
 import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
 import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
 import { MockResults } from '../data/mockResults';
+
+const SECTION_DESCRIPTIONS: Record<string, string> = {
+  overview: 'Your overall AI readiness profile based on your LinkedIn data. This is how you compare to professionals in your role and industry.',
+  skills: 'A map of your skills plotted by current proficiency vs. market demand. Focus on skills with high demand and low proficiency.',
+  disruption: 'A timeline showing when specific tasks in your role are likely to be automated. Earlier dates mean higher urgency to adapt.',
+  pathways: 'Three possible career directions based on your current skills and market trends. The recommended path has the best fit for your profile.',
+  whatif: 'Explore how acquiring new skills or certifications would change your score. Try different scenarios to find the highest-impact investments.',
+  actions: 'Your personalized action items organized by priority. Complete these to improve your AI readiness over the next 90 days.',
+  share: 'Share your score with your network or compare against industry benchmarks. Sharing drives accountability and attracts AI-ready talent.',
+  roadmap: 'A month-by-month plan for the next 90 days. Each action is tied to a specific skill gap or opportunity from your assessment.',
+  newsfeed: 'AI developments relevant to your role and industry. Stay current on the trends that directly affect your career trajectory.',
+  learning: 'Curated courses, articles, and tools matched to your specific skill gaps. Start with the highest-priority resources.',
+};
+
 interface ResultsDashboardProps {
   results: MockResults;
   formData: any;
@@ -179,24 +193,23 @@ export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDas
                     Personal Dashboard
                   </div>
                   <h1 className="text-3xl font-bold font-serif text-dark-textPri capitalize">
-                    {activeSection === 'plan' ?
-                      '30-Day Plan' :
-                      activeSection === 'next' ?
-                        'Next Steps' :
-                        activeSection === 'share' ?
-                          'Share & Compare' :
-                          activeSection === 'actions' ?
-                            'Action Tracker' :
-                            activeSection === 'history' ?
-                              'Assessment History' :
-                              activeSection === 'newsfeed' ?
-                                'AI News Feed' :
-                                activeSection === 'learning' ?
-                                  'Learning Resources' :
-                                  activeSection === 'roi' ?
-                                    'ROI Calculator' :
-                                    activeSection.replace(/([A-Z])/g, ' $1').trim()}
+                    {activeSection === 'next' ?
+                      'Next Steps' :
+                      activeSection === 'share' ?
+                        'Share & Compare' :
+                        activeSection === 'actions' ?
+                          'Action Tracker' :
+                          activeSection === 'newsfeed' ?
+                            'AI News Feed' :
+                            activeSection === 'learning' ?
+                              'Learning Resources' :
+                              activeSection.replace(/([A-Z])/g, ' $1').trim()}
                   </h1>
+                  {SECTION_DESCRIPTIONS[activeSection] && (
+                    <p className="text-sm text-dark-textMuted mt-2">
+                      {SECTION_DESCRIPTIONS[activeSection]}
+                    </p>
+                  )}
                 </div>
 
                 <motion.div

@@ -6,7 +6,9 @@ import { IntakeFormPage } from './pages/IntakeFormPage';
 import { ProfilePreviewPage } from './pages/ProfilePreviewPage';
 import { AnalyzingPage } from './pages/AnalyzingPage';
 import { ErrorPage } from './pages/ErrorPage';
+import { CachedResultPromptPage } from './pages/CachedResultPromptPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { useAppState } from './hooks/useAppState';
 
 const ResultsDashboard = React.lazy(() =>
@@ -45,6 +47,9 @@ export function App() {
     pipelineProgress,
     previewData,
     previewLoading,
+    cachedResultAge,
+    useCachedResult,
+    skipCachedResult,
     goToIntake,
     submitForm,
     confirmProfile,
@@ -55,6 +60,7 @@ export function App() {
     retrySubmit
   } = useAppState();
   return (
+    <ThemeProvider>
     <Sentry.ErrorBoundary fallback={<ErrorPage error="An unexpected error occurred." onRetry={() => window.location.reload()} />}>
     <ErrorBoundary>
       <div className="font-sans text-navy-900 antialiased selection:bg-accent/20 selection:text-accent-dark">
@@ -64,7 +70,16 @@ export function App() {
           }
 
           {currentPage === 'intake' &&
-          <IntakeFormPage key="intake" onSubmit={submitForm} onBack={goBack} />
+          <IntakeFormPage key="intake" onSubmit={submitForm} onBack={goBack} submitting={previewLoading} />
+          }
+
+          {currentPage === 'cached-prompt' &&
+          <CachedResultPromptPage
+            key="cached-prompt"
+            age={cachedResultAge}
+            onViewCached={useCachedResult}
+            onRunFresh={skipCachedResult}
+          />
           }
 
           {currentPage === 'previewing' && (
@@ -106,5 +121,6 @@ export function App() {
         </AnimatePresence>
       </div>
     </ErrorBoundary>
-    </Sentry.ErrorBoundary>);
+    </Sentry.ErrorBoundary>
+    </ThemeProvider>);
 }

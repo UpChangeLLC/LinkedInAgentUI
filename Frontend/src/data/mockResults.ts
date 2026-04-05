@@ -181,6 +181,7 @@ export interface MockResults {
   scoreDelta?: ScoreDelta | null;
   actionItems: ActionItemData[];
   urlHash?: string;
+  calibrationMetadata?: any;
 }
 
 export const mockResults: MockResults = {

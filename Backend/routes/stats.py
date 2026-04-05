@@ -454,3 +454,51 @@ async def get_learning_resources(skills: str = "") -> JSONResponse:
             {"status": "error", "detail": "Failed to match learning resources."},
             status_code=500,
         )
+
+
+# ---------------------------------------------------------------------------
+# GET /api/results/{url_hash} — return cached pipeline result for returning users
+# ---------------------------------------------------------------------------
+
+@router.get("/api/results/{url_hash}")
+async def get_cached_result(url_hash: str) -> JSONResponse:
+    """Return the most recent successful pipeline result for a url_hash if < 24h old."""
+    from db import db_available, _session_factory
+
+    if not db_available() or not _session_factory:
+        return JSONResponse({"status": "miss"})
+
+    try:
+        from datetime import datetime, timedelta, timezone
+
+        from sqlalchemy import select
+
+        from db_models import PipelineRun
+
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+
+        async with _session_factory() as session:
+            stmt = (
+                select(PipelineRun.result, PipelineRun.created_at)
+                .where(
+                    PipelineRun.url_hash == url_hash,
+                    PipelineRun.result.isnot(None),
+                    PipelineRun.error.is_(None),
+                    PipelineRun.created_at >= cutoff,
+                )
+                .order_by(PipelineRun.created_at.desc())
+                .limit(1)
+            )
+            row = (await session.execute(stmt)).first()
+
+        if not row:
+            return JSONResponse({"status": "miss"})
+
+        return JSONResponse({
+            "status": "hit",
+            "result": row.result,
+            "created_at": row.created_at.isoformat(),
+        })
+    except Exception:
+        logger.warning("Failed to fetch cached result", exc_info=True)
+        return JSONResponse({"status": "miss"})

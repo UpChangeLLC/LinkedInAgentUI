@@ -39,9 +39,11 @@ async def init_db() -> None:
         return
     _engine = create_async_engine(
         url,
-        pool_size=5,
-        max_overflow=10,
+        pool_size=10,
+        max_overflow=20,
         pool_pre_ping=True,
+        pool_recycle=300,
+        pool_timeout=30,
         echo=False,
     )
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)

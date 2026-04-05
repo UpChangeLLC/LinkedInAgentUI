@@ -187,18 +187,29 @@ def get_azure_openai_client() -> AsyncAzureOpenAI:
     )
 
 
+_cached_ai_client: Optional[Tuple[str, Optional[Union[AsyncOpenAI, AsyncAzureOpenAI]]]] = None
+
+
 def get_selected_ai_client() -> Tuple[str, Optional[Union[AsyncOpenAI, AsyncAzureOpenAI]]]:
-    """Return (provider_name, client) based on AI_CLIENT env var."""
+    """Return (provider_name, client) based on AI_CLIENT env var.
+
+    The client is created once and reused across requests for HTTP connection reuse.
+    """
+    global _cached_ai_client
+    if _cached_ai_client is not None:
+        return _cached_ai_client
     provider = os.getenv("AI_CLIENT", "openai").strip().lower()
     if provider == "openai":
-        return provider, get_openai_client()
-    if provider == "groq":
-        return provider, get_groq_client()
-    if provider == "azure":
-        return provider, get_azure_openai_client()
-    if provider == "anthropic":
-        return provider, None
-    raise RuntimeError(f"Invalid AI_CLIENT='{provider}'. Use: openai | groq | azure | anthropic")
+        _cached_ai_client = (provider, get_openai_client())
+    elif provider == "groq":
+        _cached_ai_client = (provider, get_groq_client())
+    elif provider == "azure":
+        _cached_ai_client = (provider, get_azure_openai_client())
+    elif provider == "anthropic":
+        _cached_ai_client = (provider, None)
+    else:
+        raise RuntimeError(f"Invalid AI_CLIENT='{provider}'. Use: openai | groq | azure | anthropic")
+    return _cached_ai_client
 
 
 def get_selected_model(ai_client: str) -> str:
@@ -927,12 +938,16 @@ def route_after_merge(state: AnalysisGraphState) -> Literal["error_node", "analy
 
 async def analyze_node_graph(state: AnalysisGraphState) -> AnalysisGraphState:
     """Run final scoring/risk/recommendation analysis."""
+    from services.score_calibration import calibrate_score
+
     start_time = asyncio.get_running_loop().time()
     result = await analyze_profile(
         merged_profile=state.get("merged_profile", {}),
         data_source=state.get("data_source", "none"),
         user_context=state.get("user_context"),
     )
+    # Post-LLM score calibration
+    result = calibrate_score(result, merged_profile=state.get("merged_profile", {}))
     next_state = {**state, "result": result}
     return _append_trace(
         next_state,
@@ -1015,6 +1030,18 @@ def build_analysis_graph():
     return compiled
 
 
+# Module-level singleton: build the graph once and reuse across all requests.
+_ANALYSIS_GRAPH = None
+
+
+def get_analysis_graph():
+    """Return the cached analysis graph, building it on first call."""
+    global _ANALYSIS_GRAPH
+    if _ANALYSIS_GRAPH is None:
+        _ANALYSIS_GRAPH = build_analysis_graph()
+    return _ANALYSIS_GRAPH
+
+
 def _initial_analysis_state(
     linkedin_url: str,
     resume_text: str,
@@ -1081,7 +1108,7 @@ async def run_pipeline_with_trace(
     #         except Exception as exc:
     #             logger.warning("MCP webhook POST failed to '%s': %s", webhook_url, exc)
 
-    app = build_analysis_graph()
+    app = get_analysis_graph()
     final_state = await app.ainvoke(_initial_analysis_state(
         linkedin_url, resume_text, user_context=user_context,
         github_url=github_url, website_url=website_url,

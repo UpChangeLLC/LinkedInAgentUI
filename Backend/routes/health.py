@@ -17,7 +17,41 @@ async def mcp_health() -> JSONResponse:
 
 @router.get("/health")
 async def health() -> JSONResponse:
-    return JSONResponse({"status": "ok"})
+    """Deep health check — verifies DB and Redis connectivity."""
+    from db import db_available, _session_factory
+    from cache import redis_available, _client as redis_client
+
+    checks: dict = {"status": "ok"}
+    status_code = 200
+
+    # Check database
+    if db_available() and _session_factory:
+        try:
+            from sqlalchemy import text
+            async with _session_factory() as session:
+                await session.execute(text("SELECT 1"))
+            checks["database"] = "ok"
+        except Exception:
+            checks["database"] = "unavailable"
+            checks["status"] = "degraded"
+    else:
+        checks["database"] = "not_configured"
+
+    # Check Redis
+    if redis_available() and redis_client:
+        try:
+            await redis_client.ping()
+            checks["redis"] = "ok"
+        except Exception:
+            checks["redis"] = "unavailable"
+            checks["status"] = "degraded"
+    else:
+        checks["redis"] = "not_configured"
+
+    if checks["status"] != "ok":
+        status_code = 503
+
+    return JSONResponse(checks, status_code=status_code)
 
 
 @router.get("/ready")

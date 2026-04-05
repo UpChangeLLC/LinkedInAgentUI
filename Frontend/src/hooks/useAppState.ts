@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
 import { mockResults } from '../data/mockResults';
-import { streamAnalysis, mcpRun, previewProfile } from '../lib/mcp';
+import { streamAnalysis, mcpRun, previewProfile, fetchCachedResult } from '../lib/mcp';
 import type { PipelineEvent, ProfilePreview } from '../lib/mcp';
 import { toMockResults } from '../lib/transform';
+import { hashLinkedInUrl } from '../lib/urlHash';
 import type { MockResults } from '../data/mockResults';
 
-type Page = 'landing' | 'intake' | 'previewing' | 'analyzing' | 'results' | 'error';
+type Page = 'landing' | 'intake' | 'previewing' | 'analyzing' | 'results' | 'error' | 'cached-prompt';
 
 export interface PipelineProgress {
   /** 0-100 overall progress */
@@ -40,28 +41,52 @@ export function useAppState() {
   const [pipelineProgress, setPipelineProgress] = useState<PipelineProgress>(INITIAL_PROGRESS);
   const [previewData, setPreviewData] = useState<ProfilePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [cachedResult, setCachedResult] = useState<any>(null);
+  const [cachedResultAge, setCachedResultAge] = useState<string | null>(null);
 
   const goToIntake = useCallback(() => {
     setCurrentPage('intake');
     window.scrollTo(0, 0);
   }, []);
 
-  // Submit form: fetch preview first, then show confirmation
+  // Submit form: check cache first, then fetch preview or show confirmation
   const submitForm = useCallback((data: any) => {
     setFormData(data);
     setPreviewLoading(true);
     setErrorMessage('');
-    setCurrentPage('previewing');
+    setCachedResult(null);
+    setCachedResultAge(null);
     window.scrollTo(0, 0);
 
+    const linkedinUrl = data?.linkedinUrl || data?.linkedin_url || '';
+
     const payload = {
-      linkedin_url: data?.linkedinUrl || data?.linkedin_url || '',
+      linkedin_url: linkedinUrl,
       resume_text: data?.resumeText || data?.resume_text || '',
       ...(data?.githubUrl || data?.github_url ? { github_url: data?.githubUrl || data?.github_url } : {}),
       ...(data?.websiteUrl || data?.website_url ? { website_url: data?.websiteUrl || data?.website_url } : {}),
     };
 
     (async () => {
+      // Check for cached results first
+      if (linkedinUrl) {
+        try {
+          const urlHash = await hashLinkedInUrl(linkedinUrl);
+          const cached = await fetchCachedResult(urlHash);
+          if (cached.status === 'hit' && cached.result) {
+            setCachedResult(cached.result);
+            setCachedResultAge(cached.created_at || null);
+            setPreviewLoading(false);
+            setCurrentPage('cached-prompt');
+            return;
+          }
+        } catch {
+          // Cache check failed, proceed with normal flow
+        }
+      }
+
+      // No cache hit — proceed with preview
+      setCurrentPage('previewing');
       try {
         const preview = await previewProfile(payload);
         setPreviewData(preview);
@@ -146,6 +171,48 @@ export function useAppState() {
     })();
   }, []);
 
+  // Use cached result — skip pipeline entirely
+  const useCachedResult = useCallback(() => {
+    if (cachedResult) {
+      const transformed = toMockResults(cachedResult);
+      setResultsComputed(transformed);
+      setResultsBackend({ status: 'ok', result: cachedResult });
+      setFormData((prev: any) => ({ ...prev, backend: { status: 'ok', result: cachedResult } }));
+      setCurrentPage('results');
+      window.scrollTo(0, 0);
+    }
+  }, [cachedResult]);
+
+  // Skip cache — run fresh analysis via normal preview flow
+  const skipCachedResult = useCallback(() => {
+    setCachedResult(null);
+    setCachedResultAge(null);
+    setPreviewLoading(true);
+    setCurrentPage('previewing');
+    window.scrollTo(0, 0);
+
+    const linkedinUrl = formData?.linkedinUrl || formData?.linkedin_url || '';
+    const payload = {
+      linkedin_url: linkedinUrl,
+      resume_text: formData?.resumeText || formData?.resume_text || '',
+      ...(formData?.githubUrl || formData?.github_url ? { github_url: formData?.githubUrl || formData?.github_url } : {}),
+      ...(formData?.websiteUrl || formData?.website_url ? { website_url: formData?.websiteUrl || formData?.website_url } : {}),
+    };
+
+    (async () => {
+      try {
+        const preview = await previewProfile(payload);
+        setPreviewData(preview);
+        setPreviewLoading(false);
+      } catch (e: any) {
+        console.warn('Preview failed, skipping to full analysis:', e?.message);
+        setPreviewData(null);
+        setPreviewLoading(false);
+        startFullAnalysis(formData);
+      }
+    })();
+  }, [formData]);
+
   const goToResults = useCallback(() => {
     setCurrentPage('results');
     window.scrollTo(0, 0);
@@ -154,6 +221,7 @@ export function useAppState() {
   const goBack = useCallback(() => {
     if (currentPage === 'intake') setCurrentPage('landing');
     if (currentPage === 'previewing') setCurrentPage('intake');
+    if (currentPage === 'cached-prompt') setCurrentPage('intake');
     if (currentPage === 'results') setCurrentPage('landing');
     if (currentPage === 'error') setCurrentPage('landing');
   }, [currentPage]);
@@ -179,10 +247,14 @@ export function useAppState() {
     pipelineProgress,
     previewData,
     previewLoading,
+    cachedResult,
+    cachedResultAge,
     goToIntake,
     submitForm,
     confirmProfile,
     rejectProfile,
+    useCachedResult,
+    skipCachedResult,
     goToResults,
     goBack,
     goToLanding,

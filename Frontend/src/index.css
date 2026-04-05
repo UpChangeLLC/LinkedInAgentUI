@@ -9,17 +9,109 @@
 /* DO NOT DELETE THESE TAILWIND IMPORTS, OTHERWISE THE STYLING WILL NOT RENDER AT ALL - DO NOT DELETE THIS COMMENT */
 
 :root {
-  --bg: #0B1120;
-  --bg-card: #111827;
-  --bg-elevated: #1E293B;
-  --accent: #14B8A6;
-  --accent-dim: rgba(20,184,166,0.12);
-  --text-pri: #E2E8F0;
-  --text-sec: #94A3B8;
-  --text-muted: #64748B;
-  --border: rgba(148,163,184,0.08);
-  --border-hov: rgba(148,163,184,0.15);
-  --green: #34D399;
-  --amber: #FBBF24;
-  --red: #F87171;
+  /* Dark theme (default) — values are space-separated RGB channels for Tailwind opacity support */
+  --bg: 11 17 32;
+  --bg-card: 17 24 39;
+  --bg-elevated: 30 41 59;
+  --sidebar: 22 32 50;
+  --accent: 20 184 166;
+  --accent-dim: 20 184 166;
+  --text-pri: 226 232 240;
+  --text-sec: 148 163 184;
+  --text-muted: 100 116 139;
+  --border: 148 163 184;
+  --border-hov: 148 163 184;
+  --green: 52 211 153;
+  --amber: 251 191 36;
+  --red: 248 113 113;
+}
+
+[data-theme="light"] {
+  --bg: 248 250 252;
+  --bg-card: 255 255 255;
+  --bg-elevated: 241 245 249;
+  --sidebar: 255 255 255;
+  --accent: 10 102 194;
+  --accent-dim: 10 102 194;
+  --text-pri: 30 41 59;
+  --text-sec: 71 85 105;
+  --text-muted: 148 163 184;
+  --border: 0 0 0;
+  --border-hov: 0 0 0;
+  --green: 22 163 74;
+  --amber: 217 119 6;
+  --red: 220 38 38;
+}
+
+/*
+ * Dark-mode overrides for landing/intake pages that use hardcoded light colors.
+ * These rules apply only when the user has NOT selected light theme (i.e., dark is active).
+ */
+:root:not([data-theme="light"]) .bg-white {
+  background-color: rgb(var(--bg-card)) !important;
+}
+:root:not([data-theme="light"]) .border-gray-200,
+:root:not([data-theme="light"]) .border-gray-100 {
+  border-color: rgb(var(--border) / 0.08) !important;
+}
+:root:not([data-theme="light"]) .text-gray-900 {
+  color: rgb(var(--text-pri)) !important;
+}
+:root:not([data-theme="light"]) .text-gray-800 {
+  color: rgb(var(--text-pri)) !important;
+}
+:root:not([data-theme="light"]) .text-gray-700 {
+  color: rgb(var(--text-sec)) !important;
+}
+:root:not([data-theme="light"]) .text-gray-600 {
+  color: rgb(var(--text-sec)) !important;
+}
+:root:not([data-theme="light"]) .text-gray-500 {
+  color: rgb(var(--text-muted)) !important;
+}
+:root:not([data-theme="light"]) .text-gray-400 {
+  color: rgb(var(--text-muted)) !important;
+}
+:root:not([data-theme="light"]) .border-gray-300 {
+  border-color: rgb(var(--border) / 0.15) !important;
+}
+:root:not([data-theme="light"]) .bg-gray-50 {
+  background-color: rgb(var(--bg-elevated)) !important;
+}
+:root:not([data-theme="light"]) .bg-gray-100 {
+  background-color: rgb(var(--bg-elevated)) !important;
+}
+:root:not([data-theme="light"]) .placeholder-gray-500::placeholder {
+  color: rgb(var(--text-muted)) !important;
+}
+:root:not([data-theme="light"]) .placeholder-gray-400::placeholder {
+  color: rgb(var(--text-muted)) !important;
+}
+/* Override gradient backgrounds in dark mode */
+:root:not([data-theme="light"]) .from-white {
+  --tw-gradient-from: rgb(var(--bg)) !important;
+}
+:root:not([data-theme="light"]) .to-linkedin-bg {
+  --tw-gradient-to: rgb(var(--bg-card)) !important;
+}
+:root:not([data-theme="light"]) .bg-linkedin-bg {
+  background-color: rgb(var(--bg)) !important;
+}
+:root:not([data-theme="light"]) .bg-linkedin-bg\/50 {
+  background-color: rgb(var(--bg) / 0.5) !important;
+}
+:root:not([data-theme="light"]) .text-linkedin {
+  color: rgb(var(--accent)) !important;
+}
+:root:not([data-theme="light"]) .text-linkedin-light {
+  color: rgb(var(--accent)) !important;
+}
+:root:not([data-theme="light"]) .from-linkedin {
+  --tw-gradient-from: rgb(var(--accent)) !important;
+}
+:root:not([data-theme="light"]) .to-linkedin-light {
+  --tw-gradient-to: rgb(var(--accent)) !important;
+}
+:root:not([data-theme="light"]) .bg-linkedin {
+  background-color: rgb(var(--accent)) !important;
 }

@@ -696,3 +696,47 @@ async def mcp_preview(payload: AgentRunRequest, request: Request):
             status_code=400,
             detail={"message": friendly, "raw_error": str(exc), "retryable": True},
         ) from exc
+
+
+MAX_RESUME_SIZE = 5 * 1024 * 1024  # 5MB
+
+@router.post("/api/resume/upload")
+async def upload_resume(file: UploadFile = File(...)):
+    """Parse an uploaded resume and return extracted text.
+
+    Accepts PDF, DOCX, and TXT files up to 5MB.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided.")
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ("pdf", "docx", "txt"):
+        raise HTTPException(status_code=400, detail="Unsupported file type. Please upload a PDF, DOCX, or TXT file.")
+
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_RESUME_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
+
+    try:
+        text = await extract_text_from_resume(file.filename, file_bytes)
+    except Exception as exc:
+        logger.exception("Resume parsing failed")
+        raise HTTPException(status_code=400, detail=f"Could not parse resume: {exc}") from exc
+
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Could not extract any text from the file.")
+
+    # Return basic stats for preview
+    lines = [l for l in text.split("\n") if l.strip()]
+    word_count = len(text.split())
+
+    return {
+        "status": "ok",
+        "resume_text": text,
+        "stats": {
+            "word_count": word_count,
+            "line_count": len(lines),
+            "file_name": file.filename,
+            "file_size_bytes": len(file_bytes),
+        },
+    }
