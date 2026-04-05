@@ -42,7 +42,7 @@ RUN adduser --disabled-password --no-create-home --gecos "" appuser
 COPY Backend/ .
 COPY --from=frontend /frontend/dist ./dist
 ENV FRONTEND_DIST=/app/dist
-ENV UVICORN_WORKERS=4
+ENV UVICORN_WORKERS=2
 ENV UVICORN_CONCURRENCY_LIMIT=100
 EXPOSE 8001
 
