@@ -10,7 +10,7 @@ set -euo pipefail
 DOMAIN="assessment.upchange.ai"
 EMAIL="${CERTBOT_EMAIL:-admin@upchange.ai}"
 APP_DIR="/opt/linkedinagent"
-REPO_URL="https://github.com/YOUR_USERNAME/LinkedInAgentUI.git"  # <-- UPDATE THIS
+REPO_URL="https://github.com/UpChangeLLC/LinkedInAgentUI.git"
 BRANCH="release"
 
 echo "============================================"
