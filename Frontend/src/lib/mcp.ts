@@ -11,12 +11,20 @@ export interface UserContext {
 export type McpRunPayload = {
     linkedin_url?: string
     resume_text?: string
+    linkedin_oauth_profile?: Record<string, unknown>
     user_context?: UserContext | null
 }
 
 /** Create an AbortSignal that fires after the given timeout in ms. */
 function timeoutSignal(ms: number): AbortSignal {
     return AbortSignal.timeout(ms)
+}
+
+function buildApiError(message: string, errorType = "", retryable = false): Error {
+    const err: any = new Error(message)
+    err.errorType = errorType
+    err.retryable = retryable
+    return err
 }
 
 const RUN_TIMEOUT_MS = 5 * 60 * 1000   // 5 minutes for full pipeline
@@ -34,13 +42,23 @@ export async function mcpRun(payload: McpRunPayload): Promise<AgentRunResponse> 
         body: JSON.stringify({
             linkedin_url: payload.linkedin_url ?? '',
             resume_text: payload.resume_text ?? '',
+            ...(payload.linkedin_oauth_profile ? { linkedin_oauth_profile: payload.linkedin_oauth_profile } : {}),
             ...(payload.user_context ? { user_context: payload.user_context } : {}),
         }),
         signal: timeoutSignal(RUN_TIMEOUT_MS),
     })
     if (!res.ok) {
         const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
+        let message = text || `HTTP ${res.status}`
+        let errorType = ''
+        let retryable = false
+        try {
+            const parsed = JSON.parse(text)
+            message = parsed?.detail?.message || parsed?.detail || message
+            errorType = parsed?.detail?.error_type || ''
+            retryable = Boolean(parsed?.detail?.retryable)
+        } catch { /* keep defaults */ }
+        throw buildApiError(message, errorType, retryable)
     }
     const json = await res.json()
     return AgentRunResponseSchema.parse(json)
@@ -80,6 +98,7 @@ export async function previewProfile(
         body: JSON.stringify({
             linkedin_url: payload.linkedin_url ?? '',
             resume_text: payload.resume_text ?? '',
+            ...(payload.linkedin_oauth_profile ? { linkedin_oauth_profile: payload.linkedin_oauth_profile } : {}),
         }),
         signal,
     })
@@ -87,14 +106,14 @@ export async function previewProfile(
         const text = await res.text().catch(() => '')
         let message = `HTTP ${res.status}`
         let errorType = ''
+        let retryable = false
         try {
             const parsed = JSON.parse(text)
             message = parsed?.detail?.message || parsed?.detail || message
             errorType = parsed?.detail?.error_type || ''
+            retryable = Boolean(parsed?.detail?.retryable)
         } catch { /* use default */ }
-        const err: any = new Error(message)
-        err.errorType = errorType
-        throw err
+        throw buildApiError(message, errorType, retryable)
     }
     const json = await res.json()
     if (json.status !== 'ok' || !json.preview) {
@@ -140,6 +159,7 @@ export async function streamAnalysis(
             body: JSON.stringify({
                 linkedin_url: payload.linkedin_url ?? '',
                 resume_text: payload.resume_text ?? '',
+                ...(payload.linkedin_oauth_profile ? { linkedin_oauth_profile: payload.linkedin_oauth_profile } : {}),
                 ...(payload.user_context ? { user_context: payload.user_context } : {}),
             }),
             signal,
@@ -215,6 +235,11 @@ export interface CachedResultResponse {
     created_at?: string
 }
 
+export interface OAuthProfileResponse {
+    status: 'ok'
+    profile: Record<string, unknown>
+}
+
 export async function fetchCachedResult(urlHash: string): Promise<CachedResultResponse> {
     const env = (import.meta as any).env || {}
     const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? ''
@@ -228,4 +253,28 @@ export async function fetchCachedResult(urlHash: string): Promise<CachedResultRe
     } catch {
         return { status: 'miss' }
     }
+}
+
+export async function fetchOAuthProfile(token: string, signal?: AbortSignal): Promise<OAuthProfileResponse> {
+    const env = (import.meta as any).env || {}
+    const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? ''
+    const signals: AbortSignal[] = [timeoutSignal(10_000)]
+    if (signal) signals.push(signal)
+    const mergedSignal = signals.length > 1 ? AbortSignal.any(signals) : signals[0]
+    const res = await fetch(
+        `${String(baseUrl).replace(/\/+$/, '')}/auth/linkedin/profile/${encodeURIComponent(token)}`,
+        { signal: mergedSignal },
+    )
+    if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        let message = `HTTP ${res.status}`
+        let errorType = ''
+        try {
+            const parsed = JSON.parse(text)
+            message = parsed?.detail?.message || parsed?.detail || message
+            errorType = parsed?.detail?.error_type || ''
+        } catch { /* keep defaults */ }
+        throw buildApiError(message, errorType, false)
+    }
+    return (await res.json()) as OAuthProfileResponse
 }

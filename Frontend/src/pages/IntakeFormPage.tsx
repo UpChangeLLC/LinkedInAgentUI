@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Link as LinkIcon,
   User,
-  Linkedin,
   HelpCircle,
   X,
   ChevronDown,
@@ -18,6 +17,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { LinkedInNav } from '../components/ui/LinkedInNav';
 import { ResumeUpload } from '../components/ui/ResumeUpload';
 import { normalizeLinkedInUrl } from '../lib/urlNormalize';
+
 
 interface IntakeFormPageProps {
   onSubmit: (data: any) => void;
@@ -58,6 +58,7 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
   const [showHelp, setShowHelp] = useState(false);
   const [showContext, setShowContext] = useState(false);
   const [clipboardUrl, setClipboardUrl] = useState('');
+  const [linkedInError, setLinkedInError] = useState('');
 
   // Resume upload state
   const [resumeText, setResumeText] = useState('');
@@ -109,8 +110,16 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const linkedinParam = params.get('linkedin_url');
-    if (linkedinParam && isValidLinkedInUrl(linkedinParam)) {
-      setLinkedinUrl(linkedinParam);
+
+    if (linkedinParam) {
+      const normalized = normalizeLinkedInUrl(linkedinParam).url;
+      if (isValidLinkedInUrl(normalized)) {
+        setLinkedinUrl(normalized);
+      }
+    }
+
+    if (linkedinParam) {
+      window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 
@@ -255,7 +264,7 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
                         onClick={applyClipboardUrl}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-linkedin text-white text-xs font-medium rounded-md hover:bg-[#004182] transition-colors"
                       >
-                        <Linkedin className="w-3.5 h-3.5" />
+                        <LinkIcon className="w-3.5 h-3.5" />
                         Paste URL
                       </button>
                     </motion.div>
@@ -685,30 +694,9 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
               </div>
             </form>
 
-            {/* Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-400">or</span>
-              </div>
-            </div>
-
-            {/* LinkedIn OAuth — Connect directly */}
-            <button
-              type="button"
-              onClick={() => { window.location.href = '/auth/linkedin'; }}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border border-[#0A66C2] rounded-lg hover:bg-[#0A66C2]/5 transition-colors"
-            >
-              <Linkedin className="w-5 h-5 text-[#0A66C2]" />
-              <span className="text-[#0A66C2] font-medium">
-                Connect with LinkedIn
-              </span>
-            </button>
-            <p className="mt-3 text-center text-xs text-gray-400">
-              We only access your public profile URL — no posts, connections, or messages.
-            </p>
+            {linkedInError && (
+              <p className="mt-4 text-sm text-red-500 text-center">{linkedInError}</p>
+            )}
           </Card>
         </div>
       </motion.div>

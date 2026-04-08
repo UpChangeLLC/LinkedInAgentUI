@@ -33,7 +33,13 @@ const INITIAL_PROGRESS: PipelineProgress = {
 };
 
 export function useAppState() {
-  const [currentPage, setCurrentPage] = useState<Page>('landing');
+  const [currentPage, setCurrentPage] = useState<Page>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('linkedin_url') || params.get('linkedin_error') || params.get('start_analysis')) {
+      return 'intake';
+    }
+    return 'landing';
+  });
   const [formData, setFormData] = useState<any>({});
   const [resultsBackend, setResultsBackend] = useState<any>(null);
   const [resultsComputed, setResultsComputed] = useState<MockResults>(mockResults);
@@ -79,18 +85,22 @@ export function useAppState() {
     window.scrollTo(0, 0);
 
     const linkedinUrl = data?.linkedinUrl || data?.linkedin_url || '';
+    const bypassCache = Boolean(data?._bypassCache);
 
     const payload = {
       linkedin_url: linkedinUrl,
       resume_text: data?.resumeText || data?.resume_text || '',
+      ...(data?.linkedinOAuthProfile || data?.linkedin_oauth_profile
+        ? { linkedin_oauth_profile: data?.linkedinOAuthProfile || data?.linkedin_oauth_profile }
+        : {}),
       ...(data?.githubUrl || data?.github_url ? { github_url: data?.githubUrl || data?.github_url } : {}),
       ...(data?.websiteUrl || data?.website_url ? { website_url: data?.websiteUrl || data?.website_url } : {}),
     };
 
     (async () => {
       try {
-        // Check for cached results first
-        if (linkedinUrl) {
+        // Check for cached results first unless caller requests a fresh run
+        if (linkedinUrl && !bypassCache) {
           try {
             const urlHash = await hashLinkedInUrl(linkedinUrl);
             const cached = await fetchCachedResult(urlHash);
@@ -124,7 +134,7 @@ export function useAppState() {
         if (e?.name === 'AbortError') return; // Intentional cancellation
       }
     })();
-  }, []);
+  }, [freshAbort]);
 
   // Confirm profile and start full analysis
   const confirmProfile = useCallback(() => {
@@ -151,6 +161,9 @@ export function useAppState() {
     const payload = {
       linkedin_url: data?.linkedinUrl || data?.linkedin_url || '',
       resume_text: data?.resumeText || data?.resume_text || '',
+      ...(data?.linkedinOAuthProfile || data?.linkedin_oauth_profile
+        ? { linkedin_oauth_profile: data?.linkedinOAuthProfile || data?.linkedin_oauth_profile }
+        : {}),
       ...(userContext ? { user_context: userContext } : {}),
       ...(data?.githubUrl || data?.github_url ? { github_url: data?.githubUrl || data?.github_url } : {}),
       ...(data?.websiteUrl || data?.website_url ? { website_url: data?.websiteUrl || data?.website_url } : {}),
@@ -237,6 +250,9 @@ export function useAppState() {
     const payload = {
       linkedin_url: linkedinUrl,
       resume_text: formData?.resumeText || formData?.resume_text || '',
+      ...(formData?.linkedinOAuthProfile || formData?.linkedin_oauth_profile
+        ? { linkedin_oauth_profile: formData?.linkedinOAuthProfile || formData?.linkedin_oauth_profile }
+        : {}),
       ...(formData?.githubUrl || formData?.github_url ? { github_url: formData?.githubUrl || formData?.github_url } : {}),
       ...(formData?.websiteUrl || formData?.website_url ? { website_url: formData?.websiteUrl || formData?.website_url } : {}),
     };

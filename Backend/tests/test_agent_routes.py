@@ -68,3 +68,44 @@ async def test_mcp_run_with_valid_payload(client):
         assert data["status"] == "ok"
         assert data["data_source"] == "mock"
         assert data["result"]["profile_score"] == 72
+
+
+@pytest.mark.asyncio
+async def test_mcp_run_accepts_oauth_profile_payload(client, monkeypatch):
+    """POST /mcp/run should pass optional linkedin_oauth_profile to pipeline."""
+    monkeypatch.setenv("LINKEDIN_OAUTH_PROFILE_ENABLE", "1")
+    mock_result = {
+        "profile_score": 68,
+        "data_source": "linkedin_oauth",
+        "overall_assessment": {"ai_readiness": "moderate"},
+        "dimension_scores": {},
+    }
+    mock_trace = [
+        {"step": "fetch", "success": True, "duration_ms": 100, "info": "source=oauth_profile"},
+    ]
+
+    with patch(
+        "routes.agent.run_pipeline_with_trace",
+        new_callable=AsyncMock,
+        return_value=(mock_result, mock_trace),
+    ) as run_mock, patch(
+        "routes.agent._record_pipeline_run",
+        new_callable=AsyncMock,
+    ), patch(
+        "routes.agent._compute_score_delta",
+        new_callable=AsyncMock,
+        return_value=None,
+    ), patch(
+        "routes.agent._store_assessment_history",
+        new_callable=AsyncMock,
+    ):
+        resp = await client.post(
+            "/mcp/run",
+            json={
+                "linkedin_url": "",
+                "resume_text": "",
+                "linkedin_oauth_profile": {"id": "abc", "headline": "Engineer"},
+            },
+        )
+        assert resp.status_code == 200
+        assert run_mock.call_args.kwargs["linkedin_oauth_profile"] == {"id": "abc", "headline": "Engineer"}

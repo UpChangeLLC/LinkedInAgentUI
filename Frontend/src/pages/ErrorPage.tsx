@@ -41,6 +41,12 @@ const ERROR_CONFIG: Record<string, { icon: typeof AlertTriangle; title: string; 
     description: 'That doesn\'t look like a valid LinkedIn profile URL. Please use a URL like linkedin.com/in/username.',
     color: 'red',
   },
+  missing_input: {
+    icon: Link2Off,
+    title: 'LinkedIn URL Required',
+    description: 'Please paste your LinkedIn profile URL (linkedin.com/in/your-name) to run the analysis.',
+    color: 'amber',
+  },
   server_error: {
     icon: AlertTriangle,
     title: 'Unable to Complete Analysis',

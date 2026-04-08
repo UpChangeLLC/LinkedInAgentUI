@@ -61,6 +61,7 @@ class AnalysisGraphState(TypedDict):
     """LangGraph state for end-to-end analysis pipeline."""
 
     linkedin_url: str
+    linkedin_oauth_profile: Dict[str, Any]
     resume_text: str
     github_url: str
     website_url: str
@@ -643,13 +644,23 @@ async def analyze_profile(
 # ── Pipeline orchestrator ─────────────────────────────────────────────────────
 
 def detect_data_source(has_resume: bool, has_linkedin: bool) -> str:
-    if has_resume and has_linkedin:
+    return detect_data_source_v2(has_resume=has_resume, has_linkedin=has_linkedin, has_oauth=False)
+
+
+def detect_data_source_v2(has_resume: bool, has_linkedin: bool, has_oauth: bool = False) -> str:
+    if has_resume and (has_linkedin or has_oauth):
         return "linkedin+resume_merged"
     if has_resume:
         return "resume"
+    if has_oauth:
+        return "linkedin_oauth"
     if has_linkedin:
         return "linkedin"
     return "none"
+
+
+def oauth_profile_enabled() -> bool:
+    return (os.getenv("LINKEDIN_OAUTH_PROFILE_ENABLE", "0").strip().lower() in {"1", "true", "yes", "on"})
 
 
 def _append_trace(
@@ -678,8 +689,10 @@ async def validate_input_node(state: AnalysisGraphState) -> AnalysisGraphState:
     start_time = asyncio.get_running_loop().time()
     linkedin_url_raw = (state.get("linkedin_url") or "").strip()
     linkedin_url = normalize_linkedin_profile_url(linkedin_url_raw)
+    oauth_profile = state.get("linkedin_oauth_profile") or {}
     resume_text = (state.get("resume_text") or "").strip()
-    if not linkedin_url and not resume_text:
+    has_oauth_profile = bool(oauth_profile) and oauth_profile_enabled()
+    if not linkedin_url and not resume_text and not has_oauth_profile:
         next_state = {**state, "error": "At least one of linkedin_url or resume_text must be provided."}
         return _append_trace(
             next_state,
@@ -690,13 +703,17 @@ async def validate_input_node(state: AnalysisGraphState) -> AnalysisGraphState:
         )
     if linkedin_url_raw and not linkedin_url:
         # If resume exists, continue with resume-only flow instead of failing the run.
-        if resume_text:
+        if resume_text or has_oauth_profile:
             linkedin_url = ""
             next_state = {
                 **state,
                 "linkedin_url": linkedin_url,
                 "resume_text": resume_text,
-                "data_source": detect_data_source(bool(resume_text), bool(linkedin_url)),
+                "data_source": detect_data_source_v2(
+                    has_resume=bool(resume_text),
+                    has_linkedin=bool(linkedin_url),
+                    has_oauth=has_oauth_profile,
+                ),
             }
             return _append_trace(
                 next_state,
@@ -717,7 +734,11 @@ async def validate_input_node(state: AnalysisGraphState) -> AnalysisGraphState:
         **state,
         "linkedin_url": linkedin_url,
         "resume_text": resume_text,
-        "data_source": detect_data_source(bool(resume_text), bool(linkedin_url)),
+        "data_source": detect_data_source_v2(
+            has_resume=bool(resume_text),
+            has_linkedin=bool(linkedin_url),
+            has_oauth=has_oauth_profile,
+        ),
     }
     return _append_trace(
         next_state,
@@ -740,6 +761,7 @@ async def fetch_sources_node(state: AnalysisGraphState) -> AnalysisGraphState:
     """
     start_time = asyncio.get_running_loop().time()
     linkedin_url = state.get("linkedin_url", "")
+    oauth_profile = state.get("linkedin_oauth_profile") or {}
     github_url = state.get("github_url", "")
     website_url = state.get("website_url", "")
 
@@ -773,6 +795,25 @@ async def fetch_sources_node(state: AnalysisGraphState) -> AnalysisGraphState:
                     logger.info("    Website fetch succeeded for: %s", website_url)
             elif isinstance(result, dict) and result.get("error"):
                 logger.warning("    %s fetch error: %s", label, result["error"])
+
+    oauth_enabled = oauth_profile_enabled()
+    if oauth_enabled and oauth_profile:
+        logger.info("[1] Using OAuth profile payload as LinkedIn source.")
+        next_state = {
+            **state,
+            "linkedin_raw": json.dumps(oauth_profile, ensure_ascii=True),
+            "linkedin_source": "oauth_profile",
+            "fetch_failed": False,
+            "github_profile": github_profile,
+            "website_content": website_content,
+        }
+        return _append_trace(
+            next_state,
+            step="fetch_sources_node",
+            start_time=start_time,
+            success=True,
+            info="source=oauth_profile",
+        )
 
     if not linkedin_url:
         next_state = {
@@ -1099,10 +1140,12 @@ def _initial_analysis_state(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ) -> AnalysisGraphState:
     """Create the initial state object for LangGraph invocation."""
     return {
         "linkedin_url": linkedin_url,
+        "linkedin_oauth_profile": linkedin_oauth_profile or {},
         "resume_text": resume_text,
         "github_url": github_url,
         "website_url": website_url,
@@ -1128,6 +1171,7 @@ async def run_pipeline_with_trace(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Run pipeline and return (result, node_trace)."""
     # async def _broadcast_to_mcp_payload(result: Dict[str, Any], trace: List[Dict[str, Any]]) -> None:
@@ -1163,6 +1207,7 @@ async def run_pipeline_with_trace(
     final_state = await app.ainvoke(_initial_analysis_state(
         linkedin_url, resume_text, user_context=user_context,
         github_url=github_url, website_url=website_url,
+        linkedin_oauth_profile=linkedin_oauth_profile,
     ))
     if final_state.get("error"):
         raise RuntimeError(final_state["error"])
@@ -1183,16 +1228,22 @@ async def run_pipeline(
     resume_text: str = "",
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Run the single LangGraph pipeline and return analyzed profile JSON."""
     result, _ = await run_pipeline_with_trace(
         linkedin_url=linkedin_url, resume_text=resume_text,
         github_url=github_url, website_url=website_url,
+        linkedin_oauth_profile=linkedin_oauth_profile,
     )
     return result
 
 
-async def run_preview(linkedin_url: str = "", resume_text: str = "") -> Dict[str, Any]:
+async def run_preview(
+    linkedin_url: str = "",
+    resume_text: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """Run only fetch + extract nodes and return a lightweight profile preview.
 
     This is much faster than the full pipeline since it skips the expensive
@@ -1223,7 +1274,13 @@ async def run_preview(linkedin_url: str = "", resume_text: str = "") -> Dict[str
     graph.add_edge("error_node", END)
 
     compiled = graph.compile()
-    final = await compiled.ainvoke(_initial_analysis_state(linkedin_url, resume_text))
+    final = await compiled.ainvoke(
+        _initial_analysis_state(
+            linkedin_url,
+            resume_text,
+            linkedin_oauth_profile=linkedin_oauth_profile,
+        )
+    )
 
     if final.get("error"):
         raise RuntimeError(final["error"])
@@ -1338,6 +1395,7 @@ async def run_pipeline_streaming(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ):
     """Run pipeline and yield PipelineEvent dicts as each node completes.
 
@@ -1349,6 +1407,7 @@ async def run_pipeline_streaming(
     initial = _initial_analysis_state(
         linkedin_url, resume_text, user_context=user_context,
         github_url=github_url, website_url=website_url,
+        linkedin_oauth_profile=linkedin_oauth_profile,
     )
 
     # Yield start event

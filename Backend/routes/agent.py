@@ -45,7 +45,7 @@ def _normalize_error_message(error_text: str) -> Dict[str, Any]:
     lower = msg.lower()
 
     if "at least one of linkedin_url or resume_text" in lower:
-        return {"message": "Please provide at least one input: LinkedIn URL or resume file.", "error_type": "invalid_url"}
+        return {"message": "Please provide at least one input: LinkedIn URL or resume file.", "error_type": "missing_input"}
     if "invalid linkedin url" in lower:
         return {"message": "LinkedIn URL looks invalid. Please use a profile URL like linkedin.com/in/username.", "error_type": "invalid_url"}
     if "timeout" in lower or "timed out" in lower or "connecttimeout" in lower:
@@ -388,12 +388,14 @@ async def _run_agent(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ) -> AgentRunResponse:
     """Run full agent flow with step-level trace output."""
     linkedin = linkedin_url.strip()
     resume = resume_text.strip()
 
-    if not linkedin and not resume:
+    has_oauth_profile = bool(linkedin_oauth_profile)
+    if not linkedin and not resume and not has_oauth_profile:
         raise HTTPException(
             status_code=400,
             detail="Provide at least one input: LinkedIn URL or resume.",
@@ -406,6 +408,7 @@ async def _run_agent(
             user_context=user_context,
             github_url=github_url.strip(),
             website_url=website_url.strip(),
+            linkedin_oauth_profile=linkedin_oauth_profile,
         )
 
         # Optional market signals enrichment
@@ -542,6 +545,7 @@ async def mcp_run(payload: AgentRunRequest, request: Request) -> AgentRunRespons
         user_context=ctx,
         github_url=payload.github_url,
         website_url=payload.website_url,
+        linkedin_oauth_profile=payload.linkedin_oauth_profile,
     )
 
 
@@ -556,6 +560,7 @@ async def agent_run(payload: AgentRunRequest, request: Request) -> AgentRunRespo
         user_context=ctx,
         github_url=payload.github_url,
         website_url=payload.website_url,
+        linkedin_oauth_profile=payload.linkedin_oauth_profile,
     )
 
 
@@ -602,7 +607,7 @@ async def mcp_run_stream(payload: AgentRunRequest, request: Request):
     """
     linkedin_url = (payload.linkedin_url or "").strip()
     resume_text = (payload.resume_text or "").strip()
-    if not linkedin_url and not resume_text:
+    if not linkedin_url and not resume_text and not payload.linkedin_oauth_profile:
         raise HTTPException(status_code=400, detail="Provide linkedin_url or resume_text.")
 
     ctx = payload.user_context.model_dump() if payload.user_context else None
@@ -677,6 +682,7 @@ async def mcp_run_stream(payload: AgentRunRequest, request: Request):
             user_context=ctx,
             github_url=(payload.github_url or "").strip(),
             website_url=(payload.website_url or "").strip(),
+            linkedin_oauth_profile=payload.linkedin_oauth_profile,
         ):
             event_type = event_dict.get("event_type", "message")
 
@@ -713,11 +719,15 @@ async def mcp_preview(payload: AgentRunRequest, request: Request):
     """
     linkedin_url = (payload.linkedin_url or "").strip()
     resume_text = (payload.resume_text or "").strip()
-    if not linkedin_url and not resume_text:
+    if not linkedin_url and not resume_text and not payload.linkedin_oauth_profile:
         raise HTTPException(status_code=400, detail="Provide linkedin_url or resume_text.")
 
     try:
-        preview = await run_preview(linkedin_url=linkedin_url, resume_text=resume_text)
+        preview = await run_preview(
+            linkedin_url=linkedin_url,
+            resume_text=resume_text,
+            linkedin_oauth_profile=payload.linkedin_oauth_profile,
+        )
         return {"status": "ok", "preview": preview}
     except Exception as exc:
         logger.exception("Preview failed")
