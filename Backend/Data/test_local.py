@@ -4,15 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
-import sys
+# test_local.py -> Backend/Data/ ; parents[1] == Backend/
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+DATA_DIR = Path(__file__).resolve().parent
 
-# Ensure project root is on path so `ai_backend` can be imported when running from Data/
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+# Load secrets before ai_backend import (its load_dotenv("config.env") is cwd-relative)
+from dotenv import load_dotenv
+
+load_dotenv(BACKEND_DIR / "config.env", override=False)
 
 from ai_backend import analyze_profile, extract_profile_structured
 
@@ -34,10 +40,12 @@ def _load_apify_json(data_file: Path) -> Dict[str, Any]:
 
 async def main() -> None:
     """Load local Apify JSON and run extraction + analysis through LLM."""
-    data_path = Path("Data/data1.json")
-    output_path = Path("Data/local_llm_output2.json")
+    data_path = DATA_DIR / "data1.json"
+    output_path = DATA_DIR / "local_llm_output2.json"
     if not data_path.exists():
-        raise FileNotFoundError(f"Missing file: {data_path.resolve()}")
+        raise FileNotFoundError(
+            f"Missing file: {data_path}. Copy or save Apify output as data1.json next to this script."
+        )
 
     apify_item = _load_apify_json(data_path)
     raw_text = json.dumps(apify_item, ensure_ascii=True)
