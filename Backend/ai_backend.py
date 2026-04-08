@@ -43,10 +43,16 @@ from prompts import (
 load_dotenv()
 load_dotenv("config.env", override=False)
 
-os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
-os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
-os.environ.setdefault("LANGCHAIN_PROJECT", "linkedin-agent")
-os.environ.setdefault("LANGCHAIN_API_KEY", os.getenv("LANGCHAIN_API_KEY", ""))
+# LangSmith tracing should only be enabled when a real API key is configured.
+# Otherwise the SDK emits noisy 401/unauthorized warnings during normal runs.
+_langsmith_key = (os.getenv("LANGCHAIN_API_KEY") or "").strip()
+if _langsmith_key:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+    os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+    os.environ.setdefault("LANGCHAIN_PROJECT", "linkedin-agent")
+    os.environ.setdefault("LANGCHAIN_API_KEY", _langsmith_key)
+else:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
  
  
  
