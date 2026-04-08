@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { CheckCircle, Loader2, AlertCircle, Zap } from 'lucide-react';
 import type { PipelineProgress as PipelineProgressType } from '../../hooks/useAppState';
 
@@ -24,7 +24,46 @@ const NODE_ORDER = [
   'analyze_node_graph',
 ];
 
+export interface PipelineMetrics {
+  completedSteps: number;
+  totalSteps: number;
+  activeStepLabel: string;
+  lastDataPoints: number;
+  lastDurationMs: number;
+  elapsedSec: number;
+}
+
+export function derivePipelineMetrics(progress: PipelineProgressType): PipelineMetrics {
+  const completedNodes = new Set(
+    progress.events
+      .filter((e) => e.event_type === 'node_complete' && e.status === 'success')
+      .map((e) => e.node)
+  );
+  const errorNodes = new Set(
+    progress.events
+      .filter((e) => e.event_type === 'node_complete' && e.status === 'error')
+      .map((e) => e.node)
+  );
+
+  const activeNodeKey = progress.currentNode || '';
+  const activeStepLabel = NODE_CONFIG[activeNodeKey]?.label || progress.message || 'Starting Analysis';
+
+  const lastNodeEvent = [...progress.events]
+    .reverse()
+    .find((e) => e.event_type === 'node_complete');
+
+  return {
+    completedSteps: completedNodes.size,
+    totalSteps: NODE_ORDER.length,
+    activeStepLabel,
+    lastDataPoints: Number(lastNodeEvent?.data_points || 0),
+    lastDurationMs: Number(lastNodeEvent?.duration_ms || 0),
+    elapsedSec: Math.max(0, Math.round(progress.elapsedMs / 1000)),
+  };
+}
+
 export function PipelineProgress({ progress }: PipelineProgressProps) {
+  const prefersReducedMotion = useReducedMotion();
   const completedNodes = new Set(
     progress.events
       .filter((e) => e.event_type === 'node_complete' && e.status === 'success')
@@ -41,12 +80,12 @@ export function PipelineProgress({ progress }: PipelineProgressProps) {
     (n) => !completedNodes.has(n) && !errorNodes.has(n)
   );
 
-  const elapsedSec = Math.round(progress.elapsedMs / 1000);
+  const metrics = derivePipelineMetrics(progress);
 
   return (
     <div className="w-full max-w-lg mx-auto space-y-6">
       {/* Node status list */}
-      <div className="space-y-3">
+      <div className="space-y-3" aria-live="polite" aria-label="Pipeline execution steps">
         <AnimatePresence>
           {NODE_ORDER.map((nodeKey, idx) => {
             const config = NODE_CONFIG[nodeKey];
@@ -69,9 +108,9 @@ export function PipelineProgress({ progress }: PipelineProgressProps) {
             return (
               <motion.div
                 key={nodeKey}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.05 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, x: -10 }}
+                animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+                transition={prefersReducedMotion ? { duration: 0 } : { delay: idx * 0.05 }}
                 className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                   isCompleted
                     ? 'bg-green-900/20 border-green-800/50'
@@ -85,7 +124,10 @@ export function PipelineProgress({ progress }: PipelineProgressProps) {
                 {/* Status icon */}
                 <div className="flex-shrink-0 w-6 h-6">
                   {isCompleted && (
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                    <motion.div
+                      initial={prefersReducedMotion ? false : { scale: 0 }}
+                      animate={prefersReducedMotion ? { scale: 1 } : { scale: 1 }}
+                    >
                       <CheckCircle className="w-6 h-6 text-green-400" />
                     </motion.div>
                   )}
@@ -114,9 +156,9 @@ export function PipelineProgress({ progress }: PipelineProgressProps) {
                     </span>
                     {isActive && (
                       <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0.3, 1, 0.3] }}
-                        transition={{ repeat: Infinity, duration: 1.5 }}
+                        initial={prefersReducedMotion ? false : { opacity: 0 }}
+                        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: [0.3, 1, 0.3] }}
+                        transition={prefersReducedMotion ? { duration: 0 } : { repeat: Infinity, duration: 1.5 }}
                         className="text-xs text-linkedin"
                       >
                         Processing...
@@ -127,7 +169,7 @@ export function PipelineProgress({ progress }: PipelineProgressProps) {
                   {/* Data points badge */}
                   {isCompleted && event && event.data_points > 0 && (
                     <motion.span
-                      initial={{ opacity: 0 }}
+                      initial={prefersReducedMotion ? false : { opacity: 0 }}
                       animate={{ opacity: 1 }}
                       className="text-xs text-gray-400 mt-0.5 block"
                     >
@@ -153,8 +195,8 @@ export function PipelineProgress({ progress }: PipelineProgressProps) {
       {/* Partial data preview */}
       {progress.partialData?.name && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+          animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
           className="bg-navy-800 border border-navy-700 rounded-lg p-4"
         >
           <div className="flex items-center gap-2 mb-2">
@@ -179,8 +221,8 @@ export function PipelineProgress({ progress }: PipelineProgressProps) {
           )}
           {progress.partialData.score > 0 && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.9 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
               className="mt-3 flex items-center gap-2"
             >
               <span className="text-xs text-gray-400">Score:</span>
@@ -192,9 +234,9 @@ export function PipelineProgress({ progress }: PipelineProgressProps) {
         </motion.div>
       )}
 
-      {/* Elapsed timer */}
-      <div className="text-center text-xs text-gray-500 font-mono">
-        {elapsedSec > 0 ? `${elapsedSec}s elapsed` : 'Starting...'}
+      {/* Footer status */}
+      <div className="text-center text-xs text-gray-500 font-mono" aria-live="polite">
+        {metrics.elapsedSec > 0 ? `${metrics.elapsedSec}s elapsed` : 'Starting...'}
       </div>
     </div>
   );

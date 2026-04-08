@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { mockResults } from '../data/mockResults';
 import { streamAnalysis, mcpRun, previewProfile, fetchCachedResult } from '../lib/mcp';
 import type { PipelineEvent, ProfilePreview } from '../lib/mcp';
@@ -7,6 +7,7 @@ import { hashLinkedInUrl } from '../lib/urlHash';
 import type { MockResults } from '../data/mockResults';
 
 type Page = 'landing' | 'intake' | 'previewing' | 'analyzing' | 'results' | 'error' | 'cached-prompt';
+export type AnalysisCompletionPhase = 'streaming' | 'result_ready' | 'revealing';
 
 export interface PipelineProgress {
   /** 0-100 overall progress */
@@ -50,18 +51,25 @@ export function useAppState() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [cachedResult, setCachedResult] = useState<any>(null);
   const [cachedResultAge, setCachedResultAge] = useState<string | null>(null);
+  const [analysisCompletionPhase, setAnalysisCompletionPhase] = useState<AnalysisCompletionPhase>('streaming');
+  const [assessmentsOptimisticDelta, setAssessmentsOptimisticDelta] = useState(0);
 
   // AbortController for request deduplication — cancels previous in-flight request
   const abortRef = useRef<AbortController | null>(null);
   // SSE event throttle refs — batch events via requestAnimationFrame
   const pendingEventsRef = useRef<PipelineEvent[]>([]);
   const rafIdRef = useRef<number>(0);
+  const completionTimeoutRef = useRef<number>(0);
   const freshAbort = useCallback(() => {
     // Cancel any pending RAF when aborting
     if (rafIdRef.current) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = 0;
       pendingEventsRef.current = [];
+    }
+    if (completionTimeoutRef.current) {
+      window.clearTimeout(completionTimeoutRef.current);
+      completionTimeoutRef.current = 0;
     }
     abortRef.current?.abort();
     const ac = new AbortController();
@@ -152,6 +160,7 @@ export function useAppState() {
   const startFullAnalysis = useCallback((data: any) => {
     const ac = freshAbort();
     setCurrentPage('analyzing');
+    setAnalysisCompletionPhase('streaming');
     setErrorMessage('');
     setPipelineProgress(INITIAL_PROGRESS);
     window.scrollTo(0, 0);
@@ -208,10 +217,16 @@ export function useAppState() {
           setResultsComputed(transformed);
           setFormData((prev: any) => ({ ...prev, backend: resp }));
           setPipelineProgress((prev) => ({ ...prev, progress: 100, message: 'Analysis complete!' }));
-          setCurrentPage('results');
+          setAnalysisCompletionPhase('result_ready');
+          setAssessmentsOptimisticDelta(1);
+          completionTimeoutRef.current = window.setTimeout(() => {
+            setAnalysisCompletionPhase('revealing');
+            setCurrentPage('results');
+          }, 2300);
         } else {
           setResultsBackend(null);
           setErrorMessage('The analysis service did not return a valid result. Please try again.');
+          setAnalysisCompletionPhase('streaming');
           setCurrentPage('error');
         }
       } catch (e: any) {
@@ -219,11 +234,12 @@ export function useAppState() {
         setResultsBackend(null);
         setErrorMessage(e?.message || 'The analysis service did not respond. Please try again.');
         setErrorType(e?.errorType || '');
+        setAnalysisCompletionPhase('streaming');
         setCurrentPage('error');
       }
       window.scrollTo(0, 0);
     })();
-  }, []);
+  }, [freshAbort]);
 
   // Use cached result — skip pipeline entirely
   const useCachedResult = useCallback(() => {
@@ -232,6 +248,7 @@ export function useAppState() {
       setResultsComputed(transformed);
       setResultsBackend({ status: 'ok', result: cachedResult });
       setFormData((prev: any) => ({ ...prev, backend: { status: 'ok', result: cachedResult } }));
+      setAnalysisCompletionPhase('revealing');
       setCurrentPage('results');
       window.scrollTo(0, 0);
     }
@@ -273,6 +290,7 @@ export function useAppState() {
   }, [formData]);
 
   const goToResults = useCallback(() => {
+    setAnalysisCompletionPhase('revealing');
     setCurrentPage('results');
     window.scrollTo(0, 0);
   }, []);
@@ -297,6 +315,16 @@ export function useAppState() {
     }
   }, [formData, submitForm]);
 
+  useEffect(() => () => {
+    if (completionTimeoutRef.current) {
+      window.clearTimeout(completionTimeoutRef.current);
+    }
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
+    abortRef.current?.abort();
+  }, []);
+
   return {
     currentPage,
     formData,
@@ -305,6 +333,8 @@ export function useAppState() {
     errorMessage,
     errorType,
     pipelineProgress,
+    analysisCompletionPhase,
+    assessmentsOptimisticDelta,
     previewData,
     previewLoading,
     cachedResult,

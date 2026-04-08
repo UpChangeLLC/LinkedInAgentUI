@@ -59,6 +59,8 @@ export function App() {
     errorMessage,
     errorType,
     pipelineProgress,
+    analysisCompletionPhase,
+    assessmentsOptimisticDelta,
     previewData,
     previewLoading,
     cachedResultAge,
@@ -68,7 +70,6 @@ export function App() {
     submitForm,
     confirmProfile,
     rejectProfile,
-    goToResults,
     goBack,
     goToLanding,
     retrySubmit
@@ -113,7 +114,12 @@ export function App() {
           )}
 
           {currentPage === 'analyzing' &&
-          <AnalyzingPage key="analyzing" onComplete={goToResults} pipelineProgress={pipelineProgress} />
+          <AnalyzingPage
+            key="analyzing"
+            pipelineProgress={pipelineProgress}
+            completionPhase={analysisCompletionPhase}
+            optimisticCounterDelta={assessmentsOptimisticDelta}
+          />
           }
 
           {currentPage === 'results' &&

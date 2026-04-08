@@ -59,6 +59,8 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
   const [showContext, setShowContext] = useState(false);
   const [clipboardUrl, setClipboardUrl] = useState('');
   const [linkedInError, setLinkedInError] = useState('');
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [consentError, setConsentError] = useState('');
 
   // Resume upload state
   const [resumeText, setResumeText] = useState('');
@@ -156,6 +158,11 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
 
     if (!isValidLinkedInUrl(normalized)) {
       setError('Please enter a valid LinkedIn profile URL (e.g. https://linkedin.com/in/your-name)');
+      return;
+    }
+
+    if (!consentChecked) {
+      setConsentError('Please confirm consent before continuing.');
       return;
     }
 
@@ -679,18 +686,34 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
               </div>
 
               <div className="pt-2">
+                <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-linkedin focus:ring-linkedin"
+                    checked={consentChecked}
+                    onChange={(e) => {
+                      setConsentChecked(e.target.checked);
+                      if (e.target.checked) setConsentError('');
+                    }}
+                  />
+                  <span className="text-xs text-gray-600 leading-relaxed">
+                    I understand this is a prototype and AI-generated output may be inaccurate.
+                    I agree this app may pull general information from my LinkedIn profile and process
+                    it through AI to generate my report.
+                  </span>
+                </label>
+                {consentError && (
+                  <p className="mt-2 text-xs text-red-600">{consentError}</p>
+                )}
                 <Button
                   type="submit"
                   fullWidth
                   size="lg"
-                  disabled={submitting}
+                  disabled={submitting || !consentChecked}
                   className="bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {submitting ? 'Submitting...' : 'Analyze My Profile'}
                 </Button>
-                <p className="mt-4 text-center text-xs text-gray-500">
-                  We only access your public profile information
-                </p>
               </div>
             </form>
 

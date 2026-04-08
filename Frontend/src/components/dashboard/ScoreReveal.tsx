@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { MockResults } from '../../data/mockResults';
 import { trackEvent } from '../../lib/analytics';
 interface ScoreRevealProps {
@@ -9,7 +9,33 @@ interface ScoreRevealProps {
 export const ScoreReveal = React.memo(function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
   const [count, setCount] = useState(0);
   const [phase, setPhase] = useState<'counting' | 'reveal' | 'done'>('counting');
+  const prefersReducedMotion = useReducedMotion();
+  const rafRef = useRef<number>(0);
+  const timersRef = useRef<number[]>([]);
+
+  const clearAnimationHandles = () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
+    timersRef.current.forEach((timer) => window.clearTimeout(timer));
+    timersRef.current = [];
+  };
+
   useEffect(() => {
+    clearAnimationHandles();
+
+    if (prefersReducedMotion) {
+      setCount(results.score);
+      setPhase('reveal');
+      const doneTimer = window.setTimeout(() => {
+        setPhase('done');
+        onComplete();
+      }, 700);
+      timersRef.current.push(doneTimer);
+      return clearAnimationHandles;
+    }
+
     // Count up animation
     const targetScore = results.score;
     const duration = 2000;
@@ -21,20 +47,26 @@ export const ScoreReveal = React.memo(function ScoreReveal({ results, onComplete
       const eased = 1 - Math.pow(1 - progress, 3);
       setCount(Math.round(eased * targetScore));
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        rafRef.current = requestAnimationFrame(animate);
       } else {
         setPhase('reveal');
         trackEvent('score_reveal_completed', { score: targetScore, watch_duration_ms: Date.now() - startTime });
-        setTimeout(() => {
+        const revealTimer = window.setTimeout(() => {
           setPhase('done');
-          setTimeout(onComplete, 800);
+          const completeTimer = window.setTimeout(onComplete, 800);
+          timersRef.current.push(completeTimer);
         }, 1500);
+        timersRef.current.push(revealTimer);
       }
     };
     // Brief pause before counting
-    const timeout = setTimeout(() => requestAnimationFrame(animate), 600);
-    return () => clearTimeout(timeout);
-  }, [results.score, onComplete]);
+    const startTimer = window.setTimeout(() => {
+      rafRef.current = requestAnimationFrame(animate);
+    }, 600);
+    timersRef.current.push(startTimer);
+
+    return clearAnimationHandles;
+  }, [results.score, onComplete, prefersReducedMotion]);
   const getRiskColor = () => {
     if (results.score >= 75) return 'from-green-400 to-emerald-500';
     if (results.score >= 50) return 'from-amber-400 to-orange-500';
@@ -137,7 +169,7 @@ export const ScoreReveal = React.memo(function ScoreReveal({ results, onComplete
             
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-6xl md:text-7xl font-extrabold text-white tabular-nums">
+            <span className="text-6xl md:text-7xl font-extrabold text-white tabular-nums" aria-live="polite" aria-label={`Score ${count}`}>
               {count}
             </span>
           </div>
