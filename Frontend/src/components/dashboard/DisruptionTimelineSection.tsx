@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Shield, ChevronDown } from 'lucide-react';
 import { Card } from '../ui/Card';
@@ -15,7 +15,7 @@ const IMPACT_CONFIG = {
   low: { color: 'bg-dark-green', text: 'text-dark-green', bg: 'bg-dark-green/10', label: 'Low Risk', dot: '#34D399' },
 };
 
-export function DisruptionTimelineSection({ items, roleName }: DisruptionTimelineSectionProps) {
+export const DisruptionTimelineSection = React.memo(function DisruptionTimelineSection({ items, roleName }: DisruptionTimelineSectionProps) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   if (!items.length) return null;
@@ -185,4 +185,4 @@ export function DisruptionTimelineSection({ items, roleName }: DisruptionTimelin
       </Card>
     </div>
   );
-}
+});

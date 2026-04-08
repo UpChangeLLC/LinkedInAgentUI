@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { Card } from '../ui/Card';
@@ -23,7 +23,7 @@ interface Props {
   urlHash: string;
 }
 
-export function AssessmentHistorySection({ urlHash }: Props) {
+export const AssessmentHistorySection = React.memo(function AssessmentHistorySection({ urlHash }: Props) {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [trajectory, setTrajectory] = useState<Trajectory | null>(null);
   const [loading, setLoading] = useState(true);
@@ -364,4 +364,4 @@ export function AssessmentHistorySection({ urlHash }: Props) {
       )}
     </div>
   );
-}
+});

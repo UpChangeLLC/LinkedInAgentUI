@@ -78,7 +78,7 @@ function maturityPercentage(items: GovernanceItem[]): number {
 
 /* -- Main component --------------------------------------------- */
 
-export function GovernanceSection({ results }: GovernanceSectionProps) {
+export const GovernanceSection = React.memo(function GovernanceSection({ results }: GovernanceSectionProps) {
   const [selectedItem, setSelectedItem] = useState<GovernanceItem | null>(null);
   const items = results.governanceItems;
   const maturity = maturityLabel(items);
@@ -144,9 +144,9 @@ export function GovernanceSection({ results }: GovernanceSectionProps) {
 
         {/* Grid */}
         <div className="overflow-x-auto">
-          <div className="min-w-[480px]">
+          <div>
             {/* Column headers */}
-            <div className="grid grid-cols-[100px_1fr_1fr_1fr] gap-2 mb-2">
+            <div className="grid grid-cols-2 md:grid-cols-[100px_1fr_1fr_1fr] gap-2 mb-2">
               <div /> {/* Corner */}
               {STATUS_ORDER.map(s => (
                 <div key={s} className="text-center">
@@ -160,7 +160,7 @@ export function GovernanceSection({ results }: GovernanceSectionProps) {
 
             {/* Rows */}
             {RISK_ORDER.map(risk => (
-              <div key={risk} className="grid grid-cols-[100px_1fr_1fr_1fr] gap-2 mb-2">
+              <div key={risk} className="grid grid-cols-2 md:grid-cols-[100px_1fr_1fr_1fr] gap-2 mb-2">
                 {/* Row label */}
                 <div className="flex items-center justify-end pr-2">
                   <span className={`text-xs font-bold px-2 py-1 rounded border uppercase tracking-wider ${riskColors[risk]}`}>
@@ -186,7 +186,7 @@ export function GovernanceSection({ results }: GovernanceSectionProps) {
                       {hasItems ? (
                         <div className="text-center p-2">
                           <p className="text-xs font-bold leading-tight">{cellItems.length} control{cellItems.length > 1 ? 's' : ''}</p>
-                          <p className="text-[10px] opacity-80 mt-0.5 leading-tight truncate max-w-[120px]">
+                          <p className="text-sm md:text-xs opacity-80 mt-0.5 leading-tight truncate max-w-[120px]">
                             {cellItems.map(i => i.control).join(', ')}
                           </p>
                         </div>
@@ -289,7 +289,7 @@ export function GovernanceSection({ results }: GovernanceSectionProps) {
       </div>
     </div>
   );
-}
+});
 
 /* -- Detail card (shown when heatmap cell is clicked) ------------ */
 

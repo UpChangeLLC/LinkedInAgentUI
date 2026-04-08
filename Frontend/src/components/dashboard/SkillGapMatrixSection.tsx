@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ExternalLink } from 'lucide-react';
 import { Card } from '../ui/Card';
@@ -14,7 +14,7 @@ const CATEGORY_CONFIG: Record<string, { color: string; label: string }> = {
   foundational: { color: '#64748B', label: 'Foundational' },
 };
 
-export function SkillGapMatrixSection({ skills }: SkillGapMatrixSectionProps) {
+export const SkillGapMatrixSection = React.memo(function SkillGapMatrixSection({ skills }: SkillGapMatrixSectionProps) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   if (!skills.length) return null;
@@ -43,8 +43,8 @@ export function SkillGapMatrixSection({ skills }: SkillGapMatrixSectionProps) {
 
       <Card className="overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-[40px_1fr_140px_140px_80px] gap-2 px-5 py-3 border-b border-dark-border text-[11px] font-semibold text-dark-textMuted uppercase tracking-wider">
-          <span>#</span>
+        <div className="grid grid-cols-[1fr_80px_80px_60px] md:grid-cols-[40px_1fr_140px_140px_80px] gap-2 px-5 py-3 border-b border-dark-border text-sm md:text-[11px] font-semibold text-dark-textMuted uppercase tracking-wider">
+          <span className="hidden md:block">#</span>
           <span>Skill</span>
           <span>Your Level</span>
           <span>Market Need</span>
@@ -68,10 +68,10 @@ export function SkillGapMatrixSection({ skills }: SkillGapMatrixSectionProps) {
             >
               <button
                 onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                className="w-full text-left grid grid-cols-[40px_1fr_140px_140px_80px] gap-2 items-center px-5 py-3.5 border-b border-dark-border hover:bg-dark-elevated/50 transition-colors"
+                className="w-full text-left grid grid-cols-[1fr_80px_80px_60px] md:grid-cols-[40px_1fr_140px_140px_80px] gap-2 items-center px-5 py-3.5 border-b border-dark-border hover:bg-dark-elevated/50 transition-colors"
               >
                 {/* Row number */}
-                <span className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold bg-dark-accentDim text-dark-accent">
+                <span className="hidden md:flex w-6 h-6 rounded items-center justify-center text-xs font-bold bg-dark-accentDim text-dark-accent">
                   {idx + 1}
                 </span>
 
@@ -174,4 +174,4 @@ export function SkillGapMatrixSection({ skills }: SkillGapMatrixSectionProps) {
       </Card>
     </div>
   );
-}
+});

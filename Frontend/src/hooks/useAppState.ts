@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { mockResults } from '../data/mockResults';
 import { streamAnalysis, mcpRun, previewProfile, fetchCachedResult } from '../lib/mcp';
 import type { PipelineEvent, ProfilePreview } from '../lib/mcp';
@@ -38,11 +38,30 @@ export function useAppState() {
   const [resultsBackend, setResultsBackend] = useState<any>(null);
   const [resultsComputed, setResultsComputed] = useState<MockResults>(mockResults);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorType, setErrorType] = useState<string>('');
   const [pipelineProgress, setPipelineProgress] = useState<PipelineProgress>(INITIAL_PROGRESS);
   const [previewData, setPreviewData] = useState<ProfilePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [cachedResult, setCachedResult] = useState<any>(null);
   const [cachedResultAge, setCachedResultAge] = useState<string | null>(null);
+
+  // AbortController for request deduplication — cancels previous in-flight request
+  const abortRef = useRef<AbortController | null>(null);
+  // SSE event throttle refs — batch events via requestAnimationFrame
+  const pendingEventsRef = useRef<PipelineEvent[]>([]);
+  const rafIdRef = useRef<number>(0);
+  const freshAbort = useCallback(() => {
+    // Cancel any pending RAF when aborting
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = 0;
+      pendingEventsRef.current = [];
+    }
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    return ac;
+  }, []);
 
   const goToIntake = useCallback(() => {
     setCurrentPage('intake');
@@ -51,6 +70,7 @@ export function useAppState() {
 
   // Submit form: check cache first, then fetch preview or show confirmation
   const submitForm = useCallback((data: any) => {
+    const ac = freshAbort();
     setFormData(data);
     setPreviewLoading(true);
     setErrorMessage('');
@@ -68,35 +88,40 @@ export function useAppState() {
     };
 
     (async () => {
-      // Check for cached results first
-      if (linkedinUrl) {
-        try {
-          const urlHash = await hashLinkedInUrl(linkedinUrl);
-          const cached = await fetchCachedResult(urlHash);
-          if (cached.status === 'hit' && cached.result) {
-            setCachedResult(cached.result);
-            setCachedResultAge(cached.created_at || null);
-            setPreviewLoading(false);
-            setCurrentPage('cached-prompt');
-            return;
-          }
-        } catch {
-          // Cache check failed, proceed with normal flow
-        }
-      }
-
-      // No cache hit — proceed with preview
-      setCurrentPage('previewing');
       try {
-        const preview = await previewProfile(payload);
-        setPreviewData(preview);
-        setPreviewLoading(false);
+        // Check for cached results first
+        if (linkedinUrl) {
+          try {
+            const urlHash = await hashLinkedInUrl(linkedinUrl);
+            const cached = await fetchCachedResult(urlHash);
+            if (cached.status === 'hit' && cached.result) {
+              setCachedResult(cached.result);
+              setCachedResultAge(cached.created_at || null);
+              setPreviewLoading(false);
+              setCurrentPage('cached-prompt');
+              return;
+            }
+          } catch {
+            // Cache check failed, proceed with normal flow
+          }
+        }
+
+        // No cache hit — proceed with preview
+        setCurrentPage('previewing');
+        try {
+          const preview = await previewProfile(payload, ac.signal);
+          setPreviewData(preview);
+          setPreviewLoading(false);
+        } catch (e: any) {
+          if (e?.name === 'AbortError') return; // Intentional cancellation
+          // If preview fails, skip directly to full analysis
+          console.warn('Preview failed, skipping to full analysis:', e?.message);
+          setPreviewData(null);
+          setPreviewLoading(false);
+          startFullAnalysis(data);
+        }
       } catch (e: any) {
-        // If preview fails, skip directly to full analysis
-        console.warn('Preview failed, skipping to full analysis:', e?.message);
-        setPreviewData(null);
-        setPreviewLoading(false);
-        startFullAnalysis(data);
+        if (e?.name === 'AbortError') return; // Intentional cancellation
       }
     })();
   }, []);
@@ -115,6 +140,7 @@ export function useAppState() {
 
   // Run the full pipeline (SSE streaming)
   const startFullAnalysis = useCallback((data: any) => {
+    const ac = freshAbort();
     setCurrentPage('analyzing');
     setErrorMessage('');
     setPipelineProgress(INITIAL_PROGRESS);
@@ -134,21 +160,34 @@ export function useAppState() {
     (async () => {
       try {
         const resp = await streamAnalysis(payload, (event: PipelineEvent) => {
-          setPipelineProgress((prev) => {
-            const newEvents = [...prev.events, event];
-            const partialData = event.partial_result && Object.keys(event.partial_result).length > 0
-              ? { ...prev.partialData, ...event.partial_result }
-              : prev.partialData;
-            return {
-              progress: event.progress || prev.progress,
-              currentNode: event.node || prev.currentNode,
-              message: event.info || prev.message,
-              events: newEvents,
-              partialData,
-              elapsedMs: Date.now() - startTime,
-            };
-          });
-        });
+          // Buffer events and flush via requestAnimationFrame to avoid render thrashing
+          pendingEventsRef.current.push(event);
+          if (!rafIdRef.current) {
+            rafIdRef.current = requestAnimationFrame(() => {
+              const batch = pendingEventsRef.current;
+              pendingEventsRef.current = [];
+              rafIdRef.current = 0;
+              if (batch.length === 0) return;
+              setPipelineProgress((prev) => {
+                let events = prev.events;
+                let partialData = prev.partialData;
+                let progress = prev.progress;
+                let currentNode = prev.currentNode;
+                let message = prev.message;
+                for (const evt of batch) {
+                  events = [...events, evt];
+                  if (evt.partial_result && Object.keys(evt.partial_result).length > 0) {
+                    partialData = { ...partialData, ...evt.partial_result };
+                  }
+                  progress = evt.progress || progress;
+                  currentNode = evt.node || currentNode;
+                  message = evt.info || message;
+                }
+                return { progress, currentNode, message, events, partialData, elapsedMs: Date.now() - startTime };
+              });
+            });
+          }
+        }, ac.signal);
 
         if (resp?.status === 'ok') {
           setResultsBackend(resp);
@@ -163,8 +202,10 @@ export function useAppState() {
           setCurrentPage('error');
         }
       } catch (e: any) {
+        if (e?.name === 'AbortError') return; // Intentional cancellation
         setResultsBackend(null);
         setErrorMessage(e?.message || 'The analysis service did not respond. Please try again.');
+        setErrorType(e?.errorType || '');
         setCurrentPage('error');
       }
       window.scrollTo(0, 0);
@@ -185,6 +226,7 @@ export function useAppState() {
 
   // Skip cache — run fresh analysis via normal preview flow
   const skipCachedResult = useCallback(() => {
+    const ac = freshAbort();
     setCachedResult(null);
     setCachedResultAge(null);
     setPreviewLoading(true);
@@ -201,10 +243,11 @@ export function useAppState() {
 
     (async () => {
       try {
-        const preview = await previewProfile(payload);
+        const preview = await previewProfile(payload, ac.signal);
         setPreviewData(preview);
         setPreviewLoading(false);
       } catch (e: any) {
+        if (e?.name === 'AbortError') return; // Intentional cancellation
         console.warn('Preview failed, skipping to full analysis:', e?.message);
         setPreviewData(null);
         setPreviewLoading(false);
@@ -244,6 +287,7 @@ export function useAppState() {
     results: resultsComputed,
     resultsBackend,
     errorMessage,
+    errorType,
     pipelineProgress,
     previewData,
     previewLoading,

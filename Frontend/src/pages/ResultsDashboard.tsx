@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+// Menu and X icons removed — mobile uses BottomTabBar instead of hamburger sidebar
 import { LinkedInNav } from '../components/ui/LinkedInNav';
 import { Sidebar } from '../components/dashboard/Sidebar';
 import { PersonalOverviewSection } from '../components/dashboard/PersonalOverviewSection';
@@ -11,6 +11,7 @@ import { PeerBenchmarkSection } from '../components/dashboard/PeerBenchmarkSecti
 import { ChallengeColleagueSection } from '../components/dashboard/ChallengeColleagueSection';
 import { ScoreReveal } from '../components/dashboard/ScoreReveal';
 import { StickyShareBar } from '../components/dashboard/StickyShareBar';
+import { BottomTabBar } from '../components/dashboard/BottomTabBar';
 import { SkillGapMatrixSection } from '../components/dashboard/SkillGapMatrixSection';
 import { DisruptionTimelineSection } from '../components/dashboard/DisruptionTimelineSection';
 import { CareerPathwaysSection } from '../components/dashboard/CareerPathwaysSection';
@@ -160,21 +161,9 @@ export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDas
 
 
           <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-            {/* Mobile Header Toggle */}
-            <button
-              className="lg:hidden absolute top-4 right-4 z-40 p-2 bg-dark-card rounded-md border border-dark-border text-dark-textSec"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-
-              {isSidebarOpen ?
-                <X className="w-6 h-6" /> :
-
-                <Menu className="w-6 h-6" />
-              }
-            </button>
-
             {/* Main Content Area */}
             <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 scroll-smooth">
-              <div className="max-w-5xl mx-auto space-y-8 pb-28">
+              <div className="max-w-5xl mx-auto space-y-8 pb-36 lg:pb-28">
                 {/* Backend Executive Summary (if available) */}
                 {formData?.backend?.result && (
                   <div className="mb-6 p-4 rounded-md border border-dark-accent/20 bg-dark-accentDim">
@@ -233,10 +222,15 @@ export function ResultsDashboard({ results, formData, onBackToHome }: ResultsDas
           </div>
         </div>
 
-        {/* Sticky Share Bar */}
+        {/* Sticky Share Bar — hidden on mobile when bottom tab bar is shown */}
         {!showReveal && activeSection !== 'share' &&
-          <StickyShareBar results={results} />
+          <div className="hidden lg:block">
+            <StickyShareBar results={results} />
+          </div>
         }
+
+        {/* Mobile Bottom Tab Bar */}
+        <BottomTabBar activeSection={activeSection} onNavigate={setActiveSection} />
       </div>
     </>);
 

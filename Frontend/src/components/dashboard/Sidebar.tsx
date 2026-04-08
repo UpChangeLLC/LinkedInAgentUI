@@ -24,7 +24,7 @@ interface SidebarProps {
   results: MockResults;
   onBackToHome?: () => void;
 }
-export function Sidebar({
+export const Sidebar = React.memo(function Sidebar({
   activeSection,
   onNavigate,
   isOpen,
@@ -92,20 +92,9 @@ export function Sidebar({
   const menuItems = personalItems;
   return (
     <>
-      {/* Mobile Overlay */}
-      {isOpen &&
-      <div
-        className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-        onClick={onClose} />
-
-      }
-
-      {/* Sidebar */}
+      {/* Sidebar — hidden on mobile, always visible on lg+ */}
       <aside
-        className={clsx(
-          'fixed top-0 left-0 h-full w-64 bg-dark-sidebar border-r border-dark-border z-50 transition-transform duration-300 lg:translate-x-0 lg:static flex flex-col',
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        )}>
+        className="hidden lg:flex fixed top-0 left-0 h-full w-64 bg-dark-sidebar border-r border-dark-border z-50 lg:translate-x-0 lg:static flex-col">
 
         <div className="p-6 border-b border-dark-border">
           <div className="flex items-center gap-3">
@@ -184,4 +173,4 @@ export function Sidebar({
       </aside>
     </>);
 
-}
+});

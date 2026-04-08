@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarPlus, Download, Check } from 'lucide-react';
 import { Card } from '../ui/Card';
@@ -46,7 +46,7 @@ function downloadICS(content: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ReAssessmentScheduler({ assessmentUrl }: Props) {
+export const ReAssessmentScheduler = React.memo(function ReAssessmentScheduler({ assessmentUrl }: Props) {
   const [selectedDays, setSelectedDays] = useState<number | null>(null);
   const [downloaded, setDownloaded] = useState(false);
 
@@ -152,4 +152,4 @@ export function ReAssessmentScheduler({ assessmentUrl }: Props) {
       )}
     </Card>
   );
-}
+});

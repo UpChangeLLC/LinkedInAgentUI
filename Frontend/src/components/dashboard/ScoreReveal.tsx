@@ -6,7 +6,7 @@ interface ScoreRevealProps {
   results: MockResults;
   onComplete: () => void;
 }
-export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
+export const ScoreReveal = React.memo(function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
   const [count, setCount] = useState(0);
   const [phase, setPhase] = useState<'counting' | 'reveal' | 'done'>('counting');
   useEffect(() => {
@@ -215,4 +215,4 @@ export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
       </div>
     </motion.div>);
 
-}
+});

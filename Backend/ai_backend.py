@@ -17,6 +17,7 @@ import os
 import re
 import sys
 from urllib.parse import urlparse
+import hashlib
 from hashlib import sha1
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
@@ -280,7 +281,7 @@ async def _apify_get_dataset_items(dataset_id: str, token: str) -> List[Dict[str
     """Read items from an Apify dataset."""
     url = f"https://api.apify.com/v2/datasets/{dataset_id}/items"
     params = {"token": token, "clean": "true"}
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=45.0) as client:
         response = await client.get(url, params=params)
         response.raise_for_status()
         payload = response.json()
@@ -296,10 +297,10 @@ async def _apify_run_actor(actor_id: str, token: str, run_input: Dict[str, Any])
         variants.append(actor_id.replace("~", "/", 1))
 
     last_error = ""
-    params = {"token": token, "waitForFinish": 120}
+    params = {"token": token, "waitForFinish": 45}
     for candidate in variants:
         url = f"https://api.apify.com/v2/acts/{candidate}/runs"
-        async with httpx.AsyncClient(timeout=180.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(url, params=params, json=run_input)
         if response.is_success:
             return response.json().get("data", {})
@@ -482,7 +483,17 @@ async def call_web_search_tool(query: str) -> str:
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 async def llm_json_completion(system_prompt: str, user_prompt: str) -> Dict[str, Any]:
-    """Call selected AI provider and return parsed JSON."""
+    """Call selected AI provider and return parsed JSON.
+
+    Protected by a circuit breaker that fast-fails after 3 consecutive errors
+    to prevent users from waiting 30s+ for retries when the provider is down.
+    """
+    from services.circuit_breaker import llm_breaker
+    return await llm_breaker.call(_llm_json_completion_inner, system_prompt, user_prompt)
+
+
+async def _llm_json_completion_inner(system_prompt: str, user_prompt: str) -> Dict[str, Any]:
+    """Internal LLM completion — called through circuit breaker."""
     provider, client = get_selected_ai_client()
     model = get_selected_model(provider)
     logger.info("LLM call: provider=%s model=%s sys_prompt_len=%d user_prompt_len=%d",
@@ -882,12 +893,18 @@ async def extract_profiles_node(state: AnalysisGraphState) -> AnalysisGraphState
     linkedin_raw = state.get("linkedin_raw", "")
     resume_text = state.get("resume_text", "")
 
-    if linkedin_raw:
+    # Parallelize extraction when both sources available
+    if linkedin_raw and resume_text:
+        linkedin_profile, resume_profile = await asyncio.gather(
+            extract_profile_structured(state.get("linkedin_source", "linkedin"), linkedin_raw),
+            extract_profile_structured("resume", resume_text),
+        )
+    elif linkedin_raw:
         linkedin_profile = await extract_profile_structured(
             state.get("linkedin_source", "linkedin"),
             linkedin_raw,
         )
-    if resume_text:
+    elif resume_text:
         resume_profile = await extract_profile_structured("resume", resume_text)
     next_state = {
         **state,
@@ -939,13 +956,47 @@ def route_after_merge(state: AnalysisGraphState) -> Literal["error_node", "analy
 async def analyze_node_graph(state: AnalysisGraphState) -> AnalysisGraphState:
     """Run final scoring/risk/recommendation analysis."""
     from services.score_calibration import calibrate_score
+    from cache import cache_get_json, cache_set_json
 
+    ANALYSIS_CACHE_VERSION = "v2"
     start_time = asyncio.get_running_loop().time()
+
+    # Check for cached LLM analysis result (24h TTL)
+    linkedin_url = state.get("linkedin_url", "")
+    cache_key = ""
+    if linkedin_url:
+        url_hash = hashlib.sha256(linkedin_url.strip().lower().encode()).hexdigest()[:16]
+        cache_key = f"analysis:{url_hash}:{ANALYSIS_CACHE_VERSION}"
+        try:
+            cached = await cache_get_json(cache_key)
+            if cached:
+                logger.info("LLM analysis cache hit for %s", cache_key)
+                result = calibrate_score(cached, merged_profile=state.get("merged_profile", {}))
+                next_state = {**state, "result": result}
+                return _append_trace(
+                    next_state,
+                    step="analyze_node_graph",
+                    start_time=start_time,
+                    success=True,
+                    info="analysis_complete (cached)",
+                )
+        except Exception:
+            logger.warning("Analysis cache lookup failed, proceeding with fresh LLM call")
+
     result = await analyze_profile(
         merged_profile=state.get("merged_profile", {}),
         data_source=state.get("data_source", "none"),
         user_context=state.get("user_context"),
     )
+
+    # Cache the raw LLM result (before calibration) for 24 hours
+    if cache_key:
+        try:
+            await cache_set_json(cache_key, result, ttl_seconds=86400)
+            logger.info("Cached LLM analysis result at %s", cache_key)
+        except Exception:
+            logger.warning("Failed to cache analysis result")
+
     # Post-LLM score calibration
     result = calibrate_score(result, merged_profile=state.get("merged_profile", {}))
     next_state = {**state, "result": result}

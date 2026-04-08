@@ -12,7 +12,7 @@ import { Card } from '../ui/Card';
 import { EXTERNAL_LINKS } from '../../lib/config';
 import { Badge } from '../ui/Badge';
 import { ReAssessmentScheduler } from './ReAssessmentScheduler';
-export function NextStepsSection() {
+export const NextStepsSection = React.memo(function NextStepsSection() {
   return (
     <div className="space-y-8">
       {/* Re-Assessment Scheduler */}
@@ -222,4 +222,4 @@ export function NextStepsSection() {
       </div>
     </div>);
 
-}
+});

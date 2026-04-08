@@ -65,9 +65,15 @@ export interface ProfilePreview {
     data_source: string
 }
 
-export async function previewProfile(payload: McpRunPayload): Promise<ProfilePreview> {
+export async function previewProfile(
+    payload: McpRunPayload,
+    externalSignal?: AbortSignal,
+): Promise<ProfilePreview> {
     const env = (import.meta as any).env || {}
     const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? ''
+    const signals: AbortSignal[] = [timeoutSignal(PREVIEW_TIMEOUT_MS)]
+    if (externalSignal) signals.push(externalSignal)
+    const signal = signals.length > 1 ? AbortSignal.any(signals) : signals[0]
     const res = await fetch(`${String(baseUrl).replace(/\/+$/, '')}/mcp/preview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,16 +81,20 @@ export async function previewProfile(payload: McpRunPayload): Promise<ProfilePre
             linkedin_url: payload.linkedin_url ?? '',
             resume_text: payload.resume_text ?? '',
         }),
-        signal: timeoutSignal(PREVIEW_TIMEOUT_MS),
+        signal,
     })
     if (!res.ok) {
         const text = await res.text().catch(() => '')
         let message = `HTTP ${res.status}`
+        let errorType = ''
         try {
             const parsed = JSON.parse(text)
             message = parsed?.detail?.message || parsed?.detail || message
+            errorType = parsed?.detail?.error_type || ''
         } catch { /* use default */ }
-        throw new Error(message)
+        const err: any = new Error(message)
+        err.errorType = errorType
+        throw err
     }
     const json = await res.json()
     if (json.status !== 'ok' || !json.preview) {
@@ -114,12 +124,16 @@ export interface PipelineEvent {
 export async function streamAnalysis(
     payload: McpRunPayload,
     onEvent: (event: PipelineEvent) => void,
+    externalSignal?: AbortSignal,
 ): Promise<AgentRunResponse> {
     const env = (import.meta as any).env || {}
     const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? ''
     const url = `${String(baseUrl).replace(/\/+$/, '')}/mcp/run/stream`
 
     try {
+        const signals: AbortSignal[] = [timeoutSignal(SSE_TIMEOUT_MS)]
+        if (externalSignal) signals.push(externalSignal)
+        const signal = signals.length > 1 ? AbortSignal.any(signals) : signals[0]
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -128,7 +142,7 @@ export async function streamAnalysis(
                 resume_text: payload.resume_text ?? '',
                 ...(payload.user_context ? { user_context: payload.user_context } : {}),
             }),
-            signal: timeoutSignal(SSE_TIMEOUT_MS),
+            signal,
         })
 
         if (!res.ok) {
@@ -183,8 +197,11 @@ export async function streamAnalysis(
         // If we got here without a result, fall back
         throw new Error('SSE stream ended without result')
     } catch (err: any) {
-        // Fallback to polling if SSE fails to connect
+        // Re-throw abort errors (intentional cancellation — don't fallback)
+        if (err?.name === 'AbortError') throw err
+        // Re-throw pipeline errors
         if (err?.message?.includes('Pipeline')) throw err
+        // Fallback to polling if SSE fails to connect
         console.warn('SSE stream failed, falling back to polling:', err?.message)
         return mcpRun(payload)
     }

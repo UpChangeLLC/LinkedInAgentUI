@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink, Newspaper, Globe, Linkedin, BookOpen, RefreshCw } from 'lucide-react';
 import { Card } from '../ui/Card';
@@ -32,7 +32,7 @@ const SOURCE_COLORS: Record<string, string> = {
   'LinkedIn News': 'bg-dark-accentDim text-dark-accent',
 };
 
-export function AINewsFeedSection({ role, industry, topSkillGaps }: Props) {
+export const AINewsFeedSection = React.memo(function AINewsFeedSection({ role, industry, topSkillGaps }: Props) {
   const [links, setLinks] = useState<NewsLink[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,4 +147,4 @@ export function AINewsFeedSection({ role, industry, topSkillGaps }: Props) {
       )}
     </div>
   );
-}
+});

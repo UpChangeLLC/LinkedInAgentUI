@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Clock, TrendingUp } from 'lucide-react';
 import { Card } from '../ui/Card';
@@ -15,7 +15,7 @@ const DIFFICULTY_CONFIG = {
   challenging: { label: 'Challenging', color: 'text-dark-red bg-dark-red/10' },
 };
 
-export function CareerPathwaysSection({ pathways, currentRole }: CareerPathwaysSectionProps) {
+export const CareerPathwaysSection = React.memo(function CareerPathwaysSection({ pathways, currentRole }: CareerPathwaysSectionProps) {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   if (!pathways.length) return null;
@@ -157,4 +157,4 @@ export function CareerPathwaysSection({ pathways, currentRole }: CareerPathwaysS
       </div>
     </div>
   );
-}
+});

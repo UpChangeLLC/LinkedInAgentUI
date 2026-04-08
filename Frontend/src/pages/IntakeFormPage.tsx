@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -57,6 +57,7 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const [showContext, setShowContext] = useState(false);
+  const [clipboardUrl, setClipboardUrl] = useState('');
 
   // Resume upload state
   const [resumeText, setResumeText] = useState('');
@@ -101,6 +102,35 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
       return !!url.hostname && url.hostname.includes('.');
     } catch {
       return false;
+    }
+  };
+
+  // F17: URL pre-fill via query parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const linkedinParam = params.get('linkedin_url');
+    if (linkedinParam && isValidLinkedInUrl(linkedinParam)) {
+      setLinkedinUrl(linkedinParam);
+    }
+  }, []);
+
+  // F18: Clipboard detection — check for LinkedIn URL on input focus
+  const handleUrlFocus = async () => {
+    if (!navigator.clipboard?.readText) return;
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (clip && isValidLinkedInUrl(clip) && clip !== linkedinUrl) {
+        setClipboardUrl(clip);
+      }
+    } catch {
+      // Clipboard permission denied — silently ignore
+    }
+  };
+
+  const applyClipboardUrl = () => {
+    if (clipboardUrl) {
+      setLinkedinUrl(clipboardUrl);
+      setClipboardUrl('');
     }
   };
 
@@ -206,11 +236,30 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
                     className={`block w-full pl-10 pr-3 py-4 border ${error ? 'border-red-300' : 'border-gray-300'} rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-linkedin focus:ring-1 focus:ring-linkedin sm:text-lg transition duration-150 ease-in-out`}
                     placeholder="https://linkedin.com/in/your-profile"
                     value={linkedinUrl}
+                    onFocus={handleUrlFocus}
                     onChange={(e) => {
                       setLinkedinUrl(e.target.value);
+                      setClipboardUrl('');
                       if (error) setError('');
                     }}
                   />
+                  {/* F18: Clipboard URL detected toast */}
+                  {clipboardUrl && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2"
+                    >
+                      <button
+                        type="button"
+                        onClick={applyClipboardUrl}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-linkedin text-white text-xs font-medium rounded-md hover:bg-[#004182] transition-colors"
+                      >
+                        <Linkedin className="w-3.5 h-3.5" />
+                        Paste URL
+                      </button>
+                    </motion.div>
+                  )}
                   {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
                   {urlCorrections.length > 0 && !error && (
                     <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
@@ -253,8 +302,9 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
                       <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
                         <div className="flex items-start justify-between mb-3">
                           <p className="text-sm text-gray-600 font-medium">
-                            Go to your LinkedIn profile and copy the URL from
-                            your browser's address bar:
+                            {/* Mobile: LinkedIn app instructions, Desktop: browser instructions */}
+                            <span className="hidden md:inline">Go to your LinkedIn profile and copy the URL from your browser's address bar:</span>
+                            <span className="md:hidden">Find your URL in the LinkedIn app:</span>
                           </p>
                           <button
                             type="button"
@@ -264,7 +314,9 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
                             <X className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
+
+                        {/* Desktop: browser address bar mockup */}
+                        <div className="hidden md:block rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
                           <div className="bg-gray-100 px-3 py-2 flex items-center gap-2 border-b border-gray-200">
                             <div className="flex gap-1.5">
                               <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
@@ -289,34 +341,62 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
                             </div>
                           </div>
                         </div>
-                        <div className="mt-3 flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-linkedin text-[10px] font-bold">1</span>
+
+                        {/* Desktop steps */}
+                        <div className="hidden md:block">
+                          <div className="mt-3 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">1</span>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Open LinkedIn and go to your profile page
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500">
-                            Open LinkedIn and go to your profile page
-                          </p>
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">2</span>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Copy the full URL from your browser address bar (it looks like{' '}
+                              <span className="font-mono text-gray-700">linkedin.com/in/your-name</span>)
+                            </p>
+                          </div>
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">3</span>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Paste it in the field above
+                            </p>
+                          </div>
                         </div>
-                        <div className="mt-2 flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-linkedin text-[10px] font-bold">2</span>
+
+                        {/* Mobile steps — LinkedIn app flow */}
+                        <div className="md:hidden">
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">1</span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              Open the <strong>LinkedIn app</strong> and tap your profile photo
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500">
-                            Copy the full URL from your browser address bar (it
-                            looks like{' '}
-                            <span className="font-mono text-gray-700">
-                              linkedin.com/in/your-name
-                            </span>
-                            )
-                          </p>
-                        </div>
-                        <div className="mt-2 flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-linkedin text-[10px] font-bold">3</span>
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">2</span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              Tap the <strong>&#8943; (more)</strong> button, then <strong>"Copy link"</strong>
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500">
-                            Paste it in the field above
-                          </p>
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">3</span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              Come back here and <strong>paste</strong> in the field above
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -615,19 +695,19 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
               </div>
             </div>
 
-            {/* LinkedIn Login Option — Coming Soon */}
+            {/* LinkedIn OAuth — Connect directly */}
             <button
-              disabled
-              className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border border-gray-200 rounded-lg opacity-50 cursor-not-allowed"
+              type="button"
+              onClick={() => { window.location.href = '/auth/linkedin'; }}
+              className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border border-[#0A66C2] rounded-lg hover:bg-[#0A66C2]/5 transition-colors"
             >
               <Linkedin className="w-5 h-5 text-[#0A66C2]" />
-              <span className="text-gray-700 font-medium">
-                Sign in with LinkedIn
+              <span className="text-[#0A66C2] font-medium">
+                Connect with LinkedIn
               </span>
-              <span className="text-xs text-gray-400 ml-1">(Coming Soon)</span>
             </button>
             <p className="mt-3 text-center text-xs text-gray-400">
-              Don't know your profile URL? LinkedIn sign-in is coming soon.
+              We only access your public profile URL — no posts, connections, or messages.
             </p>
           </Card>
         </div>

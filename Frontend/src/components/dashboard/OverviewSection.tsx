@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { ScoreGauge } from '../ui/ScoreGauge';
 import { Card } from '../ui/Card';
@@ -12,7 +13,7 @@ interface OverviewSectionProps {
   results: MockResults;
 }
 
-export function OverviewSection({ results }: OverviewSectionProps) {
+export const OverviewSection = React.memo(function OverviewSection({ results }: OverviewSectionProps) {
   const {
     executiveBrief,
     companyAnalysis,
@@ -242,4 +243,4 @@ export function OverviewSection({ results }: OverviewSectionProps) {
       </div>
     </div>
   );
-}
+});

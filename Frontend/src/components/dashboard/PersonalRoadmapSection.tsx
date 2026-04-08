@@ -13,7 +13,7 @@ import { Badge } from '../ui/Badge';
 interface PersonalRoadmapSectionProps {
   results: MockResults;
 }
-export function PersonalRoadmapSection({
+export const PersonalRoadmapSection = React.memo(function PersonalRoadmapSection({
   results
 }: PersonalRoadmapSectionProps) {
   const { careerRecommendations } = results.personalRisk;
@@ -163,4 +163,4 @@ export function PersonalRoadmapSection({
       </a>
     </div>);
 
-}
+});
