@@ -9,7 +9,7 @@ interface StickyShareBarProps {
   results: MockResults;
 }
 
-export function StickyShareBar({ results }: StickyShareBarProps) {
+export const StickyShareBar = React.memo(function StickyShareBar({ results }: StickyShareBarProps) {
   const [dismissed, setDismissed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -115,4 +115,4 @@ export function StickyShareBar({ results }: StickyShareBarProps) {
       }
     </AnimatePresence>
   );
-}
+});

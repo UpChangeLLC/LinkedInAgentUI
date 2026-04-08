@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '../ui/Card';
 import { Trophy, Medal, Award } from 'lucide-react';
@@ -40,7 +41,7 @@ function getScoreColor(score: number): string {
   return 'bg-red-500';
 }
 
-export function TeamLeaderboard({ teamName, members, stats, currentUrlHash }: TeamLeaderboardProps) {
+export const TeamLeaderboard = React.memo(function TeamLeaderboard({ teamName, members, stats, currentUrlHash }: TeamLeaderboardProps) {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -107,4 +108,4 @@ export function TeamLeaderboard({ teamName, members, stats, currentUrlHash }: Te
       </div>
     </Card>
   );
-}
+});

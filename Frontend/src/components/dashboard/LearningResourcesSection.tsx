@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '../ui/Card';
 import { ExternalLink, Star, Filter, BookOpen } from 'lucide-react';
 import type { SkillGapItem } from '../../data/mockResults';
@@ -94,7 +94,7 @@ function clientSideMatch(
     .sort((a, b) => b.relevance_score - a.relevance_score);
 }
 
-export function LearningResourcesSection({ skills }: LearningResourcesSectionProps) {
+export const LearningResourcesSection = React.memo(function LearningResourcesSection({ skills }: LearningResourcesSectionProps) {
   const [resources, setResources] = useState<LearningResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [costFilter, setCostFilter] = useState<'all' | 'free' | 'paid'>('all');
@@ -307,4 +307,4 @@ export function LearningResourcesSection({ skills }: LearningResourcesSectionPro
       )}
     </div>
   );
-}
+});

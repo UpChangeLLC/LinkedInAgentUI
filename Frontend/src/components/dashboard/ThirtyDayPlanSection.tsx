@@ -6,7 +6,7 @@ import { Calendar, CheckSquare, UserCircle, ExternalLink } from 'lucide-react';
 interface ThirtyDayPlanSectionProps {
   results: MockResults;
 }
-export function ThirtyDayPlanSection({ results }: ThirtyDayPlanSectionProps) {
+export const ThirtyDayPlanSection = React.memo(function ThirtyDayPlanSection({ results }: ThirtyDayPlanSectionProps) {
   return (
     <div className="space-y-8">
       <div className="bg-dark-bg p-6 rounded-xl border border-dark-accent/20">
@@ -99,4 +99,4 @@ export function ThirtyDayPlanSection({ results }: ThirtyDayPlanSectionProps) {
       </div>
     </div>);
 
-}
+});

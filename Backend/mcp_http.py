@@ -40,8 +40,10 @@ app = FastAPI(title="AI Resilience Score API")
 # ---------------------------------------------------------------------------
 # Middleware (order matters: last added = first executed)
 # ---------------------------------------------------------------------------
+from starlette.middleware.gzip import GZipMiddleware  # noqa: E402
 from middleware import setup_cors, api_key_guard, security_headers, rate_limit  # noqa: E402
 
+app.add_middleware(GZipMiddleware, minimum_size=500)
 setup_cors(app)
 app.middleware("http")(security_headers)
 app.middleware("http")(rate_limit)
@@ -57,6 +59,7 @@ from routes.stats import router as stats_router  # noqa: E402
 from routes.actions import router as actions_router  # noqa: E402
 from routes.teams import router as teams_router  # noqa: E402
 from routes.reports import router as reports_router  # noqa: E402
+from routes.auth import router as auth_router  # noqa: E402
 
 app.include_router(health_router)
 app.include_router(agent_router)
@@ -64,6 +67,7 @@ app.include_router(stats_router)
 app.include_router(actions_router)
 app.include_router(teams_router)
 app.include_router(reports_router)
+app.include_router(auth_router)
 
 
 # ---------------------------------------------------------------------------

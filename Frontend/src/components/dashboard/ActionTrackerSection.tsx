@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2,
@@ -55,7 +55,7 @@ const STATUS_CONFIG = {
 
 const BASE_URL = (import.meta as any).env?.VITE_MCP_BASE_URL || '';
 
-export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTrackerSectionProps) {
+export const ActionTrackerSection = React.memo(function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTrackerSectionProps) {
   const [actions, setActions] = useState<ActionItem[]>(fallbackActions);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -329,7 +329,7 @@ export function ActionTrackerSection({ urlHash, fallbackActions = [] }: ActionTr
       </div>
     </div>
   );
-}
+});
 
 function FilterPill({
   label,

@@ -20,7 +20,7 @@ import { DeltaBadge } from '../ui/DeltaBadge';
 interface PersonalOverviewSectionProps {
   results: MockResults;
 }
-export function PersonalOverviewSection({
+export const PersonalOverviewSection = React.memo(function PersonalOverviewSection({
   results
 }: PersonalOverviewSectionProps) {
   const { personalProfile, personalRisk, personalNarrative, industryContext, scoreDelta } =
@@ -230,7 +230,7 @@ export function PersonalOverviewSection({
       </Card>
     </div>);
 
-}
+});
 function DetailPill({ icon: Icon, label }: {icon: any;label: string;}) {
   return (
     <span className="inline-flex items-center px-3 py-1 rounded-full bg-dark-elevated text-dark-textSec text-sm border border-dark-border">

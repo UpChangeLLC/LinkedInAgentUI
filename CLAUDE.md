@@ -8,7 +8,7 @@ LinkedIn AI Resilience Score - a full-stack application that analyzes LinkedIn p
 
 ```
 Backend/           FastAPI server (mcp_http.py is the entrypoint)
-  routes/          API routers: agent, health, stats, actions, teams, reports
+  routes/          API routers: agent, health, stats, actions, teams, reports, auth
   services/        Business logic: apify_cache, benchmark, pdf, certificate, taxonomy, learning_matcher, github, website, company
   alembic/         Database migrations (3 versions: 001 base, 002 history+actions, 003 teams)
   prompts.py       LLM prompt templates (v1 + v2 with evidence layer)
@@ -18,7 +18,7 @@ Backend/           FastAPI server (mcp_http.py is the entrypoint)
   cache.py         Redis client factory + cache helpers
   middleware.py     CORS, rate limiting, security headers
 Frontend/
-  src/pages/       6 pages: Landing, IntakeForm, ProfilePreview, Analyzing, ResultsDashboard, Error
+  src/pages/       7 pages: Landing, IntakeForm, ProfilePreview, Analyzing, ResultsDashboard, Error, CachedResultPrompt
   src/components/  dashboard/ (20+ section components), ui/ (reusable components), landing/
   src/lib/         transform.ts (API→UI mapping), mcp.ts (API client), schemas.ts (Zod), analytics.ts, scoreUtils.ts, shareUtils.ts, config.ts
   src/data/        mockResults.ts (TypeScript interfaces + mock data)
@@ -80,6 +80,9 @@ cd Frontend && npx vite build
 | GET | `/api/community-insights` | Anonymous aggregate trends |
 | GET | `/api/learning-resources` | Curated learning resources |
 | POST | `/api/events` | Frontend analytics events |
+| GET | `/auth/linkedin` | Start LinkedIn OAuth flow |
+| GET | `/auth/linkedin/callback` | LinkedIn OAuth callback + redirect to SPA |
+| GET | `/auth/linkedin/profile/{token}` | Retrieve short-lived OAuth profile payload |
 
 ## Environment Variables
 
@@ -91,6 +94,9 @@ Backend reads from `Backend/config.env` (gitignored). Key vars:
 - `FRONTEND_ORIGIN` - CORS origin (controls `allow_credentials`)
 - `SENTRY_DSN` - Optional error monitoring (conditional init)
 - `MCP_API_KEY` - Server-side API key for rate-limited endpoints
+- `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` - LinkedIn OAuth app credentials
+- `BACKEND_URL` - Canonical backend origin for OAuth callback URL generation
+- `LINKEDIN_OAUTH_PROFILE_ENABLE` - Enables OAuth-profile payload fallback path in analysis pipeline
 
 Frontend uses `VITE_` prefixed vars in `.env.local`:
 - `VITE_MCP_BASE_URL` - Backend API URL (empty = same origin)
@@ -102,6 +108,8 @@ Frontend uses `VITE_` prefixed vars in `.env.local`:
 - **Frontend env access**: Always use `(import.meta as any).env?.VITE_*` pattern (not bare `import.meta.env`)
 - **Database operations**: Use fire-and-forget pattern for non-critical writes (history, analytics). Wrap in try/except, log errors, never block the response
 - **API responses**: All endpoints gracefully handle missing DB/Redis - return empty/default data instead of 500s
+- **LinkedIn OAuth flow**: Intake `Connect with LinkedIn` -> `/auth/linkedin` -> LinkedIn callback -> SPA query params (`linkedin_url` and/or `oauth_profile_token`) -> auto-submit
+- **OAuth fallback behavior**: If callback cannot derive a public LinkedIn URL, backend stores short-lived OAuth payload and frontend fetches it via `/auth/linkedin/profile/{token}` for analysis
 - **Transform layer**: `Frontend/src/lib/transform.ts` maps snake_case API responses to camelCase frontend interfaces. All new API fields must be added here
 - **Dashboard sections**: Each section is a standalone component in `components/dashboard/`. Register in `Sidebar.tsx` (nav items) and `ResultsDashboard.tsx` (switch cases)
 - **Styling**: Tailwind utility classes. LinkedIn blue is `text-linkedin` / `bg-linkedin`. No CSS modules
@@ -110,13 +118,15 @@ Frontend uses `VITE_` prefixed vars in `.env.local`:
 
 ## Testing
 
-- **Backend**: pytest + pytest-asyncio. Tests in `Backend/tests/`. Uses `httpx.AsyncClient` with `ASGITransport` for zero-network testing. 24 tests covering health, routes, actions, teams, stats, and services
+- **Backend**: pytest + pytest-asyncio. Tests in `Backend/tests/`. Uses `httpx.AsyncClient` with `ASGITransport` for zero-network testing. 31 tests covering health, routes (including auth), actions, teams, stats, and services
+- **OAuth tests**: `Backend/tests/test_auth.py` covers LinkedIn OAuth route behavior (public route checks, callback success/error/state handling, OAuth payload token endpoint)
 - **Frontend**: Vitest + @testing-library/react. Tests colocated in `__tests__/` directories. 22 tests covering transform logic, UI components, and data validation
 - **CI**: GitHub Actions (`.github/workflows/ci.yml`) runs both test suites + Docker build on push
 
 ## Common Pitfalls
 
 - **Bundle size**: Vite manual chunking in `vite.config.ts` keeps chunks under 250KB. Adding large deps requires updating `manualChunks`
+- **Local OAuth dev**: Vite dev proxy must include `/auth` (and `/api`) in addition to `/mcp`; otherwise Connect with LinkedIn can fail in local frontend dev mode
 - **Dockerfile**: Uses `npm install` (not `npm ci`) for cross-platform lockfile compatibility (macOS dev -> linux Docker)
 - **Pre-existing TS errors**: `Button.tsx` has a framer-motion type incompatibility (`onDrag`). Not from our changes, ignore it
 - **Alembic in Docker**: Migrations run automatically on container start (`CMD` runs `alembic upgrade head` before uvicorn)

@@ -7,7 +7,7 @@ import { Rocket, Clock, TrendingUp, ExternalLink } from 'lucide-react';
 interface LeveragePlaysSectionProps {
   results: MockResults;
 }
-export function LeveragePlaysSection({ results }: LeveragePlaysSectionProps) {
+export const LeveragePlaysSection = React.memo(function LeveragePlaysSection({ results }: LeveragePlaysSectionProps) {
   return (
     <div className="space-y-8">
       <div>
@@ -95,4 +95,4 @@ export function LeveragePlaysSection({ results }: LeveragePlaysSectionProps) {
       </div>
     </div>);
 
-}
+});

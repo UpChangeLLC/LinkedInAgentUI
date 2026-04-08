@@ -5,7 +5,7 @@ import { MockResults } from '../../data/mockResults';
 interface WorkflowImpactSectionProps {
   results: MockResults;
 }
-export function WorkflowImpactSection({ results }: WorkflowImpactSectionProps) {
+export const WorkflowImpactSection = React.memo(function WorkflowImpactSection({ results }: WorkflowImpactSectionProps) {
   // Calculate total savings
   const totalSavings = '$510K+'; // Hardcoded based on prompt narrative, or could sum up
   return (
@@ -92,4 +92,4 @@ export function WorkflowImpactSection({ results }: WorkflowImpactSectionProps) {
       </div>
     </div>);
 
-}
+});

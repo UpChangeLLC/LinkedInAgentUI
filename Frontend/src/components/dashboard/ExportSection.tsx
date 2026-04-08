@@ -42,7 +42,7 @@ async function downloadBlob(url: string, fallbackFilename: string): Promise<void
   URL.revokeObjectURL(objectUrl);
 }
 
-export function ExportSection({ runId, results }: ExportSectionProps) {
+export const ExportSection = React.memo(function ExportSection({ runId, results }: ExportSectionProps) {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [certLoading, setCertLoading] = useState(false);
   const [pdfDone, setPdfDone] = useState(false);
@@ -210,4 +210,4 @@ export function ExportSection({ runId, results }: ExportSectionProps) {
       )}
     </motion.div>
   );
-}
+});

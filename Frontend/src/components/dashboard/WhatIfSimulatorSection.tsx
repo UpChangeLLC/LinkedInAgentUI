@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lightbulb, Plus, Minus, ArrowUpRight, RotateCcw } from 'lucide-react';
 import { Card } from '../ui/Card';
@@ -77,7 +77,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   company: '🏢',
 };
 
-export function WhatIfSimulatorSection({
+export const WhatIfSimulatorSection = React.memo(function WhatIfSimulatorSection({
   currentScore,
   riskBand,
   currentRole,
@@ -242,4 +242,4 @@ export function WhatIfSimulatorSection({
       </div>
     </div>
   );
-}
+});

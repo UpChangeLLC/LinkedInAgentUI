@@ -23,7 +23,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
       exit={{
         opacity: 0
       }}
-      className="min-h-screen bg-white">
+      className="min-h-screen bg-white pb-20 md:pb-0">
       
       <LinkedInNav />
       <HeroSection onGetStarted={onGetStarted} />

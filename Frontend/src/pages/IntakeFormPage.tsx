@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
   Link as LinkIcon,
   User,
-  Linkedin,
   HelpCircle,
   X,
   ChevronDown,
@@ -18,6 +17,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { LinkedInNav } from '../components/ui/LinkedInNav';
 import { ResumeUpload } from '../components/ui/ResumeUpload';
 import { normalizeLinkedInUrl } from '../lib/urlNormalize';
+
 
 interface IntakeFormPageProps {
   onSubmit: (data: any) => void;
@@ -57,6 +57,10 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const [showContext, setShowContext] = useState(false);
+  const [clipboardUrl, setClipboardUrl] = useState('');
+  const [linkedInError, setLinkedInError] = useState('');
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [consentError, setConsentError] = useState('');
 
   // Resume upload state
   const [resumeText, setResumeText] = useState('');
@@ -104,6 +108,43 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
     }
   };
 
+  // F17: URL pre-fill via query parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const linkedinParam = params.get('linkedin_url');
+
+    if (linkedinParam) {
+      const normalized = normalizeLinkedInUrl(linkedinParam).url;
+      if (isValidLinkedInUrl(normalized)) {
+        setLinkedinUrl(normalized);
+      }
+    }
+
+    if (linkedinParam) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  // F18: Clipboard detection — check for LinkedIn URL on input focus
+  const handleUrlFocus = async () => {
+    if (!navigator.clipboard?.readText) return;
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (clip && isValidLinkedInUrl(clip) && clip !== linkedinUrl) {
+        setClipboardUrl(clip);
+      }
+    } catch {
+      // Clipboard permission denied — silently ignore
+    }
+  };
+
+  const applyClipboardUrl = () => {
+    if (clipboardUrl) {
+      setLinkedinUrl(clipboardUrl);
+      setClipboardUrl('');
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -117,6 +158,11 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
 
     if (!isValidLinkedInUrl(normalized)) {
       setError('Please enter a valid LinkedIn profile URL (e.g. https://linkedin.com/in/your-name)');
+      return;
+    }
+
+    if (!consentChecked) {
+      setConsentError('Please confirm consent before continuing.');
       return;
     }
 
@@ -206,11 +252,30 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
                     className={`block w-full pl-10 pr-3 py-4 border ${error ? 'border-red-300' : 'border-gray-300'} rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-linkedin focus:ring-1 focus:ring-linkedin sm:text-lg transition duration-150 ease-in-out`}
                     placeholder="https://linkedin.com/in/your-profile"
                     value={linkedinUrl}
+                    onFocus={handleUrlFocus}
                     onChange={(e) => {
                       setLinkedinUrl(e.target.value);
+                      setClipboardUrl('');
                       if (error) setError('');
                     }}
                   />
+                  {/* F18: Clipboard URL detected toast */}
+                  {clipboardUrl && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2"
+                    >
+                      <button
+                        type="button"
+                        onClick={applyClipboardUrl}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-linkedin text-white text-xs font-medium rounded-md hover:bg-[#004182] transition-colors"
+                      >
+                        <LinkIcon className="w-3.5 h-3.5" />
+                        Paste URL
+                      </button>
+                    </motion.div>
+                  )}
                   {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
                   {urlCorrections.length > 0 && !error && (
                     <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
@@ -253,8 +318,9 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
                       <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
                         <div className="flex items-start justify-between mb-3">
                           <p className="text-sm text-gray-600 font-medium">
-                            Go to your LinkedIn profile and copy the URL from
-                            your browser's address bar:
+                            {/* Mobile: LinkedIn app instructions, Desktop: browser instructions */}
+                            <span className="hidden md:inline">Go to your LinkedIn profile and copy the URL from your browser's address bar:</span>
+                            <span className="md:hidden">Find your URL in the LinkedIn app:</span>
                           </p>
                           <button
                             type="button"
@@ -264,7 +330,9 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
                             <X className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
+
+                        {/* Desktop: browser address bar mockup */}
+                        <div className="hidden md:block rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
                           <div className="bg-gray-100 px-3 py-2 flex items-center gap-2 border-b border-gray-200">
                             <div className="flex gap-1.5">
                               <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
@@ -289,34 +357,62 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
                             </div>
                           </div>
                         </div>
-                        <div className="mt-3 flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-linkedin text-[10px] font-bold">1</span>
+
+                        {/* Desktop steps */}
+                        <div className="hidden md:block">
+                          <div className="mt-3 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">1</span>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Open LinkedIn and go to your profile page
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500">
-                            Open LinkedIn and go to your profile page
-                          </p>
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">2</span>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Copy the full URL from your browser address bar (it looks like{' '}
+                              <span className="font-mono text-gray-700">linkedin.com/in/your-name</span>)
+                            </p>
+                          </div>
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">3</span>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Paste it in the field above
+                            </p>
+                          </div>
                         </div>
-                        <div className="mt-2 flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-linkedin text-[10px] font-bold">2</span>
+
+                        {/* Mobile steps — LinkedIn app flow */}
+                        <div className="md:hidden">
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">1</span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              Open the <strong>LinkedIn app</strong> and tap your profile photo
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500">
-                            Copy the full URL from your browser address bar (it
-                            looks like{' '}
-                            <span className="font-mono text-gray-700">
-                              linkedin.com/in/your-name
-                            </span>
-                            )
-                          </p>
-                        </div>
-                        <div className="mt-2 flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-linkedin text-[10px] font-bold">3</span>
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">2</span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              Tap the <strong>&#8943; (more)</strong> button, then <strong>"Copy link"</strong>
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500">
-                            Paste it in the field above
-                          </p>
+                          <div className="mt-2 flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-linkedin text-[10px] font-bold">3</span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              Come back here and <strong>paste</strong> in the field above
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -590,45 +686,40 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
               </div>
 
               <div className="pt-2">
+                <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-linkedin focus:ring-linkedin"
+                    checked={consentChecked}
+                    onChange={(e) => {
+                      setConsentChecked(e.target.checked);
+                      if (e.target.checked) setConsentError('');
+                    }}
+                  />
+                  <span className="text-xs text-gray-600 leading-relaxed">
+                    I understand this is a prototype and AI-generated output may be inaccurate.
+                    I agree this app may pull general information from my LinkedIn profile and process
+                    it through AI to generate my report.
+                  </span>
+                </label>
+                {consentError && (
+                  <p className="mt-2 text-xs text-red-600">{consentError}</p>
+                )}
                 <Button
                   type="submit"
                   fullWidth
                   size="lg"
-                  disabled={submitting}
+                  disabled={submitting || !consentChecked}
                   className="bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {submitting ? 'Submitting...' : 'Analyze My Profile'}
                 </Button>
-                <p className="mt-4 text-center text-xs text-gray-500">
-                  We only access your public profile information
-                </p>
               </div>
             </form>
 
-            {/* Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-400">or</span>
-              </div>
-            </div>
-
-            {/* LinkedIn Login Option — Coming Soon */}
-            <button
-              disabled
-              className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border border-gray-200 rounded-lg opacity-50 cursor-not-allowed"
-            >
-              <Linkedin className="w-5 h-5 text-[#0A66C2]" />
-              <span className="text-gray-700 font-medium">
-                Sign in with LinkedIn
-              </span>
-              <span className="text-xs text-gray-400 ml-1">(Coming Soon)</span>
-            </button>
-            <p className="mt-3 text-center text-xs text-gray-400">
-              Don't know your profile URL? LinkedIn sign-in is coming soon.
-            </p>
+            {linkedInError && (
+              <p className="mt-4 text-sm text-red-500 text-center">{linkedInError}</p>
+            )}
           </Card>
         </div>
       </motion.div>

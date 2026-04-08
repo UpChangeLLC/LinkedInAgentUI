@@ -1,16 +1,29 @@
 import React, { Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import * as Sentry from '@sentry/react';
-import { LandingPage } from './pages/LandingPage';
-import { IntakeFormPage } from './pages/IntakeFormPage';
-import { ProfilePreviewPage } from './pages/ProfilePreviewPage';
-import { AnalyzingPage } from './pages/AnalyzingPage';
-import { ErrorPage } from './pages/ErrorPage';
-import { CachedResultPromptPage } from './pages/CachedResultPromptPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAppState } from './hooks/useAppState';
 
+// Lazy-load all pages to reduce initial bundle size
+const LandingPage = React.lazy(() =>
+  import('./pages/LandingPage').then((m) => ({ default: m.LandingPage }))
+);
+const IntakeFormPage = React.lazy(() =>
+  import('./pages/IntakeFormPage').then((m) => ({ default: m.IntakeFormPage }))
+);
+const ProfilePreviewPage = React.lazy(() =>
+  import('./pages/ProfilePreviewPage').then((m) => ({ default: m.ProfilePreviewPage }))
+);
+const AnalyzingPage = React.lazy(() =>
+  import('./pages/AnalyzingPage').then((m) => ({ default: m.AnalyzingPage }))
+);
+const ErrorPage = React.lazy(() =>
+  import('./pages/ErrorPage').then((m) => ({ default: m.ErrorPage }))
+);
+const CachedResultPromptPage = React.lazy(() =>
+  import('./pages/CachedResultPromptPage').then((m) => ({ default: m.CachedResultPromptPage }))
+);
 const ResultsDashboard = React.lazy(() =>
   import('./pages/ResultsDashboard').then((m) => ({ default: m.ResultsDashboard }))
 );
@@ -44,7 +57,10 @@ export function App() {
     formData,
     results,
     errorMessage,
+    errorType,
     pipelineProgress,
+    analysisCompletionPhase,
+    assessmentsOptimisticDelta,
     previewData,
     previewLoading,
     cachedResultAge,
@@ -54,16 +70,16 @@ export function App() {
     submitForm,
     confirmProfile,
     rejectProfile,
-    goToResults,
     goBack,
     goToLanding,
     retrySubmit
   } = useAppState();
   return (
     <ThemeProvider>
-    <Sentry.ErrorBoundary fallback={<ErrorPage error="An unexpected error occurred." onRetry={() => window.location.reload()} />}>
+    <Sentry.ErrorBoundary fallback={<ErrorPage errorMessage="An unexpected error occurred." onRetry={() => window.location.reload()} onBack={() => window.location.reload()} errorType="server_error" />}>
     <ErrorBoundary>
       <div className="font-sans text-navy-900 antialiased selection:bg-accent/20 selection:text-accent-dark">
+        <Suspense fallback={<LoadingFallback />}>
         <AnimatePresence mode="wait">
           {currentPage === 'landing' &&
           <LandingPage key="landing" onGetStarted={goToIntake} />
@@ -98,17 +114,20 @@ export function App() {
           )}
 
           {currentPage === 'analyzing' &&
-          <AnalyzingPage key="analyzing" onComplete={goToResults} pipelineProgress={pipelineProgress} />
+          <AnalyzingPage
+            key="analyzing"
+            pipelineProgress={pipelineProgress}
+            completionPhase={analysisCompletionPhase}
+            optimisticCounterDelta={assessmentsOptimisticDelta}
+          />
           }
 
           {currentPage === 'results' &&
-          <Suspense fallback={<LoadingFallback />}>
             <ResultsDashboard
               key="results"
               results={results}
               formData={formData}
               onBackToHome={goToLanding} />
-          </Suspense>
           }
 
           {currentPage === 'error' &&
@@ -116,9 +135,11 @@ export function App() {
             key="error"
             onRetry={retrySubmit}
             onBack={goBack}
-            errorMessage={errorMessage} />
+            errorMessage={errorMessage}
+            errorType={errorType} />
           }
         </AnimatePresence>
+        </Suspense>
       </div>
     </ErrorBoundary>
     </Sentry.ErrorBoundary>

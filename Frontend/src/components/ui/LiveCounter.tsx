@@ -5,6 +5,22 @@ const env = (import.meta as any).env || {};
 const baseUrl = ((env.VITE_MCP_BASE_URL as string) ?? '').replace(/\/+$/, '');
 
 export function LiveCounter() {
+  return <LiveCounterBase />;
+}
+
+interface LiveCounterProps {
+  compact?: boolean;
+  showOnMobile?: boolean;
+  optimisticDelta?: number;
+  className?: string;
+}
+
+export function LiveCounterBase({
+  compact = false,
+  showOnMobile = false,
+  optimisticDelta = 0,
+  className = '',
+}: LiveCounterProps = {}) {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -30,19 +46,28 @@ export function LiveCounter() {
   }, []);
 
   if (count === null || count === 0) return null;
+  const displayCount = Math.max(0, count + optimisticDelta);
+  const wrapperVisibility = showOnMobile ? 'flex' : 'hidden md:flex';
+  const spacingClass = compact ? 'px-2.5 py-1' : 'px-3 py-1.5';
+  const valueClass = compact ? 'text-xs md:text-sm' : 'text-sm';
+  const labelText = compact ? 'analyzed' : 'execs analyzed';
 
   return (
-    <div className="hidden md:flex items-center gap-2 bg-dark-elevated px-3 py-1.5 rounded-full border border-dark-border">
+    <div
+      className={`${wrapperVisibility} items-center gap-2 bg-dark-elevated ${spacingClass} rounded-full border border-dark-border ${className}`.trim()}
+      aria-live="polite"
+      aria-label={`${displayCount.toLocaleString()} executives analyzed`}
+    >
       <div className="relative">
         <Users className="w-4 h-4 text-dark-textMuted" />
         <span className="absolute -top-1 -right-1 w-2 h-2 bg-dark-green rounded-full border-2 border-dark-bg animate-pulse"></span>
       </div>
       <div className="flex items-baseline gap-1">
-        <span className="text-sm font-bold text-dark-textPri tabular-nums">
-          {count.toLocaleString()}
+        <span className={`${valueClass} font-bold text-dark-textPri tabular-nums`}>
+          {displayCount.toLocaleString()}
         </span>
         <span className="text-xs text-dark-textMuted font-medium">
-          execs analyzed
+          {labelText}
         </span>
       </div>
     </div>

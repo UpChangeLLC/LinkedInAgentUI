@@ -23,7 +23,7 @@ interface TeamData {
   invite_code: string;
 }
 
-export function ChallengeColleagueSection({
+export const ChallengeColleagueSection = React.memo(function ChallengeColleagueSection({
   urlHash = '',
   score = 0,
   displayName = 'You',
@@ -269,4 +269,4 @@ export function ChallengeColleagueSection({
       </Card>
     </div>
   );
-}
+});

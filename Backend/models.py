@@ -24,6 +24,10 @@ class AgentRunRequest(BaseModel):
     github_url: str = Field(default="")
     website_url: str = Field(default="")
     user_context: Optional[UserContext] = Field(default=None)
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional OAuth-derived LinkedIn profile payload to seed analysis.",
+    )
 
 
 class AgentTraceStep(BaseModel):

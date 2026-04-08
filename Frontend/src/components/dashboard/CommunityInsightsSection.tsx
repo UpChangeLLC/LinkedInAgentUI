@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, TrendingUp, AlertTriangle, BarChart3, ShieldCheck } from 'lucide-react';
 import { Card } from '../ui/Card';
@@ -13,7 +13,7 @@ interface CommunityData {
   top_skill_gaps: string[];
 }
 
-export function CommunityInsightsSection() {
+export const CommunityInsightsSection = React.memo(function CommunityInsightsSection() {
   const [data, setData] = useState<CommunityData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -192,4 +192,4 @@ export function CommunityInsightsSection() {
       </div>
     </div>
   );
-}
+});

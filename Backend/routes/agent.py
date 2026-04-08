@@ -36,27 +36,49 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return default
 
 
-def _normalize_error_message(error_text: str) -> str:
-    """Convert backend exception text into user-friendly message."""
+def _normalize_error_message(error_text: str) -> Dict[str, Any]:
+    """Convert backend exception text into user-friendly message with error type.
+
+    Returns dict with keys: message, error_type, retryable
+    """
     msg = (error_text or "").strip()
     lower = msg.lower()
+
     if "at least one of linkedin_url or resume_text" in lower:
-        return "Please provide at least one input: LinkedIn URL or resume file."
+        return {"message": "Please provide at least one input: LinkedIn URL or resume file.", "error_type": "missing_input"}
     if "invalid linkedin url" in lower:
-        return "LinkedIn URL looks invalid. Please use a profile URL like linkedin.com/in/username."
+        return {"message": "LinkedIn URL looks invalid. Please use a profile URL like linkedin.com/in/username.", "error_type": "invalid_url"}
+    if "timeout" in lower or "timed out" in lower or "connecttimeout" in lower:
+        return {"message": "Connection timed out. Check your internet and try again.", "error_type": "network_timeout"}
+    if "rate limit" in lower or "429" in lower or "too many requests" in lower:
+        return {"message": "Too many requests. Please wait a moment and try again.", "error_type": "rate_limited"}
+    if "private" in lower or "not found" in lower or "404" in lower:
+        return {"message": "This LinkedIn profile appears to be private or not found. Try a public profile.", "error_type": "linkedin_private"}
+    if any(k in lower for k in ("openai", "anthropic", "groq", "azure", "llm", "model")):
+        if "api_key is not set" in lower or "api_key is missing" in lower:
+            return {"message": "AI provider API key is missing. Check server configuration.", "error_type": "server_error"}
+        return {"message": "Our analysis engine is temporarily busy. Please try again.", "error_type": "llm_failure"}
     if "apify_api_token is not set" in lower:
-        return "LinkedIn fetch is not configured. Set APIFY_API_TOKEN in config.env."
-    if "openai_api_key is not set" in lower:
-        return "OPENAI_API_KEY is missing. Update config.env and try again."
-    if "groq_api_key is not set" in lower:
-        return "GROQ_API_KEY is missing. Update config.env and try again."
-    if "anthropic_api_key is not set" in lower:
-        return "ANTHROPIC_API_KEY is missing. Update config.env and try again."
-    if "azure_openai_api_key is not set" in lower or "azure_openai_endpoint is not set" in lower:
-        return "Azure OpenAI settings are incomplete. Check AZURE_OPENAI_* values in config.env."
+        return {"message": "LinkedIn fetch is not configured. Set APIFY_API_TOKEN in config.env.", "error_type": "server_error"}
     if "pipeline completed without result" in lower:
-        return "The analysis pipeline finished without usable output. Please retry."
-    return msg or "Something went wrong while processing your request."
+        return {"message": "The analysis pipeline finished without usable output. Please retry.", "error_type": "server_error"}
+
+    return {"message": msg or "Something went wrong while processing your request.", "error_type": "server_error"}
+
+
+def safe_create_task(coro, *, name: str = "background") -> asyncio.Task:
+    """Create an asyncio task with automatic exception logging."""
+    task = asyncio.create_task(coro, name=name)
+
+    def _done_callback(t: asyncio.Task) -> None:
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc:
+            logger.error("Background task '%s' failed: %s", name, exc, exc_info=exc)
+
+    task.add_done_callback(_done_callback)
+    return task
 
 
 def _build_market_sources_for_role(role: str) -> Dict[str, Any]:
@@ -366,12 +388,14 @@ async def _run_agent(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ) -> AgentRunResponse:
     """Run full agent flow with step-level trace output."""
     linkedin = linkedin_url.strip()
     resume = resume_text.strip()
 
-    if not linkedin and not resume:
+    has_oauth_profile = bool(linkedin_oauth_profile)
+    if not linkedin and not resume and not has_oauth_profile:
         raise HTTPException(
             status_code=400,
             detail="Provide at least one input: LinkedIn URL or resume.",
@@ -384,6 +408,7 @@ async def _run_agent(
             user_context=user_context,
             github_url=github_url.strip(),
             website_url=website_url.strip(),
+            linkedin_oauth_profile=linkedin_oauth_profile,
         )
 
         # Optional market signals enrichment
@@ -494,12 +519,12 @@ async def _run_agent(
             profile_id=profile_id,
         )
 
-        friendly = _normalize_error_message(str(exc))
+        err_info = _normalize_error_message(str(exc))
         raise HTTPException(
             status_code=400,
             detail={
-                "message": friendly,
-                "raw_error": str(exc),
+                "message": err_info["message"],
+                "error_type": err_info.get("error_type", "server_error"),
                 "retryable": True,
             },
         ) from exc
@@ -520,6 +545,7 @@ async def mcp_run(payload: AgentRunRequest, request: Request) -> AgentRunRespons
         user_context=ctx,
         github_url=payload.github_url,
         website_url=payload.website_url,
+        linkedin_oauth_profile=payload.linkedin_oauth_profile,
     )
 
 
@@ -534,6 +560,7 @@ async def agent_run(payload: AgentRunRequest, request: Request) -> AgentRunRespo
         user_context=ctx,
         github_url=payload.github_url,
         website_url=payload.website_url,
+        linkedin_oauth_profile=payload.linkedin_oauth_profile,
     )
 
 
@@ -556,12 +583,19 @@ async def agent_run_form(
         user_toggle = str(include_market or "").strip().lower() in ("1", "true", "yes", "on", "checked")
         return await _run_agent(linkedin_url, resume_text, include_market_signals=user_toggle, request=request)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        err_info = _normalize_error_message(str(exc))
+        raise HTTPException(
+            status_code=400,
+            detail={"message": err_info["message"], "error_type": err_info.get("error_type", "invalid_url"), "retryable": False},
+        ) from exc
     except HTTPException:
         raise
     except Exception as exc:
         logger.exception("Form agent execution failed")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail={"message": "An internal error occurred. Please try again.", "retryable": True},
+        ) from exc
 
 
 @router.post("/mcp/run/stream")
@@ -573,7 +607,7 @@ async def mcp_run_stream(payload: AgentRunRequest, request: Request):
     """
     linkedin_url = (payload.linkedin_url or "").strip()
     resume_text = (payload.resume_text or "").strip()
-    if not linkedin_url and not resume_text:
+    if not linkedin_url and not resume_text and not payload.linkedin_oauth_profile:
         raise HTTPException(status_code=400, detail="Provide linkedin_url or resume_text.")
 
     ctx = payload.user_context.model_dump() if payload.user_context else None
@@ -648,6 +682,7 @@ async def mcp_run_stream(payload: AgentRunRequest, request: Request):
             user_context=ctx,
             github_url=(payload.github_url or "").strip(),
             website_url=(payload.website_url or "").strip(),
+            linkedin_oauth_profile=payload.linkedin_oauth_profile,
         ):
             event_type = event_dict.get("event_type", "message")
 
@@ -667,8 +702,9 @@ async def mcp_run_stream(payload: AgentRunRequest, request: Request):
 
         # After streaming completes, record to DB (fire-and-forget via task)
         duration_ms = int((time.perf_counter() - start) * 1000)
-        asyncio.create_task(
-            _record_streaming_run(final_result, final_trace, error_info, duration_ms)
+        safe_create_task(
+            _record_streaming_run(final_result, final_trace, error_info, duration_ms),
+            name="record_streaming_run",
         )
 
     return EventSourceResponse(event_generator())
@@ -683,18 +719,22 @@ async def mcp_preview(payload: AgentRunRequest, request: Request):
     """
     linkedin_url = (payload.linkedin_url or "").strip()
     resume_text = (payload.resume_text or "").strip()
-    if not linkedin_url and not resume_text:
+    if not linkedin_url and not resume_text and not payload.linkedin_oauth_profile:
         raise HTTPException(status_code=400, detail="Provide linkedin_url or resume_text.")
 
     try:
-        preview = await run_preview(linkedin_url=linkedin_url, resume_text=resume_text)
+        preview = await run_preview(
+            linkedin_url=linkedin_url,
+            resume_text=resume_text,
+            linkedin_oauth_profile=payload.linkedin_oauth_profile,
+        )
         return {"status": "ok", "preview": preview}
     except Exception as exc:
         logger.exception("Preview failed")
-        friendly = _normalize_error_message(str(exc))
+        err_info = _normalize_error_message(str(exc))
         raise HTTPException(
             status_code=400,
-            detail={"message": friendly, "raw_error": str(exc), "retryable": True},
+            detail={"message": err_info["message"], "error_type": err_info.get("error_type", "server_error"), "retryable": True},
         ) from exc
 
 

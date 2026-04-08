@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Card } from '../ui/Card';
 import { Calculator, DollarSign, TrendingUp, Clock } from 'lucide-react';
 import type { WorkflowItem } from '../../data/mockResults';
@@ -92,7 +92,7 @@ function RangeSlider({
   );
 }
 
-export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProps) {
+export const ROICalculatorSection = React.memo(function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProps) {
   // Derive default automation percentage from workflow items
   const defaultAutomation = useMemo(() => {
     if (!workflowItems?.length) return 40;
@@ -283,4 +283,4 @@ export function ROICalculatorSection({ workflowItems }: ROICalculatorSectionProp
       </div>
     </div>
   );
-}
+});

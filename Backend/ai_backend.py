@@ -17,6 +17,7 @@ import os
 import re
 import sys
 from urllib.parse import urlparse
+import hashlib
 from hashlib import sha1
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
@@ -42,10 +43,16 @@ from prompts import (
 load_dotenv()
 load_dotenv("config.env", override=False)
 
-os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
-os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
-os.environ.setdefault("LANGCHAIN_PROJECT", "linkedin-agent")
-os.environ.setdefault("LANGCHAIN_API_KEY", os.getenv("LANGCHAIN_API_KEY", ""))
+# LangSmith tracing should only be enabled when a real API key is configured.
+# Otherwise the SDK emits noisy 401/unauthorized warnings during normal runs.
+_langsmith_key = (os.getenv("LANGCHAIN_API_KEY") or "").strip()
+if _langsmith_key:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+    os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+    os.environ.setdefault("LANGCHAIN_PROJECT", "linkedin-agent")
+    os.environ.setdefault("LANGCHAIN_API_KEY", _langsmith_key)
+else:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
  
  
  
@@ -60,6 +67,7 @@ class AnalysisGraphState(TypedDict):
     """LangGraph state for end-to-end analysis pipeline."""
 
     linkedin_url: str
+    linkedin_oauth_profile: Dict[str, Any]
     resume_text: str
     github_url: str
     website_url: str
@@ -280,7 +288,7 @@ async def _apify_get_dataset_items(dataset_id: str, token: str) -> List[Dict[str
     """Read items from an Apify dataset."""
     url = f"https://api.apify.com/v2/datasets/{dataset_id}/items"
     params = {"token": token, "clean": "true"}
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=45.0) as client:
         response = await client.get(url, params=params)
         response.raise_for_status()
         payload = response.json()
@@ -296,10 +304,10 @@ async def _apify_run_actor(actor_id: str, token: str, run_input: Dict[str, Any])
         variants.append(actor_id.replace("~", "/", 1))
 
     last_error = ""
-    params = {"token": token, "waitForFinish": 120}
+    params = {"token": token, "waitForFinish": 45}
     for candidate in variants:
         url = f"https://api.apify.com/v2/acts/{candidate}/runs"
-        async with httpx.AsyncClient(timeout=180.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(url, params=params, json=run_input)
         if response.is_success:
             return response.json().get("data", {})
@@ -396,7 +404,7 @@ def _run_provider_sync(
     if not with_web_search:
         response = client.messages.create(
             model=model,
-            max_tokens=2000,
+            max_tokens=20000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
@@ -482,7 +490,17 @@ async def call_web_search_tool(query: str) -> str:
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 async def llm_json_completion(system_prompt: str, user_prompt: str) -> Dict[str, Any]:
-    """Call selected AI provider and return parsed JSON."""
+    """Call selected AI provider and return parsed JSON.
+
+    Protected by a circuit breaker that fast-fails after 3 consecutive errors
+    to prevent users from waiting 30s+ for retries when the provider is down.
+    """
+    from services.circuit_breaker import llm_breaker
+    return await llm_breaker.call(_llm_json_completion_inner, system_prompt, user_prompt)
+
+
+async def _llm_json_completion_inner(system_prompt: str, user_prompt: str) -> Dict[str, Any]:
+    """Internal LLM completion — called through circuit breaker."""
     provider, client = get_selected_ai_client()
     model = get_selected_model(provider)
     logger.info("LLM call: provider=%s model=%s sys_prompt_len=%d user_prompt_len=%d",
@@ -632,13 +650,23 @@ async def analyze_profile(
 # ── Pipeline orchestrator ─────────────────────────────────────────────────────
 
 def detect_data_source(has_resume: bool, has_linkedin: bool) -> str:
-    if has_resume and has_linkedin:
+    return detect_data_source_v2(has_resume=has_resume, has_linkedin=has_linkedin, has_oauth=False)
+
+
+def detect_data_source_v2(has_resume: bool, has_linkedin: bool, has_oauth: bool = False) -> str:
+    if has_resume and (has_linkedin or has_oauth):
         return "linkedin+resume_merged"
     if has_resume:
         return "resume"
+    if has_oauth:
+        return "linkedin_oauth"
     if has_linkedin:
         return "linkedin"
     return "none"
+
+
+def oauth_profile_enabled() -> bool:
+    return (os.getenv("LINKEDIN_OAUTH_PROFILE_ENABLE", "0").strip().lower() in {"1", "true", "yes", "on"})
 
 
 def _append_trace(
@@ -667,8 +695,10 @@ async def validate_input_node(state: AnalysisGraphState) -> AnalysisGraphState:
     start_time = asyncio.get_running_loop().time()
     linkedin_url_raw = (state.get("linkedin_url") or "").strip()
     linkedin_url = normalize_linkedin_profile_url(linkedin_url_raw)
+    oauth_profile = state.get("linkedin_oauth_profile") or {}
     resume_text = (state.get("resume_text") or "").strip()
-    if not linkedin_url and not resume_text:
+    has_oauth_profile = bool(oauth_profile) and oauth_profile_enabled()
+    if not linkedin_url and not resume_text and not has_oauth_profile:
         next_state = {**state, "error": "At least one of linkedin_url or resume_text must be provided."}
         return _append_trace(
             next_state,
@@ -679,13 +709,17 @@ async def validate_input_node(state: AnalysisGraphState) -> AnalysisGraphState:
         )
     if linkedin_url_raw and not linkedin_url:
         # If resume exists, continue with resume-only flow instead of failing the run.
-        if resume_text:
+        if resume_text or has_oauth_profile:
             linkedin_url = ""
             next_state = {
                 **state,
                 "linkedin_url": linkedin_url,
                 "resume_text": resume_text,
-                "data_source": detect_data_source(bool(resume_text), bool(linkedin_url)),
+                "data_source": detect_data_source_v2(
+                    has_resume=bool(resume_text),
+                    has_linkedin=bool(linkedin_url),
+                    has_oauth=has_oauth_profile,
+                ),
             }
             return _append_trace(
                 next_state,
@@ -706,7 +740,11 @@ async def validate_input_node(state: AnalysisGraphState) -> AnalysisGraphState:
         **state,
         "linkedin_url": linkedin_url,
         "resume_text": resume_text,
-        "data_source": detect_data_source(bool(resume_text), bool(linkedin_url)),
+        "data_source": detect_data_source_v2(
+            has_resume=bool(resume_text),
+            has_linkedin=bool(linkedin_url),
+            has_oauth=has_oauth_profile,
+        ),
     }
     return _append_trace(
         next_state,
@@ -729,6 +767,7 @@ async def fetch_sources_node(state: AnalysisGraphState) -> AnalysisGraphState:
     """
     start_time = asyncio.get_running_loop().time()
     linkedin_url = state.get("linkedin_url", "")
+    oauth_profile = state.get("linkedin_oauth_profile") or {}
     github_url = state.get("github_url", "")
     website_url = state.get("website_url", "")
 
@@ -762,6 +801,25 @@ async def fetch_sources_node(state: AnalysisGraphState) -> AnalysisGraphState:
                     logger.info("    Website fetch succeeded for: %s", website_url)
             elif isinstance(result, dict) and result.get("error"):
                 logger.warning("    %s fetch error: %s", label, result["error"])
+
+    oauth_enabled = oauth_profile_enabled()
+    if oauth_enabled and oauth_profile:
+        logger.info("[1] Using OAuth profile payload as LinkedIn source.")
+        next_state = {
+            **state,
+            "linkedin_raw": json.dumps(oauth_profile, ensure_ascii=True),
+            "linkedin_source": "oauth_profile",
+            "fetch_failed": False,
+            "github_profile": github_profile,
+            "website_content": website_content,
+        }
+        return _append_trace(
+            next_state,
+            step="fetch_sources_node",
+            start_time=start_time,
+            success=True,
+            info="source=oauth_profile",
+        )
 
     if not linkedin_url:
         next_state = {
@@ -882,12 +940,18 @@ async def extract_profiles_node(state: AnalysisGraphState) -> AnalysisGraphState
     linkedin_raw = state.get("linkedin_raw", "")
     resume_text = state.get("resume_text", "")
 
-    if linkedin_raw:
+    # Parallelize extraction when both sources available
+    if linkedin_raw and resume_text:
+        linkedin_profile, resume_profile = await asyncio.gather(
+            extract_profile_structured(state.get("linkedin_source", "linkedin"), linkedin_raw),
+            extract_profile_structured("resume", resume_text),
+        )
+    elif linkedin_raw:
         linkedin_profile = await extract_profile_structured(
             state.get("linkedin_source", "linkedin"),
             linkedin_raw,
         )
-    if resume_text:
+    elif resume_text:
         resume_profile = await extract_profile_structured("resume", resume_text)
     next_state = {
         **state,
@@ -939,13 +1003,47 @@ def route_after_merge(state: AnalysisGraphState) -> Literal["error_node", "analy
 async def analyze_node_graph(state: AnalysisGraphState) -> AnalysisGraphState:
     """Run final scoring/risk/recommendation analysis."""
     from services.score_calibration import calibrate_score
+    from cache import cache_get_json, cache_set_json
 
+    ANALYSIS_CACHE_VERSION = "v2"
     start_time = asyncio.get_running_loop().time()
+
+    # Check for cached LLM analysis result (24h TTL)
+    linkedin_url = state.get("linkedin_url", "")
+    cache_key = ""
+    if linkedin_url:
+        url_hash = hashlib.sha256(linkedin_url.strip().lower().encode()).hexdigest()[:16]
+        cache_key = f"analysis:{url_hash}:{ANALYSIS_CACHE_VERSION}"
+        try:
+            cached = await cache_get_json(cache_key)
+            if cached:
+                logger.info("LLM analysis cache hit for %s", cache_key)
+                result = calibrate_score(cached, merged_profile=state.get("merged_profile", {}))
+                next_state = {**state, "result": result}
+                return _append_trace(
+                    next_state,
+                    step="analyze_node_graph",
+                    start_time=start_time,
+                    success=True,
+                    info="analysis_complete (cached)",
+                )
+        except Exception:
+            logger.warning("Analysis cache lookup failed, proceeding with fresh LLM call")
+
     result = await analyze_profile(
         merged_profile=state.get("merged_profile", {}),
         data_source=state.get("data_source", "none"),
         user_context=state.get("user_context"),
     )
+
+    # Cache the raw LLM result (before calibration) for 24 hours
+    if cache_key:
+        try:
+            await cache_set_json(cache_key, result, ttl_seconds=86400)
+            logger.info("Cached LLM analysis result at %s", cache_key)
+        except Exception:
+            logger.warning("Failed to cache analysis result")
+
     # Post-LLM score calibration
     result = calibrate_score(result, merged_profile=state.get("merged_profile", {}))
     next_state = {**state, "result": result}
@@ -1048,10 +1146,12 @@ def _initial_analysis_state(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ) -> AnalysisGraphState:
     """Create the initial state object for LangGraph invocation."""
     return {
         "linkedin_url": linkedin_url,
+        "linkedin_oauth_profile": linkedin_oauth_profile or {},
         "resume_text": resume_text,
         "github_url": github_url,
         "website_url": website_url,
@@ -1077,6 +1177,7 @@ async def run_pipeline_with_trace(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Run pipeline and return (result, node_trace)."""
     # async def _broadcast_to_mcp_payload(result: Dict[str, Any], trace: List[Dict[str, Any]]) -> None:
@@ -1112,6 +1213,7 @@ async def run_pipeline_with_trace(
     final_state = await app.ainvoke(_initial_analysis_state(
         linkedin_url, resume_text, user_context=user_context,
         github_url=github_url, website_url=website_url,
+        linkedin_oauth_profile=linkedin_oauth_profile,
     ))
     if final_state.get("error"):
         raise RuntimeError(final_state["error"])
@@ -1132,16 +1234,22 @@ async def run_pipeline(
     resume_text: str = "",
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Run the single LangGraph pipeline and return analyzed profile JSON."""
     result, _ = await run_pipeline_with_trace(
         linkedin_url=linkedin_url, resume_text=resume_text,
         github_url=github_url, website_url=website_url,
+        linkedin_oauth_profile=linkedin_oauth_profile,
     )
     return result
 
 
-async def run_preview(linkedin_url: str = "", resume_text: str = "") -> Dict[str, Any]:
+async def run_preview(
+    linkedin_url: str = "",
+    resume_text: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """Run only fetch + extract nodes and return a lightweight profile preview.
 
     This is much faster than the full pipeline since it skips the expensive
@@ -1172,7 +1280,13 @@ async def run_preview(linkedin_url: str = "", resume_text: str = "") -> Dict[str
     graph.add_edge("error_node", END)
 
     compiled = graph.compile()
-    final = await compiled.ainvoke(_initial_analysis_state(linkedin_url, resume_text))
+    final = await compiled.ainvoke(
+        _initial_analysis_state(
+            linkedin_url,
+            resume_text,
+            linkedin_oauth_profile=linkedin_oauth_profile,
+        )
+    )
 
     if final.get("error"):
         raise RuntimeError(final["error"])
@@ -1287,6 +1401,7 @@ async def run_pipeline_streaming(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    linkedin_oauth_profile: Optional[Dict[str, Any]] = None,
 ):
     """Run pipeline and yield PipelineEvent dicts as each node completes.
 
@@ -1298,6 +1413,7 @@ async def run_pipeline_streaming(
     initial = _initial_analysis_state(
         linkedin_url, resume_text, user_context=user_context,
         github_url=github_url, website_url=website_url,
+        linkedin_oauth_profile=linkedin_oauth_profile,
     )
 
     # Yield start event

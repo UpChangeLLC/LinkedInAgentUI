@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '../ui/Card';
 import { BarChart3, Users, TrendingUp, AlertTriangle } from 'lucide-react';
@@ -34,7 +35,7 @@ function DistributionBar({ label, count, maxCount }: { label: string; count: num
   );
 }
 
-export function TeamInsights({ insights }: TeamInsightsProps) {
+export const TeamInsights = React.memo(function TeamInsights({ insights }: TeamInsightsProps) {
   const maxDistCount = Math.max(1, ...Object.values(insights.score_distribution));
 
   return (
@@ -135,4 +136,4 @@ export function TeamInsights({ insights }: TeamInsightsProps) {
       </Card>
     </div>
   );
-}
+});

@@ -32,7 +32,7 @@ const FALLBACK_INDUSTRY_AVG = 54;
 const FALLBACK_ROLE_AVG = 48;
 const FALLBACK_SIZE_AVG = 61;
 
-export function PeerBenchmarkSection({ results }: PeerBenchmarkSectionProps) {
+export const PeerBenchmarkSection = React.memo(function PeerBenchmarkSection({ results }: PeerBenchmarkSectionProps) {
   const { personalProfile, score } = results;
   const [benchmark, setBenchmark] = useState<BenchmarkData | null>(null);
   const [, setLoading] = useState(true);
@@ -222,7 +222,7 @@ export function PeerBenchmarkSection({ results }: PeerBenchmarkSectionProps) {
       </Card>
     </div>
   );
-}
+});
 
 function BenchmarkCard({
   icon: Icon,

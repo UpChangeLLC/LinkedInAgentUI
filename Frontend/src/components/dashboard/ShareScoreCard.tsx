@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Copy, Check, Linkedin, Download, Link2 } from 'lucide-react';
+import { Copy, Check, Linkedin, Download, Link2, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { generateShareBadge } from '../../lib/badgeGenerator';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -15,7 +16,7 @@ interface ShareScoreCardProps {
   runId?: string;
 }
 
-export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
+export const ShareScoreCard = React.memo(function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const { personalProfile, personalRisk, score, scoreFactors } = results;
@@ -202,6 +203,26 @@ export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
             </div>
           </Card>
 
+          {/* QR Code for Team Sharing */}
+          <Card className="bg-dark-card border-dark-border">
+            <div className="flex items-center gap-2 mb-3">
+              <QrCode className="w-4 h-4 text-dark-accent" />
+              <h3 className="text-sm font-bold text-dark-textPri">Share via QR Code</h3>
+            </div>
+            <p className="text-xs text-dark-textMuted mb-4">
+              Let colleagues scan this code to get their own AI Resilience Score.
+            </p>
+            <div className="flex justify-center p-4 bg-dark-elevated rounded-lg">
+              <QRCodeSVG
+                value={`${window.location.origin}?linkedin_url=`}
+                size={160}
+                bgColor="#0B1120"
+                fgColor="#14B8A6"
+                level="M"
+              />
+            </div>
+          </Card>
+
           <div className="bg-dark-accentDim p-4 rounded-xl border border-dark-accent/10">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full bg-dark-green animate-pulse" />
@@ -218,4 +239,4 @@ export function ShareScoreCard({ results, runId }: ShareScoreCardProps) {
       </div>
     </div>
   );
-}
+});
