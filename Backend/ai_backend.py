@@ -404,7 +404,7 @@ def _run_provider_sync(
     if not with_web_search:
         response = client.messages.create(
             model=model,
-            max_tokens=2000,
+            max_tokens=20000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
