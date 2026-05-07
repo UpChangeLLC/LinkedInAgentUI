@@ -173,6 +173,7 @@ export function App() {
               subscriptionActive={subscriptionActive}
               submitting={signupSubmitting}
               accountName={accountName}
+              errorMessage={signupError}
               isAuthenticated={Boolean(signupSession?.accessToken)}
               onDashboard={dashboardAvailable ? goToResults : undefined}
               onRecalculate={goToIntake}

@@ -76,6 +76,30 @@ export interface StoredSignupSession {
     subscriptionExpiresAt: string | null
 }
 
+export interface PaymentMethodPayload {
+    name_on_card?: string
+    card_number?: string
+    expiry?: string
+    cvc?: string
+}
+
+export interface PaymentCheckoutSession {
+    provider: string
+    session_id: string
+    checkout_url?: string | null
+    status: string
+    amount_cents: number
+    currency: string
+    metadata?: Record<string, unknown>
+}
+
+export interface PaymentCheckoutResponse {
+    status: 'ok' | 'error'
+    persisted?: boolean
+    checkout?: PaymentCheckoutSession
+    detail?: string
+}
+
 const SESSION_KEY = 'airs_signup_session'
 const OAUTH_PENDING_KEY = 'airs_oauth_pending_signup'
 export const PAYWALL_DEADLINE_KEY = 'airs_paywall_deadline_ms'
@@ -256,6 +280,48 @@ export async function activateDummySubscription(accessToken: string, months = 1)
     const json = (await res.json().catch(() => ({}))) as SignupResponse
     if (!res.ok || json.status === 'error') {
         throw new Error(json.detail || `Subscription failed (HTTP ${res.status})`)
+    }
+    return json
+}
+
+export async function createPaymentCheckout(accessToken: string, planId: string): Promise<PaymentCheckoutSession> {
+    const res = await fetch(`${baseUrl()}/api/payments/checkout`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...mcpAuthHeaders(),
+        },
+        body: JSON.stringify({ access_token: accessToken, plan_id: planId }),
+        signal: timeoutSignal(30_000),
+    })
+    const json = (await res.json().catch(() => ({}))) as PaymentCheckoutResponse
+    if (!res.ok || json.status === 'error' || !json.checkout) {
+        throw new Error(json.detail || `Checkout failed (HTTP ${res.status})`)
+    }
+    return json.checkout
+}
+
+export async function confirmPaymentCheckout(args: {
+    accessToken: string
+    sessionId: string
+    paymentMethod: PaymentMethodPayload
+}): Promise<SignupResponse> {
+    const res = await fetch(`${baseUrl()}/api/payments/confirm`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...mcpAuthHeaders(),
+        },
+        body: JSON.stringify({
+            access_token: args.accessToken,
+            session_id: args.sessionId,
+            payment_method: args.paymentMethod,
+        }),
+        signal: timeoutSignal(30_000),
+    })
+    const json = (await res.json().catch(() => ({}))) as SignupResponse
+    if (!res.ok || json.status === 'error') {
+        throw new Error(json.detail || `Payment confirmation failed (HTTP ${res.status})`)
     }
     return json
 }

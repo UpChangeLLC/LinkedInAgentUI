@@ -60,7 +60,7 @@ interface ResultsDashboardProps {
   showScoreReveal?: boolean;
   onScoreRevealComplete?: () => void;
   subscriptionSubmitting?: boolean;
-  onActivateSubscription?: (months?: number) => void;
+  onActivateSubscription?: (planId?: string, paymentMethod?: Record<string, unknown>) => void;
 }
 export function ResultsDashboard({
   results,
@@ -94,8 +94,14 @@ export function ResultsDashboard({
   }, [isPaywalled, onOpenCareerMentor]);
   const submitPayment = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onActivateSubscription?.(selectedSubscription.months);
-  }, [onActivateSubscription, selectedSubscription.months]);
+    const form = new FormData(event.currentTarget);
+    onActivateSubscription?.(selectedSubscription.id, {
+      name_on_card: String(form.get('name_on_card') || ''),
+      card_number: String(form.get('card_number') || ''),
+      expiry: String(form.get('expiry') || ''),
+      cvc: String(form.get('cvc') || ''),
+    });
+  }, [onActivateSubscription, selectedSubscription.id]);
   const handleRevealComplete = useCallback(() => {
     onScoreRevealComplete?.();
   }, [onScoreRevealComplete]);
@@ -415,22 +421,26 @@ export function ResultsDashboard({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <input
                     required
+                    name="name_on_card"
                     placeholder="Name on card"
                     className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
                   />
                   <input
                     required
+                    name="card_number"
                     inputMode="numeric"
                     placeholder="Card number"
                     className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
                   />
                   <input
                     required
+                    name="expiry"
                     placeholder="MM / YY"
                     className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
                   />
                   <input
                     required
+                    name="cvc"
                     inputMode="numeric"
                     placeholder="CVC"
                     className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"

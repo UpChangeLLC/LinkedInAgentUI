@@ -141,6 +141,68 @@ class UserSignup(Base):
     )
 
 
+class PaymentSession(Base):
+    """Checkout session created by the configured payment provider."""
+
+    __tablename__ = "payment_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_signup_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_signups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    provider = Column(String(50), nullable=False, default="mock")
+    provider_session_id = Column(String(120), nullable=False, unique=True, index=True)
+    plan_id = Column(String(50), nullable=False)
+    amount_cents = Column(Integer, nullable=False)
+    currency = Column(String(3), nullable=False, default="USD")
+    months = Column(Integer, nullable=False)
+    status = Column(String(30), nullable=False, default="created")
+    event_metadata = Column("metadata", JSONB, nullable=True)
+    confirmed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+
+    __table_args__ = (
+        Index("idx_payment_sessions_user_created", "user_signup_id", "created_at"),
+        Index("idx_payment_sessions_status_created", "status", "created_at"),
+    )
+
+
+class PaymentEvent(Base):
+    """Auditable payment-provider event log."""
+
+    __tablename__ = "payment_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_signup_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_signups.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    provider = Column(String(50), nullable=False, default="mock")
+    event_type = Column(String(100), nullable=False, index=True)
+    provider_session_id = Column(String(120), nullable=True, index=True)
+    payload = Column(JSONB, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+
+    __table_args__ = (
+        Index("idx_payment_events_user_created", "user_signup_id", "created_at"),
+    )
+
+
 class ApifyCache(Base):
     """Replaces the file-based apify_dataset_cache.json."""
 

@@ -79,6 +79,7 @@ _RATE_LIMITED_PREFIXES = (
     "/agent/run",
     "/api/resume/upload",
     "/api/signup",
+    "/api/payments",
 )
 _CAREER_CHAT_MAX = 30
 _CAREER_CHAT_PREFIX = "/api/career-chat"

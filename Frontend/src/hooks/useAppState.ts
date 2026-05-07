@@ -5,10 +5,11 @@ import type { PipelineEvent, ProfilePreview } from '../lib/mcp';
 import { toMockResults } from '../lib/transform';
 import { hashLinkedInUrl } from '../lib/urlHash';
 import {
-  activateDummySubscription,
   buildOAuthCompletePayload,
   buildSignupPayload,
   clearStoredSignupSession,
+  confirmPaymentCheckout,
+  createPaymentCheckout,
   completeOAuthSignup,
   consumeOAuthRedirect,
   consumePendingOAuthSignup,
@@ -712,7 +713,7 @@ export function useAppState() {
     })();
   }, [authEntryPoint, formData, resultsBackend, resultsComputed]);
 
-  const activateSubscription = useCallback((months = 1) => {
+  const activateSubscription = useCallback((planId = 'monthly', paymentMethod: Record<string, unknown> = {}) => {
     const token = signupSession?.accessToken;
     if (!token) {
       setAuthEntryPoint('landing');
@@ -727,7 +728,12 @@ export function useAppState() {
     setSignupError('');
     (async () => {
       try {
-        const resp = await activateDummySubscription(token, months);
+        const checkout = await createPaymentCheckout(token, planId);
+        const resp = await confirmPaymentCheckout({
+          accessToken: token,
+          sessionId: checkout.session_id,
+          paymentMethod,
+        });
         const session = saveSignupSession({
           ...resp,
           access_token: token,

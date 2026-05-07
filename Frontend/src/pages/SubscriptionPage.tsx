@@ -42,11 +42,12 @@ interface SubscriptionPageProps {
   subscriptionActive?: boolean
   submitting?: boolean
   accountName?: string
+  errorMessage?: string
   onDashboard?: () => void
   onRecalculate?: () => void
   onLogout?: () => void
   isAuthenticated?: boolean
-  onActivate: (months?: number) => void
+  onActivate: (planId?: string, paymentMethod?: Record<string, unknown>) => void
   onBack: () => void
 }
 
@@ -54,6 +55,7 @@ export function SubscriptionPage({
   subscriptionActive = false,
   submitting = false,
   accountName,
+  errorMessage,
   onDashboard,
   onRecalculate,
   onLogout,
@@ -66,7 +68,13 @@ export function SubscriptionPage({
 
   const submitPayment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    onActivate(selected.months)
+    const form = new FormData(event.currentTarget)
+    onActivate(selected.id, {
+      name_on_card: String(form.get('name_on_card') || ''),
+      card_number: String(form.get('card_number') || ''),
+      expiry: String(form.get('expiry') || ''),
+      cvc: String(form.get('cvc') || ''),
+    })
   }
 
   return (
@@ -110,6 +118,12 @@ export function SubscriptionPage({
               </div>
             )}
           </div>
+
+          {errorMessage && (
+            <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              {errorMessage}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {PLANS.map((plan) => {
@@ -159,7 +173,7 @@ export function SubscriptionPage({
                     <span className="text-3xl font-bold text-dark-textPri">{selected.price}</span>
                     <span className="text-sm text-dark-textMuted mb-1">{selected.cadence}</span>
                   </div>
-                  <Button type="button" fullWidth onClick={() => onActivate(selected.months)} className="bg-linkedin hover:bg-linkedin/90">
+                  <Button type="button" fullWidth onClick={() => onActivate(selected.id)} className="bg-linkedin hover:bg-linkedin/90">
                     Create account to activate
                   </Button>
                 </div>
@@ -172,10 +186,10 @@ export function SubscriptionPage({
                   Payment method
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input required placeholder="Name on card" className="rounded-lg border border-dark-border bg-dark-bg px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40" />
-                  <input required inputMode="numeric" placeholder="Card number" className="rounded-lg border border-dark-border bg-dark-bg px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40" />
-                  <input required placeholder="MM / YY" className="rounded-lg border border-dark-border bg-dark-bg px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40" />
-                  <input required inputMode="numeric" placeholder="CVC" className="rounded-lg border border-dark-border bg-dark-bg px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40" />
+                  <input required name="name_on_card" placeholder="Name on card" className="rounded-lg border border-dark-border bg-dark-bg px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40" />
+                  <input required name="card_number" inputMode="numeric" placeholder="Card number" className="rounded-lg border border-dark-border bg-dark-bg px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40" />
+                  <input required name="expiry" placeholder="MM / YY" className="rounded-lg border border-dark-border bg-dark-bg px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40" />
+                  <input required name="cvc" inputMode="numeric" placeholder="CVC" className="rounded-lg border border-dark-border bg-dark-bg px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40" />
                 </div>
               </div>
 
