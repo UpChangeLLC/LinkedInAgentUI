@@ -10,8 +10,9 @@ import { CTASection } from '../components/landing/CTASection';
 import { Button } from '../components/ui/Button';
 interface LandingPageProps {
   onGetStarted: () => void;
+  onCareerMentor?: () => void;
 }
-export function LandingPage({ onGetStarted }: LandingPageProps) {
+export function LandingPage({ onGetStarted, onCareerMentor }: LandingPageProps) {
   return (
     <motion.div
       initial={{
@@ -25,7 +26,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
       }}
       className="min-h-screen bg-white">
       
-      <LinkedInNav />
+      <LinkedInNav onCareerMentor={onCareerMentor} />
       <HeroSection onGetStarted={onGetStarted} />
       <RecentlyAssessedTicker />
       <SocialProofSection />

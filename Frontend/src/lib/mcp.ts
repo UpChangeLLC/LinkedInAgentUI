@@ -14,9 +14,36 @@ export type McpRunPayload = {
     user_context?: UserContext | null
 }
 
-/** Create an AbortSignal that fires after the given timeout in ms. */
+function mcpAuthHeaders(): Record<string, string> {
+    const env = (import.meta as any).env || {}
+    const key = (env.VITE_MCP_API_KEY as string | undefined)?.trim()
+    if (!key) return {}
+    return { Authorization: `Bearer ${key}` }
+}
+
+function jsonHeaders(): Record<string, string> {
+    return { 'Content-Type': 'application/json', ...mcpAuthHeaders() }
+}
+
+/** AbortSignal.timeout is missing on Safari <16.4 — without this, fetch throws before any request (mobile shows "Load failed"). */
 function timeoutSignal(ms: number): AbortSignal {
-    return AbortSignal.timeout(ms)
+    const AT = AbortSignal as typeof AbortSignal & { timeout?: (n: number) => AbortSignal }
+    if (typeof AT.timeout === 'function') {
+        return AT.timeout(ms)
+    }
+    const c = new AbortController()
+    const t = setTimeout(() => c.abort(), ms)
+    c.signal.addEventListener('abort', () => clearTimeout(t), { once: true })
+    return c.signal
+}
+
+/** All iOS browsers use WebKit; long-lived fetch streams for SSE are unreliable — use POST /mcp/run only. */
+function preferPostOnlyPipeline(): boolean {
+    if (typeof navigator === 'undefined') return false
+    const ua = navigator.userAgent || ''
+    const isIPadDesktopUA =
+        navigator.platform === 'MacIntel' && (navigator.maxTouchPoints ?? 0) > 1
+    return /iPhone|iPad|iPod/.test(ua) || isIPadDesktopUA
 }
 
 const RUN_TIMEOUT_MS = 5 * 60 * 1000   // 5 minutes for full pipeline
@@ -28,9 +55,7 @@ export async function mcpRun(payload: McpRunPayload): Promise<AgentRunResponse> 
     const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? ''
     const res = await fetch(`${String(baseUrl).replace(/\/+$/, '')}/mcp/run`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: jsonHeaders(),
         body: JSON.stringify({
             linkedin_url: payload.linkedin_url ?? '',
             resume_text: payload.resume_text ?? '',
@@ -70,7 +95,7 @@ export async function previewProfile(payload: McpRunPayload): Promise<ProfilePre
     const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? ''
     const res = await fetch(`${String(baseUrl).replace(/\/+$/, '')}/mcp/preview`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify({
             linkedin_url: payload.linkedin_url ?? '',
             resume_text: payload.resume_text ?? '',
@@ -115,6 +140,10 @@ export async function streamAnalysis(
     payload: McpRunPayload,
     onEvent: (event: PipelineEvent) => void,
 ): Promise<AgentRunResponse> {
+    if (preferPostOnlyPipeline()) {
+        return mcpRun(payload)
+    }
+
     const env = (import.meta as any).env || {}
     const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? ''
     const url = `${String(baseUrl).replace(/\/+$/, '')}/mcp/run/stream`
@@ -122,7 +151,7 @@ export async function streamAnalysis(
     try {
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: jsonHeaders(),
             body: JSON.stringify({
                 linkedin_url: payload.linkedin_url ?? '',
                 resume_text: payload.resume_text ?? '',
@@ -204,7 +233,7 @@ export async function fetchCachedResult(urlHash: string): Promise<CachedResultRe
     try {
         const res = await fetch(
             `${String(baseUrl).replace(/\/+$/, '')}/api/results/${urlHash}`,
-            { signal: timeoutSignal(10_000) },
+            { signal: timeoutSignal(10_000), headers: { ...mcpAuthHeaders() } },
         )
         if (!res.ok) return { status: 'miss' }
         return await res.json()

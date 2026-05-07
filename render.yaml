@@ -1,0 +1,90 @@
+# Render Blueprint — https://render.com/docs/infrastructure-as-code
+# Repo root: Dockerfile builds Frontend (Vite) + Backend (FastAPI) in one image.
+#
+# Deploy: Dashboard → New → Blueprint → connect this repo → apply.
+# Or: `render blueprint apply` (Render CLI).
+#
+# After first deploy, set secrets in the service → Environment (OPENAI_API_KEY, APIFY_API_TOKEN, etc.).
+# If you use MCP_API_KEY: add Docker build arg VITE_MCP_API_KEY (same value) in the service
+# → Settings → Build → Docker Build Args, then clear deploy cache and rebuild.
+
+databases:
+  - name: linkedin-agent-db
+    plan: starter
+    databaseName: linkedin_agent
+    user: linkedin_agent
+
+services:
+  - type: redis
+    name: linkedin-agent-redis
+    plan: starter
+    region: oregon
+    ipAllowList: []
+
+  - type: web
+    name: linkedin-agent-ui
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /mcp/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: FRONTEND_DIST
+        value: /app/dist
+      - key: UVICORN_WORKERS
+        value: "1"
+      - key: AI_CLIENT
+        value: openai
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: WEB_SEARCH_CLIENT
+        value: openai
+      - key: APIFY_ACTOR_ID
+        value: supreme_coder/linkedin-profile-scraper
+      - key: APIFY_DATASET_CACHE_FILE
+        value: apify_dataset_cache.json
+      - key: AI_CLIENT_TIMEOUT_SEC
+        value: "120"
+      - key: AI_CLIENT_MAX_RETRIES
+        value: "2"
+      - key: SENTRY_ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: linkedin-agent-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: linkedin-agent-redis
+          type: redis
+          property: connectionString
+      # Secrets — set in dashboard (Blueprint may prompt on first apply)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: APIFY_API_TOKEN
+        sync: false
+      - key: MCP_API_KEY
+        sync: false
+      - key: LANGCHAIN_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      # Optional providers
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      - key: AZURE_OPENAI_DEPLOYMENT
+        sync: false
+      - key: AZURE_OPENAI_API_VERSION
+        sync: false

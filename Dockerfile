@@ -17,6 +17,9 @@ COPY Frontend/ ./
 # Same-origin API in container (browser calls /mcp/run on this host)
 ARG VITE_MCP_BASE_URL=
 ENV VITE_MCP_BASE_URL=${VITE_MCP_BASE_URL}
+# Optional: must match MCP_API_KEY at runtime — set as Docker build arg on Render if API is key-protected
+ARG VITE_MCP_API_KEY=
+ENV VITE_MCP_API_KEY=${VITE_MCP_API_KEY}
 RUN npm run build
 
 # Use rolling patch tag so rebuilds pick up Debian/Python security updates.
@@ -49,7 +52,8 @@ EXPOSE 8001
 # Switch to non-root user
 USER appuser
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" || exit 1
+# Use PORT when present (Render sets it); default 8001 for local Docker
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD python -c "import os,urllib.request; p=os.environ.get('PORT','8001'); urllib.request.urlopen(f'http://127.0.0.1:{p}/mcp/health')" || exit 1
 
-CMD ["sh", "-c", "python -m alembic upgrade head && python -m uvicorn mcp_http:app --host 0.0.0.0 --port 8001 --workers ${UVICORN_WORKERS} --limit-concurrency ${UVICORN_CONCURRENCY_LIMIT} --timeout-graceful-shutdown 30"]
+CMD ["sh", "-c", "python -m alembic upgrade head && exec python -m uvicorn mcp_http:app --host 0.0.0.0 --port ${PORT:-8001} --workers ${UVICORN_WORKERS} --limit-concurrency ${UVICORN_CONCURRENCY_LIMIT} --timeout-graceful-shutdown 30"]

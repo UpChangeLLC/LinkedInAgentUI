@@ -93,6 +93,54 @@ class PipelineRun(Base):
     )
 
 
+class UserSignup(Base):
+    """User contact record captured before showing assessment results."""
+
+    __tablename__ = "user_signups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # User-provided contact details
+    full_name = Column(String(200), nullable=False)
+    email = Column(String(320), nullable=False, index=True)
+    phone = Column(String(50), nullable=True)
+    company = Column(String(200), nullable=True)
+    role_title = Column(String(200), nullable=True)
+
+    # Intake metadata
+    linkedin_url = Column(String(500), nullable=True)
+    url_hash = Column(String(64), nullable=True, index=True)
+    resume_provided = Column(Boolean, default=False)
+    github_url = Column(String(500), nullable=True)
+    website_url = Column(String(500), nullable=True)
+    user_context = Column(JSONB, nullable=True)
+
+    # Assessment snapshot at signup time
+    assessment_snapshot = Column(JSONB, nullable=True)
+    marketing_opt_in = Column(Boolean, default=False)
+
+    # Demo auth/subscription state. Replace with real auth + payment provider before production.
+    access_token_hash = Column(String(64), nullable=True, unique=True, index=True)
+    password_hash = Column(String(300), nullable=True)
+    oauth_provider = Column(String(50), nullable=True, index=True)
+    oauth_subject = Column(String(200), nullable=True, index=True)
+    subscription_status = Column(String(30), nullable=False, default="trial")
+    subscription_expires_at = Column(DateTime(timezone=True), nullable=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+
+    __table_args__ = (
+        Index("idx_user_signups_email_created", "email", "created_at"),
+        Index("idx_user_signups_url_created", "url_hash", "created_at"),
+    )
+
+
 class ApifyCache(Base):
     """Replaces the file-based apify_dataset_cache.json."""
 

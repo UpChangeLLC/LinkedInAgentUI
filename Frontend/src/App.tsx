@@ -7,7 +7,10 @@ import { ProfilePreviewPage } from './pages/ProfilePreviewPage';
 import { AnalyzingPage } from './pages/AnalyzingPage';
 import { ErrorPage } from './pages/ErrorPage';
 import { CachedResultPromptPage } from './pages/CachedResultPromptPage';
+import { CareerChatPage } from './pages/CareerChatPage';
+import { SignupPage } from './pages/SignupPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { buildCareerAssessmentContext } from './lib/careerChat';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAppState } from './hooks/useAppState';
 
@@ -48,6 +51,10 @@ export function App() {
     previewData,
     previewLoading,
     cachedResultAge,
+    signupSubmitting,
+    signupError,
+    subscriptionActive,
+    paywallLocked,
     useCachedResult,
     skipCachedResult,
     goToIntake,
@@ -57,7 +64,15 @@ export function App() {
     goToResults,
     goBack,
     goToLanding,
-    retrySubmit
+    retrySubmit,
+    completeSignup,
+    restoreSignupByEmail,
+    continueWithOAuth,
+    activateSubscription,
+    goToCareerChat,
+    goBackFromCareerChat,
+    careerMentorSeedContext,
+    resultsBackend,
   } = useAppState();
   return (
     <ThemeProvider>
@@ -65,9 +80,17 @@ export function App() {
     <ErrorBoundary>
       <div className="font-sans text-navy-900 antialiased selection:bg-accent/20 selection:text-accent-dark">
         <AnimatePresence mode="wait">
-          {currentPage === 'landing' &&
-          <LandingPage key="landing" onGetStarted={goToIntake} />
-          }
+          {currentPage === 'landing' && (
+            <LandingPage key="landing" onGetStarted={goToIntake} />
+          )}
+
+          {currentPage === 'career-chat' && (
+            <CareerChatPage
+              key="career-chat"
+              seedAssessmentContext={careerMentorSeedContext}
+              onBack={goBackFromCareerChat}
+            />
+          )}
 
           {currentPage === 'intake' &&
           <IntakeFormPage key="intake" onSubmit={submitForm} onBack={goBack} submitting={previewLoading} />
@@ -101,13 +124,40 @@ export function App() {
           <AnalyzingPage key="analyzing" onComplete={goToResults} pipelineProgress={pipelineProgress} />
           }
 
+          {currentPage === 'signup' && (
+            <SignupPage
+              key="signup"
+              submitting={signupSubmitting}
+              errorMessage={signupError}
+              onSubmit={completeSignup}
+              onRestore={restoreSignupByEmail}
+              onOAuth={continueWithOAuth}
+              onBack={goBack}
+            />
+          )}
+
           {currentPage === 'results' &&
           <Suspense fallback={<LoadingFallback />}>
             <ResultsDashboard
               key="results"
               results={results}
               formData={formData}
-              onBackToHome={goToLanding} />
+              onBackToHome={goToLanding}
+              subscriptionActive={subscriptionActive}
+              paywallLocked={paywallLocked}
+              subscriptionSubmitting={signupSubmitting}
+              onActivateSubscription={activateSubscription}
+              onOpenCareerMentor={() =>
+                goToCareerChat(
+                  buildCareerAssessmentContext(
+                    results as unknown as Record<string, unknown>,
+                    resultsBackend as Record<string, unknown> | null | undefined,
+                    formData as Record<string, unknown> | null | undefined
+                  ),
+                  'results'
+                )
+              }
+            />
           </Suspense>
           }
 

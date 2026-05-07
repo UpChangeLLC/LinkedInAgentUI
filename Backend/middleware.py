@@ -50,6 +50,7 @@ def _extract_key(headers: dict) -> str:
 
 # Public paths that never require auth
 _PUBLIC_PATHS = {"/mcp/health", "/health", "/ready", "/api/stats", "/api/events"}
+_PUBLIC_PREFIXES = ("/api/signup/oauth/callback/",)
 
 
 async def api_key_guard(request: Request, call_next):
@@ -57,7 +58,7 @@ async def api_key_guard(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)
     path = request.url.path or "/"
-    if path in _PUBLIC_PATHS:
+    if path in _PUBLIC_PATHS or any(path.startswith(prefix) for prefix in _PUBLIC_PREFIXES):
         return await call_next(request)
     # Allow GET for static assets (SPA)
     if request.method == "GET" and not path.startswith(("/mcp", "/agent", "/api")):
@@ -72,7 +73,15 @@ async def api_key_guard(request: Request, call_next):
 
 _RATE_LIMIT_MAX = 5
 _RATE_LIMIT_WINDOW = 60  # seconds
-_RATE_LIMITED_PREFIXES = ("/mcp/run", "/mcp/preview", "/agent/run", "/api/resume/upload")
+_RATE_LIMITED_PREFIXES = (
+    "/mcp/run",
+    "/mcp/preview",
+    "/agent/run",
+    "/api/resume/upload",
+    "/api/signup",
+)
+_CAREER_CHAT_MAX = 30
+_CAREER_CHAT_PREFIX = "/api/career-chat"
 
 
 def _ip_hash(request: Request) -> str:
@@ -85,8 +94,19 @@ def _ip_hash(request: Request) -> str:
 async def rate_limit(request: Request, call_next):
     """Sliding window rate limiter for agent endpoints. Uses Redis; no-ops if unavailable."""
     path = request.url.path or "/"
+    from cache import rate_limit_check
+
+    if path.startswith(_CAREER_CHAT_PREFIX):
+        key = f"ratelimit:career_chat:{_ip_hash(request)}"
+        allowed = await rate_limit_check(key, _CAREER_CHAT_MAX, _RATE_LIMIT_WINDOW)
+        if not allowed:
+            return JSONResponse(
+                {"detail": "Too many chat requests. Please try again in a minute."},
+                status_code=429,
+            )
+        return await call_next(request)
+
     if any(path.startswith(p) for p in _RATE_LIMITED_PREFIXES):
-        from cache import rate_limit_check
         key = f"ratelimit:{_ip_hash(request)}"
         allowed = await rate_limit_check(key, _RATE_LIMIT_MAX, _RATE_LIMIT_WINDOW)
         if not allowed:
