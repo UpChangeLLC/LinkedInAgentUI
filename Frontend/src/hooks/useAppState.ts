@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { mockResults } from '../data/mockResults';
 import { streamAnalysis, previewProfile, fetchCachedResult } from '../lib/mcp';
 import type { PipelineEvent, ProfilePreview } from '../lib/mcp';
@@ -8,16 +8,20 @@ import {
   activateDummySubscription,
   buildOAuthCompletePayload,
   buildSignupPayload,
+  clearStoredSignupSession,
   completeOAuthSignup,
   consumeOAuthRedirect,
   consumePendingOAuthSignup,
   getStoredSignupSession,
   restoreSignupSession,
   saveSignupSession,
+  saveSignupAssessment,
   savePendingOAuthSignup,
   startOAuth,
   submitSignup,
+  PAYWALL_DEADLINE_KEY,
   type OAuthProvider,
+  type SignupResponse,
   type StoredSignupSession,
 } from '../lib/signup';
 import type { MockResults } from '../data/mockResults';
@@ -29,6 +33,7 @@ type Page =
   | 'analyzing'
   | 'results'
   | 'signup'
+  | 'subscriptions'
   | 'error'
   | 'cached-prompt'
   | 'career-chat';
@@ -63,9 +68,11 @@ interface PendingOAuthSignup {
   formData: any;
   resultsBackend: any;
   resultsComputed: MockResults;
+  authEntryPoint?: 'landing' | 'intake';
 }
 
 export function useAppState() {
+  const restoreAttemptedRef = useRef(false);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [formData, setFormData] = useState<any>({});
   const [resultsBackend, setResultsBackend] = useState<any>(null);
@@ -76,6 +83,7 @@ export function useAppState() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [cachedResult, setCachedResult] = useState<any>(null);
   const [cachedResultAge, setCachedResultAge] = useState<string | null>(null);
+  const [dashboardRevealSeen, setDashboardRevealSeen] = useState(true);
   const [careerMentorSeedContext, setCareerMentorSeedContext] = useState<string | undefined>(undefined);
   const [careerChatReturnPage, setCareerChatReturnPage] = useState<'landing' | 'results'>('landing');
   const [signupSubmitting, setSignupSubmitting] = useState(false);
@@ -86,18 +94,76 @@ export function useAppState() {
   const [subscriptionActive, setSubscriptionActive] = useState(false);
   const [paywallLocked, setPaywallLocked] = useState(false);
   const [paywallDeadlineMs, setPaywallDeadlineMs] = useState<number | null>(null);
+  const [authEntryPoint, setAuthEntryPoint] = useState<'landing' | 'intake'>('intake');
+  const [subscriptionReturnPage, setSubscriptionReturnPage] = useState<Page>('landing');
+  const [continueToSubscriptionsAfterAuth, setContinueToSubscriptionsAfterAuth] = useState(false);
+  const [authRestoring, setAuthRestoring] = useState(true);
+  const [signupInitialMode, setSignupInitialMode] = useState<'login' | 'signup'>('login');
 
   const startFreePreviewWindow = useCallback((isSubscribed: boolean) => {
     if (isSubscribed) {
       setPaywallLocked(false);
       setPaywallDeadlineMs(null);
+      try {
+        localStorage.removeItem(PAYWALL_DEADLINE_KEY);
+      } catch {
+        /* ignore */
+      }
       return;
     }
+    try {
+      const saved = Number(localStorage.getItem(PAYWALL_DEADLINE_KEY) || 0);
+      if (saved > Date.now()) {
+        setPaywallLocked(false);
+        setPaywallDeadlineMs(saved);
+        return;
+      }
+      if (saved && saved <= Date.now()) {
+        setPaywallLocked(true);
+        setPaywallDeadlineMs(saved);
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    const deadline = Date.now() + FREE_PREVIEW_MS;
     setPaywallLocked(false);
-    setPaywallDeadlineMs(Date.now() + FREE_PREVIEW_MS);
+    setPaywallDeadlineMs(deadline);
+    try {
+      localStorage.setItem(PAYWALL_DEADLINE_KEY, String(deadline));
+    } catch {
+      /* ignore */
+    }
   }, []);
 
+  const showSavedResult = useCallback((
+    result: Record<string, any>,
+    age: string | null,
+    directToDashboard: boolean,
+    isSubscribed = subscriptionActive
+  ) => {
+    setCachedResult(result);
+    setCachedResultAge(age);
+    if (!directToDashboard) {
+      setCurrentPage('cached-prompt');
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    const transformed = toMockResults(result);
+    setResultsComputed(transformed);
+    setResultsBackend({ status: 'ok', result });
+    setFormData((prev: any) => ({ ...prev, backend: { status: 'ok', result } }));
+    setDashboardRevealSeen(true);
+    startFreePreviewWindow(Boolean(isSubscribed));
+    setCurrentPage('results');
+    window.scrollTo(0, 0);
+  }, [startFreePreviewWindow, subscriptionActive]);
+
   useEffect(() => {
+    if (restoreAttemptedRef.current) return;
+    restoreAttemptedRef.current = true;
+
     const oauthResponse = consumeOAuthRedirect();
     if (oauthResponse?.access_token) {
       const session = saveSignupSession(oauthResponse);
@@ -112,10 +178,27 @@ export function useAppState() {
         setSignupCompleted(true);
         setSignupId(session.signupId);
         setSubscriptionActive(session.subscriptionActive);
-        startFreePreviewWindow(session.subscriptionActive);
-        setCurrentPage('results');
+        if (oauthResponse.latest_assessment_result) {
+          showSavedResult(
+            oauthResponse.latest_assessment_result,
+            oauthResponse.latest_assessment_created_at || null,
+            false,
+            oauthResponse.subscription_active
+          );
+        } else if (pending?.formData && (pending.formData?.linkedinUrl || pending.formData?.linkedin_url)) {
+          startFullAnalysis(pending.formData, true, session.accessToken);
+        } else {
+          setCurrentPage('intake');
+        }
       }
-      if (session?.accessToken && pending) {
+      const hasMeaningfulPendingMetadata = Boolean(
+        pending?.resultsBackend?.result ||
+        pending?.formData?.linkedinUrl ||
+        pending?.formData?.linkedin_url ||
+        pending?.formData?.resumeText ||
+        pending?.formData?.resume_text
+      );
+      if (session?.accessToken && pending && hasMeaningfulPendingMetadata) {
         (async () => {
           try {
             const resp = await completeOAuthSignup(
@@ -132,18 +215,14 @@ export function useAppState() {
           }
         })();
       }
+      setAuthRestoring(false);
       return;
     }
 
     const stored = getStoredSignupSession();
-    if (!stored?.accessToken) return;
-    setSignupSession(stored);
-    setSignupCompleted(true);
-    setSignupId(stored.signupId);
-    setSubscriptionActive(stored.subscriptionActive);
-    if (stored.subscriptionActive) {
-      setPaywallLocked(false);
-      setPaywallDeadlineMs(null);
+    if (!stored?.accessToken) {
+      setAuthRestoring(false);
+      return;
     }
 
     (async () => {
@@ -158,13 +237,45 @@ export function useAppState() {
           if (session.subscriptionActive) {
             setPaywallLocked(false);
             setPaywallDeadlineMs(null);
+            try {
+              localStorage.removeItem(PAYWALL_DEADLINE_KEY);
+            } catch {
+              /* ignore */
+            }
+          } else {
+            try {
+              const savedDeadline = Number(localStorage.getItem(PAYWALL_DEADLINE_KEY) || 0);
+              if (savedDeadline) setPaywallDeadlineMs(savedDeadline);
+              if (savedDeadline && savedDeadline <= Date.now()) setPaywallLocked(true);
+            } catch {
+              /* ignore */
+            }
+          }
+          if (restored.latest_assessment_result) {
+            showSavedResult(
+              restored.latest_assessment_result,
+              restored.latest_assessment_created_at || null,
+              true,
+              restored.subscription_active
+            );
+          } else {
+            setCurrentPage('landing');
           }
         }
       } catch {
-        // Keep the local session for demo continuity; production should force re-auth.
+        clearStoredSignupSession();
+        setSignupSession(null);
+        setSignupCompleted(false);
+        setSignupId(null);
+        setSubscriptionActive(false);
+        setPaywallLocked(false);
+        setPaywallDeadlineMs(null);
+        setCurrentPage('landing');
+      } finally {
+        setAuthRestoring(false);
       }
     })();
-  }, [startFreePreviewWindow]);
+  }, [showSavedResult, startFreePreviewWindow]);
 
   useEffect(() => {
     if (subscriptionActive) {
@@ -189,9 +300,28 @@ export function useAppState() {
   }, [currentPage, paywallDeadlineMs, subscriptionActive]);
 
   const goToIntake = useCallback(() => {
+    setAuthEntryPoint('intake');
     setCurrentPage('intake');
     window.scrollTo(0, 0);
   }, []);
+
+  const goToLogin = useCallback(() => {
+    setAuthEntryPoint('landing');
+    setSignupInitialMode('login');
+    setSignupError('');
+    setFormData({});
+    setCachedResult(null);
+    setCachedResultAge(null);
+    setCurrentPage('signup');
+    window.scrollTo(0, 0);
+  }, []);
+
+  const goToSubscriptions = useCallback(() => {
+    setSignupError('');
+    setSubscriptionReturnPage(currentPage === 'results' ? 'results' : 'landing');
+    setCurrentPage('subscriptions');
+    window.scrollTo(0, 0);
+  }, [currentPage]);
 
   // Submit form: check cache first, then fetch preview or show confirmation
   const submitForm = useCallback((data: any) => {
@@ -199,11 +329,17 @@ export function useAppState() {
     setPreviewLoading(true);
     setErrorMessage('');
     setSignupError('');
-    setSignupCompleted(false);
-    setSignupId(null);
     setCachedResult(null);
     setCachedResultAge(null);
     window.scrollTo(0, 0);
+
+    if (!signupCompleted) {
+      setAuthEntryPoint('intake');
+      setSignupInitialMode('signup');
+      setPreviewLoading(false);
+      setCurrentPage('signup');
+      return;
+    }
 
     const linkedinUrl = data?.linkedinUrl || data?.linkedin_url || '';
 
@@ -246,7 +382,7 @@ export function useAppState() {
         startFullAnalysis(data);
       }
     })();
-  }, []);
+  }, [signupCompleted]);
 
   // Confirm profile and start full analysis
   const confirmProfile = useCallback(() => {
@@ -261,7 +397,7 @@ export function useAppState() {
   }, []);
 
   // Run the full pipeline (SSE streaming)
-  const startFullAnalysis = useCallback((data: any) => {
+  const startFullAnalysis = useCallback((data: any, authenticatedOverride = false, accessTokenOverride?: string | null) => {
     setCurrentPage('analyzing');
     setErrorMessage('');
     setPipelineProgress(INITIAL_PROGRESS);
@@ -302,10 +438,25 @@ export function useAppState() {
           const transformed = toMockResults(resp?.result || {});
           setResultsComputed(transformed);
           setFormData((prev: any) => ({ ...prev, backend: resp }));
+          setDashboardRevealSeen(false);
+          const assessmentAccessToken = accessTokenOverride || signupSession?.accessToken;
+          if (assessmentAccessToken) {
+            void saveSignupAssessment(
+              buildOAuthCompletePayload(
+                assessmentAccessToken,
+                data,
+                resp,
+                transformed as unknown as Record<string, any>
+              )
+            ).catch(() => {
+              // Result display should not fail if account metadata sync is unavailable.
+            });
+          }
           setPipelineProgress((prev) => ({ ...prev, progress: 100, message: 'Analysis complete!' }));
           setSignupError('');
-          if (signupCompleted) startFreePreviewWindow(subscriptionActive);
-          setCurrentPage(signupCompleted ? 'results' : 'signup');
+          const canShowResults = authenticatedOverride || signupCompleted;
+          if (canShowResults) startFreePreviewWindow(subscriptionActive);
+          setCurrentPage(canShowResults ? 'results' : 'signup');
         } else {
           setResultsBackend(null);
           setErrorMessage('The analysis service did not return a valid result. Please try again.');
@@ -318,21 +469,15 @@ export function useAppState() {
       }
       window.scrollTo(0, 0);
     })();
-  }, [signupCompleted, startFreePreviewWindow, subscriptionActive]);
+  }, [signupCompleted, signupSession?.accessToken, startFreePreviewWindow, subscriptionActive]);
 
   // Use cached result — skip pipeline entirely
   const useCachedResult = useCallback(() => {
     if (cachedResult) {
-      const transformed = toMockResults(cachedResult);
-      setResultsComputed(transformed);
-      setResultsBackend({ status: 'ok', result: cachedResult });
-      setFormData((prev: any) => ({ ...prev, backend: { status: 'ok', result: cachedResult } }));
       setSignupError('');
-      if (signupCompleted) startFreePreviewWindow(subscriptionActive);
-      setCurrentPage(signupCompleted ? 'results' : 'signup');
-      window.scrollTo(0, 0);
+      showSavedResult(cachedResult, cachedResultAge, true, subscriptionActive);
     }
-  }, [cachedResult, signupCompleted, startFreePreviewWindow, subscriptionActive]);
+  }, [cachedResult, cachedResultAge, showSavedResult, subscriptionActive]);
 
   // Skip cache — run fresh analysis via normal preview flow
   const skipCachedResult = useCallback(() => {
@@ -376,8 +521,26 @@ export function useAppState() {
     setCurrentPage('landing');
   }, []);
 
+  const logout = useCallback(() => {
+    clearStoredSignupSession();
+    setSignupSession(null);
+    setSignupCompleted(false);
+    setSignupId(null);
+    setSubscriptionActive(false);
+    setPaywallLocked(false);
+    setPaywallDeadlineMs(null);
+    setCachedResult(null);
+    setCachedResultAge(null);
+    setDashboardRevealSeen(true);
+    setCareerMentorSeedContext(undefined);
+    setSignupError('');
+    setCurrentPage('landing');
+    window.scrollTo(0, 0);
+  }, []);
+
   const goToCareerChat = useCallback((assessmentSummary?: string, from: 'landing' | 'results' = 'landing') => {
     if (!signupCompleted) {
+      setSignupInitialMode('login');
       setCurrentPage('signup');
       window.scrollTo(0, 0);
       return;
@@ -404,10 +567,52 @@ export function useAppState() {
     if (currentPage === 'previewing') setCurrentPage('intake');
     if (currentPage === 'cached-prompt') setCurrentPage('intake');
     if (currentPage === 'results') setCurrentPage('landing');
-    if (currentPage === 'signup') setCurrentPage('intake');
+    if (currentPage === 'signup') setCurrentPage(authEntryPoint === 'landing' ? 'landing' : 'intake');
+    if (currentPage === 'subscriptions') setCurrentPage(subscriptionReturnPage);
     if (currentPage === 'error') setCurrentPage('landing');
     if (currentPage === 'career-chat') goBackFromCareerChat();
-  }, [currentPage, goBackFromCareerChat]);
+  }, [authEntryPoint, currentPage, goBackFromCareerChat, subscriptionReturnPage]);
+
+  const continueAfterAuth = useCallback(async (resp: SignupResponse, data: any) => {
+    if (continueToSubscriptionsAfterAuth) {
+      setContinueToSubscriptionsAfterAuth(false);
+      setCurrentPage('subscriptions');
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    if (resp.latest_assessment_result && Object.keys(resp.latest_assessment_result).length > 0) {
+      showSavedResult(
+        resp.latest_assessment_result,
+        resp.latest_assessment_created_at || null,
+        false,
+        resp.subscription_active
+      );
+      return;
+    }
+
+    const linkedinUrl = data?.linkedinUrl || data?.linkedin_url || '';
+    if (!linkedinUrl) {
+      setCurrentPage('intake');
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    if (linkedinUrl) {
+      try {
+        const urlHash = await hashLinkedInUrl(linkedinUrl);
+        const cached = await fetchCachedResult(urlHash);
+        if (cached.status === 'hit' && cached.result) {
+          showSavedResult(cached.result, cached.created_at || null, false, resp.subscription_active);
+          return;
+        }
+      } catch {
+        // Cache lookup should not block a fresh analysis.
+      }
+    }
+
+    startFullAnalysis(data, true, resp.access_token || null);
+  }, [authEntryPoint, continueToSubscriptionsAfterAuth, showSavedResult, startFullAnalysis]);
 
   const completeSignup = useCallback((details: {
     fullName: string;
@@ -436,7 +641,6 @@ export function useAppState() {
         setSignupCompleted(true);
         const isSubscribed = Boolean(resp.subscription_active);
         setSubscriptionActive(isSubscribed);
-        startFreePreviewWindow(isSubscribed);
         setFormData((prev: any) => ({
           ...prev,
           signup: {
@@ -446,15 +650,14 @@ export function useAppState() {
             persisted: resp.persisted !== false,
           },
         }));
-        setCurrentPage('results');
-        window.scrollTo(0, 0);
+        await continueAfterAuth(resp, formData);
       } catch (e: any) {
         setSignupError(e?.message || 'Could not save signup details. Please try again.');
       } finally {
         setSignupSubmitting(false);
       }
     })();
-  }, [formData, resultsBackend, resultsComputed, startFreePreviewWindow]);
+  }, [continueAfterAuth, formData, resultsBackend, resultsComputed]);
 
   const restoreSignupByEmail = useCallback((email: string, password: string) => {
     setSignupSubmitting(true);
@@ -468,7 +671,6 @@ export function useAppState() {
           setSignupSession(session);
           setSignupId(session.signupId);
           setSubscriptionActive(session.subscriptionActive);
-          startFreePreviewWindow(session.subscriptionActive);
         }
         setSignupCompleted(true);
         setFormData((prev: any) => ({
@@ -480,15 +682,14 @@ export function useAppState() {
             persisted: resp.persisted !== false,
           },
         }));
-        setCurrentPage('results');
-        window.scrollTo(0, 0);
+        await continueAfterAuth(resp, formData);
       } catch (e: any) {
         setSignupError(e?.message || 'Could not restore your account.');
       } finally {
         setSignupSubmitting(false);
       }
     })();
-  }, [startFreePreviewWindow]);
+  }, [continueAfterAuth, formData]);
 
   const continueWithOAuth = useCallback((provider: OAuthProvider) => {
     setSignupSubmitting(true);
@@ -497,6 +698,7 @@ export function useAppState() {
       formData,
       resultsBackend,
       resultsComputed,
+      authEntryPoint,
     } satisfies PendingOAuthSignup);
 
     (async () => {
@@ -508,12 +710,15 @@ export function useAppState() {
         setSignupSubmitting(false);
       }
     })();
-  }, [formData, resultsBackend, resultsComputed]);
+  }, [authEntryPoint, formData, resultsBackend, resultsComputed]);
 
-  const activateSubscription = useCallback(() => {
+  const activateSubscription = useCallback((months = 1) => {
     const token = signupSession?.accessToken;
     if (!token) {
-      setSignupError('Please sign up or restore your account before subscribing.');
+      setAuthEntryPoint('landing');
+      setSignupInitialMode('signup');
+      setContinueToSubscriptionsAfterAuth(true);
+      setSignupError('Please create an account or log in before choosing a subscription.');
       setCurrentPage('signup');
       return;
     }
@@ -522,7 +727,7 @@ export function useAppState() {
     setSignupError('');
     (async () => {
       try {
-        const resp = await activateDummySubscription(token);
+        const resp = await activateDummySubscription(token, months);
         const session = saveSignupSession({
           ...resp,
           access_token: token,
@@ -569,6 +774,8 @@ export function useAppState() {
     pipelineProgress,
     previewData,
     previewLoading,
+    authRestoring,
+    signupInitialMode,
     signupSubmitting,
     signupError,
     signupCompleted,
@@ -576,9 +783,12 @@ export function useAppState() {
     signupSession,
     subscriptionActive,
     paywallLocked,
+    dashboardRevealSeen,
     cachedResult,
     cachedResultAge,
     goToIntake,
+    goToLogin,
+    goToSubscriptions,
     submitForm,
     confirmProfile,
     rejectProfile,
@@ -587,11 +797,13 @@ export function useAppState() {
     goToResults,
     goBack,
     goToLanding,
+    logout,
     retrySubmit,
     completeSignup,
     restoreSignupByEmail,
     continueWithOAuth,
     activateSubscription,
+    markDashboardRevealSeen: () => setDashboardRevealSeen(true),
     goToCareerChat,
     goBackFromCareerChat,
     careerMentorSeedContext,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, MessageCircle, RotateCcw, Send } from 'lucide-react'
+import { ArrowLeft, Bot, MessageCircle, RotateCcw, Send, Sparkles, X } from 'lucide-react'
 import { LinkedInNav } from '../components/ui/LinkedInNav'
 import { Button } from '../components/ui/Button'
 import type { CareerChatTurn } from '../lib/careerChat'
@@ -12,12 +12,33 @@ import {
     rotateCareerChatSessionId,
 } from '../lib/careerChat'
 
-export interface CareerChatPageProps {
-    seedAssessmentContext?: string
-    onBack: () => void
+const SUGGESTED_PROMPTS = [
+    'What should I improve first based on my score?',
+    'Create a 30-day career action plan for me.',
+    'How do I explain my AI readiness in interviews?',
+]
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
-export function CareerChatPage({ seedAssessmentContext, onBack }: CareerChatPageProps) {
+function chunkText(text: string): string[] {
+    const parts = text.match(/\S+\s*/g) || [text]
+    const chunks: string[] = []
+    for (let i = 0; i < parts.length; i += 3) {
+        chunks.push(parts.slice(i, i + 3).join(''))
+    }
+    return chunks
+}
+
+export interface CareerChatPageProps {
+    seedAssessmentContext?: string
+    onBack?: () => void
+    embedded?: boolean
+    onClose?: () => void
+}
+
+export function CareerChatPage({ seedAssessmentContext, onBack, embedded = false, onClose }: CareerChatPageProps) {
     const [sessionId, setSessionId] = useState(() => getOrCreateCareerChatSessionId())
     const [messages, setMessages] = useState<CareerChatTurn[]>([])
     const [input, setInput] = useState('')
@@ -26,6 +47,34 @@ export function CareerChatPage({ seedAssessmentContext, onBack }: CareerChatPage
     const [error, setError] = useState<string | null>(null)
     const seedSentRef = useRef(false)
     const bottomRef = useRef<HTMLDivElement>(null)
+    const inputRef = useRef<HTMLTextAreaElement>(null)
+
+    const renderAssistantInChunks = useCallback(async (content: string) => {
+        const chunks = chunkText(content)
+        setMessages((prev) => [...prev, { role: 'assistant', content: '' }])
+
+        let rendered = ''
+        for (const chunk of chunks) {
+            rendered += chunk
+            setMessages((prev) => {
+                const next = [...prev]
+                const last = next[next.length - 1]
+                if (last?.role === 'assistant') {
+                    next[next.length - 1] = { ...last, content: rendered }
+                }
+                return next
+            })
+            await sleep(28)
+        }
+    }, [])
+
+    const updateInput = useCallback((value: string) => {
+        setInput(value)
+        const el = inputRef.current
+        if (!el) return
+        el.style.height = 'auto'
+        el.style.height = `${Math.min(el.scrollHeight, 128)}px`
+    }, [])
 
     useEffect(() => {
         let cancelled = false
@@ -50,22 +99,37 @@ export function CareerChatPage({ seedAssessmentContext, onBack }: CareerChatPage
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages, loading])
 
-    const onSend = useCallback(async () => {
-        const text = input.trim()
+    useEffect(() => {
+        if (!hydrating && !loading) {
+            inputRef.current?.focus()
+        }
+    }, [hydrating, loading])
+
+    const onSend = useCallback(async (preset?: string) => {
+        const text = (preset ?? input).trim()
         if (!text || loading) return
-        setInput('')
+        updateInput('')
         setLoading(true)
         setError(null)
+        setMessages((prev) => [...prev, { role: 'user', content: text }])
         const assessmentPayload =
             seedAssessmentContext?.trim() && !seedSentRef.current ? seedAssessmentContext.trim() : undefined
         try {
             const res = await postCareerChatMessage(sessionId, text, assessmentPayload)
             if (assessmentPayload) seedSentRef.current = true
-            setMessages(res.history || [])
+            const history = res.history || []
+            const last = history[history.length - 1]
+            if (last?.role === 'assistant') {
+                setMessages(history.slice(0, -1))
+                await renderAssistantInChunks(last.content)
+            } else {
+                setMessages(history)
+            }
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Request failed'
             setError(msg)
-            setInput(text)
+            updateInput(text)
+            setMessages((prev) => prev.filter((m, idx) => !(idx === prev.length - 1 && m.role === 'user' && m.content === text)))
         } finally {
             setLoading(false)
         }
@@ -91,9 +155,9 @@ export function CareerChatPage({ seedAssessmentContext, onBack }: CareerChatPage
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col bg-dark-bg text-dark-textPri"
+            className={`${embedded ? 'h-full' : 'min-h-screen'} flex flex-col bg-dark-bg text-dark-textPri`}
         >
-            <LinkedInNav
+            {!embedded && <LinkedInNav
                 leadingSlot={
                     <button
                         type="button"
@@ -104,44 +168,79 @@ export function CareerChatPage({ seedAssessmentContext, onBack }: CareerChatPage
                         <span className="hidden sm:inline">Back</span>
                     </button>
                 }
-            />
+            />}
 
-            <div className="flex-1 flex flex-col max-w-3xl w-full mx-auto px-4 pb-28 pt-4 min-h-0">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                    <div>
-                        <div className="flex items-center gap-2 text-dark-accent mb-1">
-                            <MessageCircle className="w-5 h-5" />
+            <div className={`${embedded ? 'h-full px-3 pb-3 pt-3' : 'flex-1 max-w-3xl mx-auto px-4 pb-28 pt-4'} flex flex-col w-full min-h-0`}>
+                <div className="flex items-center justify-between gap-3 border-b border-dark-border pb-3">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-dark-accent mb-0.5">
+                            <Sparkles className="w-5 h-5" />
                             <span className="text-xs font-semibold uppercase tracking-widest">Career Mentor</span>
                         </div>
-                        <h1 className="text-2xl font-serif font-bold text-dark-textPri">Analyst chat</h1>
-                        <p className="text-sm text-dark-textMuted mt-1">
-                            Grounded career guidance. Your thread is remembered for this browser session (server-side
-                            when Redis is configured).
-                        </p>
+                        <h1 className="text-lg font-serif font-bold text-dark-textPri">Analyst chat</h1>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-dark-textMuted">
+                            <span className="inline-flex h-2 w-2 rounded-full bg-green-400" />
+                            Personalized to your assessment
+                        </div>
                     </div>
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="shrink-0 text-dark-textSec"
-                        onClick={onReset}
-                        disabled={loading}
-                    >
-                        <RotateCcw className="w-4 h-4 mr-1 inline" />
-                        New chat
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="text-dark-textSec h-8 px-3"
+                            onClick={onReset}
+                            disabled={loading}
+                        >
+                            <RotateCcw className="w-3.5 h-3.5 mr-1 inline" />
+                            New chat
+                        </Button>
+                        {embedded && (
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="p-2 rounded-lg text-dark-textMuted hover:text-dark-textPri hover:bg-dark-card transition-colors"
+                                aria-label="Close Career Mentor"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
                 </div>
 
-                <div className="flex-1 min-h-[320px] max-h-[calc(100dvh-220px)] overflow-y-auto rounded-lg border border-dark-border bg-dark-card/40 p-4 space-y-4">
+                <div className="flex-1 min-h-0 overflow-y-auto px-1 py-4 space-y-4">
                     {hydrating && (
-                        <p className="text-sm text-dark-textMuted text-center py-8">Loading conversation…</p>
+                        <div className="text-center py-10">
+                            <div className="mx-auto mb-3 h-8 w-8 rounded-full border-2 border-dark-accent border-t-transparent animate-spin" />
+                            <p className="text-sm text-dark-textMuted">Loading your mentor thread...</p>
+                        </div>
                     )}
                     {!hydrating && messages.length === 0 && (
-                        <div className="text-center py-10 px-4 space-y-2">
-                            <p className="text-dark-textPri font-medium">Ask anything about your career path</p>
+                        <div className="py-6 px-2 space-y-5">
+                            <div className="text-center space-y-2">
+                                <div className="mx-auto h-12 w-12 rounded-2xl bg-dark-accentDim flex items-center justify-center">
+                                    <Bot className="h-6 w-6 text-dark-accent" />
+                                </div>
+                                <p className="text-dark-textPri font-medium">Your AI career mentor is ready</p>
+                                <p className="text-sm text-dark-textMuted">
+                                    Start with a question or pick one of these prompts.
+                                </p>
+                            </div>
+                            <div className="grid gap-2">
+                                {SUGGESTED_PROMPTS.map((prompt) => (
+                                    <button
+                                        key={prompt}
+                                        type="button"
+                        onClick={() => void onSend(prompt)}
+                        disabled={loading || hydrating}
+                                        className="rounded-xl border border-dark-border bg-dark-card/60 px-3 py-3 text-left text-sm text-dark-textSec hover:border-dark-accent hover:bg-dark-card hover:text-dark-textPri transition-colors"
+                                    >
+                                        {prompt}
+                                    </button>
+                                ))}
+                            </div>
                             <p className="text-sm text-dark-textMuted">
-                                Promotion strategy, skill pivots, interview framing, or how to read your AI resilience
-                                results.
+                                Tip: Ask for specific outputs like “give me a weekly plan” or “rewrite my positioning.”
                             </p>
                         </div>
                     )}
@@ -151,7 +250,7 @@ export function CareerChatPage({ seedAssessmentContext, onBack }: CareerChatPage
                             className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                             <div
-                                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                                className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-line ${
                                     m.role === 'user'
                                         ? 'bg-linkedin text-white rounded-br-md'
                                         : 'bg-dark-card border border-dark-border text-dark-textPri rounded-bl-md'
@@ -163,8 +262,11 @@ export function CareerChatPage({ seedAssessmentContext, onBack }: CareerChatPage
                     ))}
                     {loading && (
                         <div className="flex justify-start">
-                            <div className="bg-dark-card border border-dark-border rounded-2xl rounded-bl-md px-4 py-2.5 text-sm text-dark-textMuted">
-                                Thinking…
+                            <div className="bg-dark-card border border-dark-border rounded-2xl rounded-bl-md px-4 py-3 text-sm text-dark-textMuted">
+                                <span className="inline-flex items-center gap-2">
+                                    <span className="h-2 w-2 rounded-full bg-dark-accent animate-pulse" />
+                                    Thinking through your profile...
+                                </span>
                             </div>
                         </div>
                     )}
@@ -177,19 +279,20 @@ export function CareerChatPage({ seedAssessmentContext, onBack }: CareerChatPage
                     </div>
                 )}
 
-                <div className="mt-4 flex gap-2 items-end sticky bottom-0 pt-2 bg-dark-bg pb-safe">
+                <div className="mt-2 flex gap-2 items-end border-t border-dark-border pt-3 bg-dark-bg pb-safe">
                     <textarea
+                        ref={inputRef}
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={(e) => updateInput(e.target.value)}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault()
                                 void onSend()
                             }
                         }}
-                        rows={2}
-                        placeholder="Message your career mentor…"
-                        className="flex-1 resize-none rounded-lg border border-dark-border bg-dark-card px-3 py-2 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
+                        rows={1}
+                        placeholder="Ask your mentor for advice, plans, or interview positioning..."
+                        className="flex-1 resize-none rounded-2xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
                         disabled={loading || hydrating}
                     />
                     <Button

@@ -45,7 +45,7 @@ load_dotenv("config.env", override=False)
 os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
 os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
 os.environ.setdefault("LANGCHAIN_PROJECT", "linkedin-agent")
-os.environ.setdefault("LANGCHAIN_API_KEY", os.getenv("LANGCHAIN_API_KEY", ""))
+os.environ.setdefault("LANGCHAIN_API_KEY", os.getenv("LANGCHAIN_API_KEY", "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"))
  
  
  

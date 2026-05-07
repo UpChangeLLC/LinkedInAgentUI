@@ -91,6 +91,10 @@ def _is_active(status: str, expires_at: Optional[datetime]) -> bool:
 def _session_payload(row: Any, access_token: Optional[str] = None) -> Dict[str, Any]:
     expires = row.subscription_expires_at
     active = _is_active(row.subscription_status, expires)
+    latest_result = row.assessment_snapshot if isinstance(row.assessment_snapshot, dict) else None
+    latest_created_at = None
+    if latest_result:
+        latest_created_at = latest_result.get("_saved_at") or row.created_at.isoformat()
     payload = {
         "status": "ok",
         "persisted": True,
@@ -101,7 +105,38 @@ def _session_payload(row: Any, access_token: Optional[str] = None) -> Dict[str, 
         "subscription_status": row.subscription_status,
         "subscription_active": active,
         "subscription_expires_at": expires.isoformat() if expires else None,
+        "latest_assessment_result": latest_result if latest_result else None,
+        "latest_assessment_created_at": latest_created_at,
     }
+    return payload
+
+
+async def _session_payload_with_latest_result(session: Any, row: Any, access_token: Optional[str] = None) -> Dict[str, Any]:
+    """Build session payload and prefer the latest full pipeline result over compact signup metadata."""
+    payload = _session_payload(row, access_token=access_token)
+    if not row.url_hash:
+        return payload
+    try:
+        from sqlalchemy import select
+        from db_models import PipelineRun
+
+        latest = (
+            await session.execute(
+                select(PipelineRun.result, PipelineRun.created_at)
+                .where(
+                    PipelineRun.url_hash == row.url_hash,
+                    PipelineRun.result.isnot(None),
+                    PipelineRun.error.is_(None),
+                )
+                .order_by(PipelineRun.created_at.desc())
+                .limit(1)
+            )
+        ).first()
+        if latest and isinstance(latest.result, dict):
+            payload["latest_assessment_result"] = latest.result
+            payload["latest_assessment_created_at"] = latest.created_at.isoformat()
+    except Exception:
+        logger.debug("Could not load latest pipeline result for signup session", exc_info=True)
     return payload
 
 
@@ -134,6 +169,17 @@ class DummySubscribeRequest(BaseModel):
 
 
 class OAuthCompleteRequest(BaseModel):
+    access_token: str = Field(..., min_length=16, max_length=256)
+    linkedin_url: Optional[str] = Field(default=None, max_length=500)
+    resume_provided: bool = False
+    resume_text_length: int = 0
+    github_url: Optional[str] = Field(default=None, max_length=500)
+    website_url: Optional[str] = Field(default=None, max_length=500)
+    user_context: Dict[str, Any] = Field(default_factory=dict)
+    assessment_snapshot: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SaveAssessmentRequest(BaseModel):
     access_token: str = Field(..., min_length=16, max_length=256)
     linkedin_url: Optional[str] = Field(default=None, max_length=500)
     resume_provided: bool = False
@@ -327,7 +373,8 @@ async def oauth_callback(provider: str, request: Request, code: str = "", state:
         logger.warning("OAuth user persistence failed", exc_info=True)
         return RedirectResponse(f"{frontend}/#auth_error=persistence_failed")
 
-    payload = _session_payload(row, access_token=access_token)
+    async with _session_factory() as session:
+        payload = await _session_payload_with_latest_result(session, row, access_token=access_token)
     payload["oauth_provider"] = provider
     return RedirectResponse(f"{frontend}/#auth={_encode_auth_payload(payload)}")
 
@@ -365,10 +412,13 @@ async def create_signup(body: SignupRequest) -> JSONResponse:
         )
 
     try:
+        from sqlalchemy import select
         from db_models import UserSignup
 
         snapshot = dict(body.assessment_snapshot or {})
-        snapshot.setdefault("resume_text_length", body.resume_text_length)
+        if snapshot:
+            snapshot.setdefault("resume_text_length", body.resume_text_length)
+            snapshot.setdefault("_saved_at", datetime.now(timezone.utc).isoformat())
 
         row = UserSignup(
             full_name=body.full_name.strip(),
@@ -382,7 +432,7 @@ async def create_signup(body: SignupRequest) -> JSONResponse:
             github_url=(body.github_url or "").strip() or None,
             website_url=(body.website_url or "").strip() or None,
             user_context=body.user_context or {},
-            assessment_snapshot=snapshot,
+            assessment_snapshot=snapshot or None,
             marketing_opt_in=body.marketing_opt_in,
             created_at=datetime.now(timezone.utc),
         )
@@ -392,6 +442,19 @@ async def create_signup(body: SignupRequest) -> JSONResponse:
         row.subscription_status = "trial"
 
         async with _session_factory() as session:
+            existing = (
+                await session.execute(
+                    select(UserSignup.id).where(UserSignup.email == email).limit(1)
+                )
+            ).first()
+            if existing:
+                return JSONResponse(
+                    {
+                        "status": "error",
+                        "detail": "An account with this email already exists. Please log in instead.",
+                    },
+                    status_code=409,
+                )
             session.add(row)
             await session.commit()
             await session.refresh(row)
@@ -448,8 +511,9 @@ async def restore_signup_session(body: SignupSessionRequest) -> JSONResponse:
             row.last_login_at = datetime.now(timezone.utc)
             await session.commit()
             await session.refresh(row)
+            payload = await _session_payload_with_latest_result(session, row, access_token=access_token)
 
-        return JSONResponse(_session_payload(row, access_token=access_token))
+        return JSONResponse(payload)
     except Exception:
         logger.warning("Failed to restore signup session", exc_info=True)
         return JSONResponse({"status": "error", "detail": "Could not restore session."}, status_code=500)
@@ -468,7 +532,9 @@ async def complete_oauth_signup(body: OAuthCompleteRequest) -> JSONResponse:
         from db_models import UserSignup
 
         snapshot = dict(body.assessment_snapshot or {})
-        snapshot.setdefault("resume_text_length", body.resume_text_length)
+        if snapshot:
+            snapshot.setdefault("resume_text_length", body.resume_text_length)
+            snapshot.setdefault("_saved_at", datetime.now(timezone.utc).isoformat())
 
         async with _session_factory() as session:
             row = (
@@ -484,13 +550,56 @@ async def complete_oauth_signup(body: OAuthCompleteRequest) -> JSONResponse:
             row.github_url = (body.github_url or "").strip() or row.github_url
             row.website_url = (body.website_url or "").strip() or row.website_url
             row.user_context = body.user_context or row.user_context
-            row.assessment_snapshot = snapshot or row.assessment_snapshot
+            if snapshot:
+                row.assessment_snapshot = snapshot
+            await session.commit()
+            await session.refresh(row)
+            payload = await _session_payload_with_latest_result(session, row, access_token=body.access_token)
+        return JSONResponse(payload)
+    except Exception:
+        logger.warning("Failed to complete OAuth signup", exc_info=True)
+        return JSONResponse({"status": "error", "detail": "Could not complete OAuth signup."}, status_code=500)
+
+
+@router.post("/assessment")
+async def save_signup_assessment(body: SaveAssessmentRequest) -> JSONResponse:
+    """Save the latest full assessment against the signed-in user."""
+    from db import _session_factory, db_available
+
+    if not db_available() or not _session_factory:
+        return JSONResponse({"status": "error", "detail": "Database is not configured."}, status_code=503)
+
+    try:
+        from sqlalchemy import select
+        from db_models import UserSignup
+
+        snapshot = dict(body.assessment_snapshot or {})
+        if not snapshot:
+            return JSONResponse({"status": "error", "detail": "Assessment result is required."}, status_code=400)
+        snapshot.setdefault("resume_text_length", body.resume_text_length)
+        snapshot["_saved_at"] = datetime.now(timezone.utc).isoformat()
+
+        async with _session_factory() as session:
+            row = (
+                await session.execute(
+                    select(UserSignup).where(UserSignup.access_token_hash == _hash_token(body.access_token))
+                )
+            ).scalars().first()
+            if not row:
+                return JSONResponse({"status": "error", "detail": "Session not found."}, status_code=404)
+            row.linkedin_url = (body.linkedin_url or "").strip() or row.linkedin_url
+            row.url_hash = _hash_url(body.linkedin_url or "") or row.url_hash
+            row.resume_provided = body.resume_provided
+            row.github_url = (body.github_url or "").strip() or row.github_url
+            row.website_url = (body.website_url or "").strip() or row.website_url
+            row.user_context = body.user_context or row.user_context
+            row.assessment_snapshot = snapshot
             await session.commit()
             await session.refresh(row)
         return JSONResponse(_session_payload(row, access_token=body.access_token))
     except Exception:
-        logger.warning("Failed to complete OAuth signup", exc_info=True)
-        return JSONResponse({"status": "error", "detail": "Could not complete OAuth signup."}, status_code=500)
+        logger.warning("Failed to save user assessment", exc_info=True)
+        return JSONResponse({"status": "error", "detail": "Could not save assessment."}, status_code=500)
 
 
 @router.post("/subscribe")

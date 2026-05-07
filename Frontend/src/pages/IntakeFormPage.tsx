@@ -173,26 +173,34 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
             Back
           </button>
 
-          <Card className="p-8 md:p-10 shadow-sm border border-gray-200 bg-white">
-            <div className="mb-8">
-              <div className="flex justify-between items-end mb-2">
-                <h2 className="text-sm font-semibold text-linkedin uppercase tracking-wider">
-                  Step 1 of 3
-                </h2>
-                <span className="text-sm text-gray-400">33% Completed</span>
+          <Card className="overflow-hidden shadow-sm border border-gray-200 bg-white">
+            <div className="border-b border-gray-100 bg-gradient-to-br from-white via-linkedin/5 to-white px-8 py-7 md:px-10">
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-linkedin/15 bg-white px-3 py-1.5 text-xs font-semibold text-linkedin shadow-sm">
+                    <Linkedin className="h-3.5 w-3.5" />
+                    Profile analysis
+                  </div>
+                  <span className="text-xs font-semibold text-gray-500">Step 1 of 3</span>
+                </div>
+
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                    Paste your LinkedIn profile
+                  </h1>
+                  <p className="text-gray-600 max-w-xl">
+                    Start with your public profile URL. You can add resume, GitHub, website, and context signals next.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <ProgressBar progress={33} className="h-1.5 bg-gray-100" />
+                  <span className="shrink-0 text-xs font-medium text-gray-500">33%</span>
+                </div>
               </div>
-              <ProgressBar progress={33} />
             </div>
 
-            <div className="mb-8 text-center">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                Paste Your LinkedIn Profile
-              </h1>
-              <p className="text-gray-600">
-                We will analyze your role, industry, experience, and company to
-                generate your personalized AI Resilience Score&trade;
-              </p>
-            </div>
+            <div className="p-8 md:p-10">
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* LinkedIn URL input */}
@@ -605,7 +613,7 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
               </div>
             </form>
 
-            {/* Divider */}
+            {/* LinkedIn Login Option — Coming Soon */}
             <div className="relative my-8">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200" />
@@ -615,7 +623,6 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
               </div>
             </div>
 
-            {/* LinkedIn Login Option — Coming Soon */}
             <button
               disabled
               className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border border-gray-200 rounded-lg opacity-50 cursor-not-allowed"
@@ -627,8 +634,10 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
               <span className="text-xs text-gray-400 ml-1">(Coming Soon)</span>
             </button>
             <p className="mt-3 text-center text-xs text-gray-400">
-              Don't know your profile URL? LinkedIn sign-in is coming soon.
+              Don&apos;t know your profile URL? LinkedIn sign-in is coming soon.
             </p>
+
+            </div>
           </Card>
         </div>
       </motion.div>

@@ -46,6 +46,8 @@ export interface SignupResponse {
     subscription_status?: 'trial' | 'active' | 'expired' | string
     subscription_active?: boolean
     subscription_expires_at?: string | null
+    latest_assessment_result?: Record<string, any> | null
+    latest_assessment_created_at?: string | null
     detail?: string
 }
 
@@ -76,6 +78,7 @@ export interface StoredSignupSession {
 
 const SESSION_KEY = 'airs_signup_session'
 const OAUTH_PENDING_KEY = 'airs_oauth_pending_signup'
+export const PAYWALL_DEADLINE_KEY = 'airs_paywall_deadline_ms'
 
 export function saveSignupSession(response: SignupResponse): StoredSignupSession | null {
     if (!response.access_token) return null
@@ -110,6 +113,7 @@ export function getStoredSignupSession(): StoredSignupSession | null {
 export function clearStoredSignupSession(): void {
     try {
         localStorage.removeItem(SESSION_KEY)
+        localStorage.removeItem(PAYWALL_DEADLINE_KEY)
     } catch {
         /* ignore */
     }
@@ -160,6 +164,23 @@ export async function completeOAuthSignup(payload: OAuthCompletePayload): Promis
     const json = (await res.json().catch(() => ({}))) as SignupResponse
     if (!res.ok || json.status === 'error') {
         throw new Error(json.detail || `OAuth signup completion failed (HTTP ${res.status})`)
+    }
+    return json
+}
+
+export async function saveSignupAssessment(payload: OAuthCompletePayload): Promise<SignupResponse> {
+    const res = await fetch(`${baseUrl()}/api/signup/assessment`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...mcpAuthHeaders(),
+        },
+        body: JSON.stringify(payload),
+        signal: timeoutSignal(30_000),
+    })
+    const json = (await res.json().catch(() => ({}))) as SignupResponse
+    if (!res.ok || json.status === 'error') {
+        throw new Error(json.detail || `Assessment save failed (HTTP ${res.status})`)
     }
     return json
 }
@@ -222,14 +243,14 @@ export async function restoreSignupSession(args: {
     return json
 }
 
-export async function activateDummySubscription(accessToken: string): Promise<SignupResponse> {
+export async function activateDummySubscription(accessToken: string, months = 1): Promise<SignupResponse> {
     const res = await fetch(`${baseUrl()}/api/signup/subscribe`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             ...mcpAuthHeaders(),
         },
-        body: JSON.stringify({ access_token: accessToken, months: 1 }),
+        body: JSON.stringify({ access_token: accessToken, months }),
         signal: timeoutSignal(30_000),
     })
     const json = (await res.json().catch(() => ({}))) as SignupResponse
@@ -257,6 +278,7 @@ export function buildSignupPayload(
     const summary = backendResult.executive_summary || backendResult.summary || ''
     const score = backendResult.profile_score ?? backendResult.score ?? results.score
     const riskBand = backendResult.risk_band ?? results.riskBand
+    const hasBackendResult = Boolean(resultsBackend?.result)
 
     return {
         full_name: details.fullName.trim(),
@@ -271,14 +293,16 @@ export function buildSignupPayload(
         ...(formData?.githubUrl || formData?.github_url ? { github_url: formData?.githubUrl || formData?.github_url } : {}),
         ...(formData?.websiteUrl || formData?.website_url ? { website_url: formData?.websiteUrl || formData?.website_url } : {}),
         user_context: formData?.userContext || formData?.user_context || {},
-        assessment_snapshot: {
-            score,
-            risk_band: riskBand,
-            executive_summary: summary,
-            title: results?.personalProfile?.title || '',
-            industry: results?.personalProfile?.industry || '',
-            data_source: backendResult?.data_source || '',
-        },
+        assessment_snapshot: hasBackendResult
+            ? {
+                score,
+                risk_band: riskBand,
+                executive_summary: summary,
+                title: results?.personalProfile?.title || '',
+                industry: results?.personalProfile?.industry || '',
+                data_source: backendResult?.data_source || '',
+            }
+            : {},
         marketing_opt_in: details.marketingOptIn,
     }
 }
@@ -308,5 +332,9 @@ export function buildOAuthCompletePayload(
     void company
     void role_title
     void marketing_opt_in
-    return { ...rest, access_token: accessToken }
+    return {
+        ...rest,
+        assessment_snapshot: (resultsBackend?.result as Record<string, any> | undefined) || results || {},
+        access_token: accessToken,
+    }
 }

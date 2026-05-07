@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, LockKeyhole, Menu, X } from 'lucide-react';
+import { CheckCircle, CreditCard, LockKeyhole, Menu, MessageCircle, X } from 'lucide-react';
 import { LinkedInNav } from '../components/ui/LinkedInNav';
 import { Button } from '../components/ui/Button';
 import { Sidebar } from '../components/dashboard/Sidebar';
@@ -20,6 +20,15 @@ import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSecti
 import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
 import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
 import { MockResults } from '../data/mockResults';
+import { CareerChatPage } from './CareerChatPage';
+
+const SUBSCRIPTION_PLANS = [
+  { id: 'monthly', name: 'Monthly', price: '$9', cadence: '/month', months: 1, badge: 'Flexible' },
+  { id: 'quarterly', name: 'Quarterly', price: '$24', cadence: '/3 months', months: 3, badge: 'Popular' },
+  { id: 'annual', name: 'Annual', price: '$79', cadence: '/year', months: 12, badge: 'Best value' },
+] as const;
+
+type SubscriptionPlanId = (typeof SUBSCRIPTION_PLANS)[number]['id'];
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
   overview: 'Your overall AI readiness profile based on your LinkedIn data. This is how you compare to professionals in your role and industry.',
@@ -38,40 +47,76 @@ interface ResultsDashboardProps {
   results: MockResults;
   formData: any;
   onBackToHome?: () => void;
+  onSubscriptions?: () => void;
+  accountName?: string;
+  onDashboard?: () => void;
+  onRecalculate?: () => void;
+  onLogout?: () => void;
   /** Opens Career Mentor with assessment context from this dashboard. */
   onOpenCareerMentor?: () => void;
+  seedAssessmentContext?: string;
   subscriptionActive?: boolean;
   paywallLocked?: boolean;
+  showScoreReveal?: boolean;
+  onScoreRevealComplete?: () => void;
   subscriptionSubmitting?: boolean;
-  onActivateSubscription?: () => void;
+  onActivateSubscription?: (months?: number) => void;
 }
 export function ResultsDashboard({
   results,
   formData,
   onBackToHome,
+  onSubscriptions,
+  accountName,
+  onDashboard,
+  onRecalculate,
+  onLogout,
   onOpenCareerMentor,
+  seedAssessmentContext,
   subscriptionActive = false,
   paywallLocked = false,
+  showScoreReveal = false,
+  onScoreRevealComplete,
   subscriptionSubmitting = false,
   onActivateSubscription,
 }: ResultsDashboardProps) {
-  const [showReveal, setShowReveal] = useState(true);
   const [activeSection, setActiveSection] = useState('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMentorOpen, setIsMentorOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>('quarterly');
+  const mainScrollRef = useRef<HTMLElement | null>(null);
   const isPaywalled = paywallLocked && !subscriptionActive;
+  const selectedSubscription = SUBSCRIPTION_PLANS.find((plan) => plan.id === selectedPlan) || SUBSCRIPTION_PLANS[1];
+  const openCareerMentor = useCallback(() => {
+    if (isPaywalled) return;
+    onOpenCareerMentor?.();
+    setIsMentorOpen(true);
+  }, [isPaywalled, onOpenCareerMentor]);
+  const submitPayment = useCallback((event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onActivateSubscription?.(selectedSubscription.months);
+  }, [onActivateSubscription, selectedSubscription.months]);
   const handleRevealComplete = useCallback(() => {
-    setShowReveal(false);
+    onScoreRevealComplete?.();
+  }, [onScoreRevealComplete]);
+
+  const handleNavigateSection = useCallback((section: string) => {
+    setActiveSection(section);
+    setIsSidebarOpen(false);
   }, []);
-  // Scroll to section when activeSection changes
+
   useEffect(() => {
-    const element = document.getElementById(activeSection);
-    if (element) {
-      element.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }
+    mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeSection]);
+
+  useEffect(() => {
+    if (!isMentorOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMentorOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isMentorOpen]);
   // If backend result exists, scroll to top once shown
   useEffect(() => {
     if (formData?.backend?.result) {
@@ -159,7 +204,7 @@ export function ResultsDashboard({
     <>
       {/* Score Reveal Overlay */}
       <AnimatePresence>
-        {showReveal &&
+        {showScoreReveal &&
           <ScoreReveal results={results} onComplete={handleRevealComplete} />
         }
       </AnimatePresence>
@@ -171,12 +216,19 @@ export function ResultsDashboard({
             isPaywalled ? 'blur-sm scale-[0.99] pointer-events-none select-none' : ''
           }`}
         >
-        <LinkedInNav onCareerMentor={isPaywalled ? undefined : onOpenCareerMentor} />
+        <LinkedInNav
+          onCareerMentor={isPaywalled ? undefined : openCareerMentor}
+          onSubscriptions={onSubscriptions}
+          accountName={accountName}
+          onDashboard={onDashboard}
+          onRecalculate={onRecalculate}
+          onLogout={onLogout}
+        />
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <Sidebar
             activeSection={activeSection}
-            onNavigate={setActiveSection}
+            onNavigate={handleNavigateSection}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
             results={results}
@@ -197,7 +249,7 @@ export function ResultsDashboard({
             </button>
 
             {/* Main Content Area */}
-            <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 scroll-smooth">
+            <main ref={mainScrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 scroll-smooth">
               <div className="max-w-5xl mx-auto space-y-8 pb-28">
                 {/* Backend Executive Summary (if available) */}
                 {formData?.backend?.result && (
@@ -258,36 +310,147 @@ export function ResultsDashboard({
         </div>
 
         {/* Sticky Share Bar */}
-        {!showReveal && activeSection !== 'share' &&
+        {!showScoreReveal && activeSection !== 'share' &&
           <StickyShareBar results={results} />
         }
+
+        {!isPaywalled && !isMentorOpen && (
+          <motion.button
+            type="button"
+            onClick={openCareerMentor}
+            initial={{ opacity: 0, y: 12, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            whileHover={{ scale: 1.03, y: -1 }}
+            whileTap={{ scale: 0.98 }}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-linkedin px-5 py-3 text-sm font-semibold text-white shadow-2xl hover:bg-linkedin/90 transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Career Mentor
+          </motion.button>
+        )}
         </div>
 
+        <AnimatePresence>
+          {isMentorOpen && !isPaywalled && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[90] bg-black/10"
+              onClick={() => setIsMentorOpen(false)}
+            >
+              <motion.aside
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', stiffness: 280, damping: 32 }}
+                className="absolute right-0 top-0 h-full w-full max-w-[440px] border-l border-dark-border bg-dark-bg shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <CareerChatPage
+                  embedded
+                  seedAssessmentContext={seedAssessmentContext}
+                  onClose={() => setIsMentorOpen(false)}
+                />
+              </motion.aside>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {isPaywalled && (
-          <div className="fixed inset-0 z-[100] bg-dark-bg/85 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="w-full max-w-md rounded-2xl border border-dark-border bg-dark-card p-6 shadow-2xl text-center">
+          <div className="fixed inset-0 z-[100] bg-dark-bg/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+            <div className="w-full max-w-4xl rounded-2xl border border-dark-border bg-dark-card p-6 shadow-2xl">
               <div className="mx-auto w-12 h-12 rounded-full bg-dark-accentDim flex items-center justify-center mb-4">
                 <LockKeyhole className="w-6 h-6 text-dark-accent" />
               </div>
-              <h2 className="text-2xl font-serif font-bold text-dark-textPri mb-2">
-                Subscribe to continue
-              </h2>
-              <p className="text-sm text-dark-textMuted mb-6">
-                Your free preview has ended. Activate the dummy subscription to keep viewing the dashboard and using Career Mentor.
-              </p>
-              <Button
-                type="button"
-                fullWidth
-                onClick={onActivateSubscription}
-                disabled={subscriptionSubmitting || !onActivateSubscription}
-                className="bg-linkedin hover:bg-linkedin/90"
-              >
-                <CreditCard className="w-4 h-4 mr-2" />
-                {subscriptionSubmitting ? 'Activating...' : 'Activate Dummy Subscription'}
-              </Button>
-              <p className="text-xs text-dark-textMuted mt-3">
-                Demo only: this simulates payment and unlocks access for 30 days.
-              </p>
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-serif font-bold text-dark-textPri mb-2">
+                  Choose a subscription to continue
+                </h2>
+                <p className="text-sm text-dark-textMuted">
+                  Your free preview has ended. Select a plan to keep viewing your dashboard and Career Mentor.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                {SUBSCRIPTION_PLANS.map((plan) => {
+                  const active = selectedPlan === plan.id;
+                  return (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => setSelectedPlan(plan.id)}
+                      className={`text-left rounded-xl border p-4 transition-colors ${
+                        active
+                          ? 'border-linkedin bg-linkedin/10 ring-1 ring-linkedin'
+                          : 'border-dark-border bg-dark-bg/50 hover:border-dark-accent/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="font-semibold text-dark-textPri">{plan.name}</span>
+                        <span className="rounded-full bg-dark-accentDim px-2 py-0.5 text-[11px] text-dark-accent">
+                          {plan.badge}
+                        </span>
+                      </div>
+                      <div className="flex items-end gap-1">
+                        <span className="text-3xl font-bold text-dark-textPri">{plan.price}</span>
+                        <span className="text-sm text-dark-textMuted mb-1">{plan.cadence}</span>
+                      </div>
+                      {active && (
+                        <div className="mt-3 flex items-center gap-1 text-xs text-linkedin">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Selected
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <form onSubmit={submitPayment} className="rounded-xl border border-dark-border bg-dark-bg/60 p-4">
+                <div className="flex items-center gap-2 text-dark-textPri font-semibold mb-4">
+                  <CreditCard className="w-4 h-4 text-dark-accent" />
+                  Payment method
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    required
+                    placeholder="Name on card"
+                    className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
+                  />
+                  <input
+                    required
+                    inputMode="numeric"
+                    placeholder="Card number"
+                    className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
+                  />
+                  <input
+                    required
+                    placeholder="MM / YY"
+                    className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
+                  />
+                  <input
+                    required
+                    inputMode="numeric"
+                    placeholder="CVC"
+                    className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  fullWidth
+                  disabled={subscriptionSubmitting || !onActivateSubscription}
+                  className="bg-linkedin hover:bg-linkedin/90 mt-4"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  {subscriptionSubmitting
+                    ? 'Processing payment...'
+                    : `Pay ${selectedSubscription.price} and continue`}
+                </Button>
+                <p className="text-xs text-dark-textMuted text-center mt-3">
+                  Secure checkout. You can cancel anytime from your account settings.
+                </p>
+              </form>
             </div>
           </div>
         )}

@@ -9,6 +9,7 @@ import { ErrorPage } from './pages/ErrorPage';
 import { CachedResultPromptPage } from './pages/CachedResultPromptPage';
 import { CareerChatPage } from './pages/CareerChatPage';
 import { SignupPage } from './pages/SignupPage';
+import { SubscriptionPage } from './pages/SubscriptionPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { buildCareerAssessmentContext } from './lib/careerChat';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -50,30 +51,47 @@ export function App() {
     pipelineProgress,
     previewData,
     previewLoading,
+    authRestoring,
+    signupInitialMode,
     cachedResultAge,
     signupSubmitting,
     signupError,
+    signupSession,
     subscriptionActive,
     paywallLocked,
+    dashboardRevealSeen,
+    cachedResult,
     useCachedResult,
     skipCachedResult,
     goToIntake,
+    goToLogin,
+    goToSubscriptions,
     submitForm,
     confirmProfile,
     rejectProfile,
     goToResults,
     goBack,
     goToLanding,
+    logout,
     retrySubmit,
     completeSignup,
     restoreSignupByEmail,
     continueWithOAuth,
     activateSubscription,
-    goToCareerChat,
+    markDashboardRevealSeen,
     goBackFromCareerChat,
     careerMentorSeedContext,
     resultsBackend,
   } = useAppState();
+  const accountName = signupSession?.fullName || signupSession?.email || '';
+  const dashboardAvailable = Boolean(resultsBackend || formData?.backend);
+  if (authRestoring) {
+    return (
+      <ThemeProvider>
+        <LoadingFallback />
+      </ThemeProvider>
+    );
+  }
   return (
     <ThemeProvider>
     <Sentry.ErrorBoundary fallback={<ErrorPage error="An unexpected error occurred." onRetry={() => window.location.reload()} />}>
@@ -81,7 +99,16 @@ export function App() {
       <div className="font-sans text-navy-900 antialiased selection:bg-accent/20 selection:text-accent-dark">
         <AnimatePresence mode="wait">
           {currentPage === 'landing' && (
-            <LandingPage key="landing" onGetStarted={goToIntake} />
+            <LandingPage
+              key="landing"
+              onGetStarted={goToIntake}
+              onLogin={goToLogin}
+              onSubscriptions={goToSubscriptions}
+              accountName={accountName}
+              onDashboard={dashboardAvailable ? goToResults : undefined}
+              onRecalculate={goToIntake}
+              onLogout={accountName ? logout : undefined}
+            />
           )}
 
           {currentPage === 'career-chat' && (
@@ -100,6 +127,9 @@ export function App() {
           <CachedResultPromptPage
             key="cached-prompt"
             age={cachedResultAge}
+            result={cachedResult}
+            accountName={accountName}
+            onSubscriptions={goToSubscriptions}
             onViewCached={useCachedResult}
             onRunFresh={skipCachedResult}
           />
@@ -129,9 +159,25 @@ export function App() {
               key="signup"
               submitting={signupSubmitting}
               errorMessage={signupError}
+              initialMode={signupInitialMode}
               onSubmit={completeSignup}
               onRestore={restoreSignupByEmail}
               onOAuth={continueWithOAuth}
+              onBack={goBack}
+            />
+          )}
+
+          {currentPage === 'subscriptions' && (
+            <SubscriptionPage
+              key="subscriptions"
+              subscriptionActive={subscriptionActive}
+              submitting={signupSubmitting}
+              accountName={accountName}
+              isAuthenticated={Boolean(signupSession?.accessToken)}
+              onDashboard={dashboardAvailable ? goToResults : undefined}
+              onRecalculate={goToIntake}
+              onLogout={accountName ? logout : undefined}
+              onActivate={activateSubscription}
               onBack={goBack}
             />
           )}
@@ -143,20 +189,22 @@ export function App() {
               results={results}
               formData={formData}
               onBackToHome={goToLanding}
+              onSubscriptions={goToSubscriptions}
+              accountName={accountName}
+              onDashboard={goToResults}
+              onRecalculate={goToIntake}
+              onLogout={logout}
+              seedAssessmentContext={buildCareerAssessmentContext(
+                results as unknown as Record<string, unknown>,
+                resultsBackend as Record<string, unknown> | null | undefined,
+                formData as Record<string, unknown> | null | undefined
+              )}
               subscriptionActive={subscriptionActive}
               paywallLocked={paywallLocked}
+              showScoreReveal={!dashboardRevealSeen}
+              onScoreRevealComplete={markDashboardRevealSeen}
               subscriptionSubmitting={signupSubmitting}
               onActivateSubscription={activateSubscription}
-              onOpenCareerMentor={() =>
-                goToCareerChat(
-                  buildCareerAssessmentContext(
-                    results as unknown as Record<string, unknown>,
-                    resultsBackend as Record<string, unknown> | null | undefined,
-                    formData as Record<string, unknown> | null | undefined
-                  ),
-                  'results'
-                )
-              }
             />
           </Suspense>
           }
