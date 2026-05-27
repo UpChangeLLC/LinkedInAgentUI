@@ -86,7 +86,12 @@ from cache import init_redis, close_redis  # noqa: E402
 async def lifespan(application: FastAPI):
     await init_db()
     await init_redis()
+    # Retention email dispatcher — no-ops unless EMAIL_DISPATCHER_ENABLED=true.
+    import asyncio
+    from services.email_dispatcher import run_dispatcher_loop
+    dispatcher_task = asyncio.create_task(run_dispatcher_loop())
     yield
+    dispatcher_task.cancel()
     await close_redis()
     await close_db()
 

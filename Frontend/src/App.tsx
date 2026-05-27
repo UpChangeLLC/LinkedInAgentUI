@@ -11,6 +11,7 @@ import { CachedResultPromptPage } from './pages/CachedResultPromptPage';
 import { CareerChatPage } from './pages/CareerChatPage';
 import { SignupPage } from './pages/SignupPage';
 import { SubscriptionPage } from './pages/SubscriptionPage';
+import { SettingsNotificationsPage } from './pages/SettingsNotificationsPage';
 import { RerunLockModal } from './components/dashboard/RerunLockModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { buildCareerAssessmentContext } from './lib/careerChat';
@@ -68,6 +69,7 @@ export function App() {
     goToIntake,
     goToLogin,
     goToSubscriptions,
+    goToNotificationSettings,
     submitForm,
     submitSurvey,
     scrapeStatus,
@@ -230,6 +232,7 @@ export function App() {
               onDashboard={goToResults}
               onRecalculate={goToIntake}
               onLogout={logout}
+              onSettings={goToNotificationSettings}
               seedAssessmentContext={buildCareerAssessmentContext(
                 results as unknown as Record<string, unknown>,
                 resultsBackend as Record<string, unknown> | null | undefined,
@@ -243,6 +246,10 @@ export function App() {
               onActivateSubscription={activateSubscription}
             />
           </Suspense>
+          }
+
+          {currentPage === 'settings-notifications' &&
+          <SettingsNotificationsPage key="settings-notifications" onBack={goBack} />
           }
 
           {currentPage === 'error' &&

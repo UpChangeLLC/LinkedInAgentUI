@@ -43,7 +43,8 @@ type Page =
   | 'subscriptions'
   | 'error'
   | 'cached-prompt'
-  | 'career-chat';
+  | 'career-chat'
+  | 'settings-notifications';
 
 export interface PipelineProgress {
   /** 0-100 overall progress */
@@ -564,6 +565,11 @@ export function useAppState() {
     setCurrentPage('landing');
   }, []);
 
+  const goToNotificationSettings = useCallback(() => {
+    setCurrentPage('settings-notifications');
+    window.scrollTo(0, 0);
+  }, []);
+
   const logout = useCallback(() => {
     clearStoredSignupSession();
     setSignupSession(null);
@@ -615,8 +621,9 @@ export function useAppState() {
     if (currentPage === 'signup') setCurrentPage(authEntryPoint === 'landing' ? 'landing' : 'intake');
     if (currentPage === 'subscriptions') setCurrentPage(subscriptionReturnPage);
     if (currentPage === 'error') setCurrentPage('landing');
+    if (currentPage === 'settings-notifications') setCurrentPage(signupCompleted ? 'results' : 'landing');
     if (currentPage === 'career-chat') goBackFromCareerChat();
-  }, [authEntryPoint, currentPage, goBackFromCareerChat, subscriptionReturnPage]);
+  }, [authEntryPoint, currentPage, goBackFromCareerChat, signupCompleted, subscriptionReturnPage]);
 
   const continueAfterAuth = useCallback(async (resp: SignupResponse, data: any) => {
     if (continueToSubscriptionsAfterAuth) {
@@ -843,6 +850,7 @@ export function useAppState() {
     goToIntake,
     goToLogin,
     goToSubscriptions,
+    goToNotificationSettings,
     submitForm,
     submitSurvey,
     confirmProfile,

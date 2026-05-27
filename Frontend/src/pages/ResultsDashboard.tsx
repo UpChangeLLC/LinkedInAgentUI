@@ -21,6 +21,7 @@ import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
 import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
 import { PremiumTeaser, type Tier } from '../components/dashboard/PremiumTeaser';
 import { ScoreTrajectorySection } from '../components/dashboard/ScoreTrajectorySection';
+import { CohortMovementSection } from '../components/dashboard/CohortMovementSection';
 import { MockResults } from '../data/mockResults';
 import { CareerChatPage } from './CareerChatPage';
 
@@ -67,6 +68,7 @@ interface ResultsDashboardProps {
   onDashboard?: () => void;
   onRecalculate?: () => void;
   onLogout?: () => void;
+  onSettings?: () => void;
   /** Opens Career Mentor with assessment context from this dashboard. */
   onOpenCareerMentor?: () => void;
   seedAssessmentContext?: string;
@@ -86,6 +88,7 @@ export function ResultsDashboard({
   onDashboard,
   onRecalculate,
   onLogout,
+  onSettings,
   onOpenCareerMentor,
   seedAssessmentContext,
   subscriptionActive = false,
@@ -163,6 +166,7 @@ export function ResultsDashboard({
         return (
           <div className="space-y-8">
             <PersonalOverviewSection results={results} />
+            <CohortMovementSection role={results.personalProfile?.title} userScore={results.score} />
             <ScoreTrajectorySection urlHash={results.urlHash} tier={tier} onRerun={onRecalculate} />
           </div>
         );
@@ -256,6 +260,7 @@ export function ResultsDashboard({
           onDashboard={onDashboard}
           onRecalculate={onRecalculate}
           onLogout={onLogout}
+          onSettings={onSettings}
         />
 
         <div className="flex flex-1 min-h-0 overflow-hidden">

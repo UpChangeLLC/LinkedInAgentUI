@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CreditCard, LayoutDashboard, LogOut, MessageCircle, RefreshCw, UserCircle } from 'lucide-react';
+import { Bell, CreditCard, LayoutDashboard, LogOut, MessageCircle, RefreshCw, UserCircle } from 'lucide-react';
 import { LiveCounter } from './LiveCounter';
 import { ThemeToggle } from './ThemeToggle';
 import upchangeLogo from '../../assets/upchange-logo.png';
@@ -18,6 +18,7 @@ export interface LinkedInNavProps {
   onDashboard?: () => void;
   onRecalculate?: () => void;
   onLogout?: () => void;
+  onSettings?: () => void;
 }
 
 export function LinkedInNav({
@@ -28,7 +29,8 @@ export function LinkedInNav({
   accountName,
   onDashboard,
   onRecalculate,
-  onLogout
+  onLogout,
+  onSettings
 }: LinkedInNavProps) {
   const displayName = accountName?.trim() ? accountName.trim().split(/\s+/)[0] : '';
   const [accountOpen, setAccountOpen] = useState(false);
@@ -114,6 +116,12 @@ export function LinkedInNav({
                 <button type="button" onClick={() => { setAccountOpen(false); onRecalculate(); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-dark-textSec hover:bg-dark-bg hover:text-dark-textPri">
                   <RefreshCw className="w-4 h-4" />
                   Recalculate score
+                </button>
+              )}
+              {onSettings && (
+                <button type="button" onClick={() => { setAccountOpen(false); onSettings(); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-dark-textSec hover:bg-dark-bg hover:text-dark-textPri">
+                  <Bell className="w-4 h-4" />
+                  Notification settings
                 </button>
               )}
               {onLogout && (
