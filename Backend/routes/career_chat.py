@@ -7,9 +7,11 @@ import re
 import uuid
 from typing import Any, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from auth_deps import optional_session
+from services.career_chat_gate import enforce_career_chat_gate, should_mark_used
 from ai_backend import get_selected_ai_client, get_selected_model
 from cache import cache_get_json, cache_set_json, redis_available
 from services.career_chat_agent import (
@@ -107,11 +109,18 @@ class CareerChatResetRequest(BaseModel):
 
 
 @router.post("/message", response_model=CareerChatMessageResponse)
-async def post_career_chat_message(body: CareerChatMessageRequest) -> CareerChatMessageResponse:
+async def post_career_chat_message(
+    body: CareerChatMessageRequest,
+    request: Request,
+    user=Depends(optional_session),
+) -> CareerChatMessageResponse:
     sid = _validate_session_id(body.session_id)
     user_text = body.message.strip()
     if not user_text:
         raise HTTPException(status_code=400, detail="Empty message")
+
+    # First message free; second hits the paywall for non-premium users.
+    enforce_career_chat_gate(user)
 
     existing_ctx = await _load_ctx(sid)
     if body.assessment_context and body.assessment_context.strip():
@@ -152,10 +161,32 @@ async def post_career_chat_message(body: CareerChatMessageRequest) -> CareerChat
     ]
     await _save_history(sid, new_hist)
 
+    # Consume the one free message for non-premium users (fire-and-forget).
+    if should_mark_used(user):
+        await _mark_career_chat_used(user.id)
+
     return CareerChatMessageResponse(
         reply=reply,
         history=[ChatTurn(role=m["role"], content=m["content"]) for m in new_hist],
     )
+
+
+async def _mark_career_chat_used(user_id) -> None:
+    """Set career_chat_free_used=True. Never raises."""
+    from db import db_available, _session_factory
+    if not db_available() or not _session_factory:
+        return
+    try:
+        from sqlalchemy import update
+        from db_models import UserSignup
+
+        async with _session_factory() as session:
+            await session.execute(
+                update(UserSignup).where(UserSignup.id == user_id).values(career_chat_free_used=True)
+            )
+            await session.commit()
+    except Exception:
+        logger.warning("failed to mark career_chat_free_used", exc_info=True)
 
 
 @router.get("/history", response_model=CareerChatMessageResponse)

@@ -136,6 +136,9 @@ class UserSignup(Base):
     subscription_expires_at = Column(DateTime(timezone=True), nullable=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Retention: number of free Career Mentor messages used (first message free).
+    career_chat_free_used = Column(Boolean, default=False)
+
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -339,6 +342,48 @@ class SurveyResponses(Base):
         default=lambda: datetime.now(timezone.utc),
         index=True,
     )
+
+
+class NotificationPreferences(Base):
+    """Per-user email stream opt-ins (spec 03 §6.3)."""
+
+    __tablename__ = "notification_preferences"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_signup_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_signups.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    score_updates = Column(Boolean, default=True)         # welcome + score-explainer
+    reassessment_reminders = Column(Boolean, default=True)  # decay nudges
+    product_tips = Column(Boolean, default=True)          # premium upsell
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class EmailQueue(Base):
+    """Postgres-backed transactional email queue (spec 03 §6.4)."""
+
+    __tablename__ = "email_queue"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_signup_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_signups.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    template = Column(String(100), nullable=False)
+    model = Column(JSONB, nullable=True)
+    message_stream = Column(String(50), nullable=True)
+    scheduled_for = Column(DateTime(timezone=True), nullable=False, index=True)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(20), nullable=False, default="queued")  # queued|sent|skipped|failed
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
 class ActionItem(Base):
