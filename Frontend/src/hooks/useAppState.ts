@@ -4,6 +4,9 @@ import { streamAnalysis, previewProfile, fetchCachedResult } from '../lib/mcp';
 import type { PipelineEvent, ProfilePreview } from '../lib/mcp';
 import { toMockResults } from '../lib/transform';
 import { hashLinkedInUrl } from '../lib/urlHash';
+import { clearDraft } from '../lib/surveyDraft';
+import type { SurveyResponse } from '../lib/survey';
+import type { ScrapeStatus } from '../components/survey/SurveyProgressBar';
 import {
   buildOAuthCompletePayload,
   buildSignupPayload,
@@ -30,6 +33,9 @@ import type { MockResults } from '../data/mockResults';
 type Page =
   | 'landing'
   | 'intake'
+  | 'survey'
+  | 'signup-during-onboarding'
+  | 'awaiting-score'
   | 'previewing'
   | 'analyzing'
   | 'results'
@@ -82,6 +88,8 @@ export function useAppState() {
   const [pipelineProgress, setPipelineProgress] = useState<PipelineProgress>(INITIAL_PROGRESS);
   const [previewData, setPreviewData] = useState<ProfilePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>('idle');
+  const [surveyResponses, setSurveyResponses] = useState<SurveyResponse | null>(null);
   const [cachedResult, setCachedResult] = useState<any>(null);
   const [cachedResultAge, setCachedResultAge] = useState<string | null>(null);
   const [dashboardRevealSeen, setDashboardRevealSeen] = useState(true);
@@ -324,26 +332,20 @@ export function useAppState() {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
-  // Submit form: check cache first, then fetch preview or show confirmation
+  // Submit intake form: route into the survey while the LinkedIn scrape runs in
+  // the background (spec 01 §2). Returning signed-in users with a cached result
+  // still short-circuit to the cached-result prompt.
   const submitForm = useCallback((data: any) => {
     setFormData(data);
-    setPreviewLoading(true);
     setErrorMessage('');
     setSignupError('');
     setCachedResult(null);
     setCachedResultAge(null);
+    setPreviewData(null);
+    setSurveyResponses(null);
     window.scrollTo(0, 0);
 
-    if (!signupCompleted) {
-      setAuthEntryPoint('intake');
-      setSignupInitialMode('signup');
-      setPreviewLoading(false);
-      setCurrentPage('signup');
-      return;
-    }
-
     const linkedinUrl = data?.linkedinUrl || data?.linkedin_url || '';
-
     const payload = {
       linkedin_url: linkedinUrl,
       resume_text: data?.resumeText || data?.resume_text || '',
@@ -352,38 +354,53 @@ export function useAppState() {
     };
 
     (async () => {
-      // Check for cached results first
-      if (linkedinUrl) {
+      // Returning signed-in users: surface a cached result instead of re-running.
+      if (signupCompleted && linkedinUrl) {
         try {
           const urlHash = await hashLinkedInUrl(linkedinUrl);
           const cached = await fetchCachedResult(urlHash);
           if (cached.status === 'hit' && cached.result) {
             setCachedResult(cached.result);
             setCachedResultAge(cached.created_at || null);
-            setPreviewLoading(false);
             setCurrentPage('cached-prompt');
             return;
           }
         } catch {
-          // Cache check failed, proceed with normal flow
+          // Cache check failed — continue to the survey.
         }
       }
 
-      // No cache hit — proceed with preview
-      setCurrentPage('previewing');
-      try {
-        const preview = await previewProfile(payload);
-        setPreviewData(preview);
-        setPreviewLoading(false);
-      } catch (e: any) {
-        // If preview fails, skip directly to full analysis
-        console.warn('Preview failed, skipping to full analysis:', e?.message);
-        setPreviewData(null);
-        setPreviewLoading(false);
-        startFullAnalysis(data);
-      }
+      // Kick off the profile scrape in the background; the survey shows its status.
+      setScrapeStatus('running');
+      void previewProfile(payload)
+        .then((preview) => {
+          setPreviewData(preview);
+          setScrapeStatus('parse_complete');
+        })
+        .catch(() => {
+          setPreviewData(null);
+          setScrapeStatus('failed');
+        });
+
+      setCurrentPage('survey');
+      window.scrollTo(0, 0);
     })();
   }, [signupCompleted]);
+
+  // Survey submitted: persist responses, then gate on signup (mid-onboarding)
+  // or go straight to analysis for already-signed-in users.
+  const submitSurvey = useCallback((responses: SurveyResponse) => {
+    setSurveyResponses(responses);
+    clearDraft();
+    window.scrollTo(0, 0);
+    if (!signupCompleted) {
+      setAuthEntryPoint('intake');
+      setSignupInitialMode('signup');
+      setCurrentPage('signup-during-onboarding');
+      return;
+    }
+    startFullAnalysis(formData, false, undefined, responses);
+  }, [signupCompleted, formData]);
 
   // Confirm profile and start full analysis
   const confirmProfile = useCallback(() => {
@@ -398,7 +415,7 @@ export function useAppState() {
   }, []);
 
   // Run the full pipeline (SSE streaming)
-  const startFullAnalysis = useCallback((data: any, authenticatedOverride = false, accessTokenOverride?: string | null) => {
+  const startFullAnalysis = useCallback((data: any, authenticatedOverride = false, accessTokenOverride?: string | null, surveyOverride?: SurveyResponse | null) => {
     setCurrentPage('analyzing');
     setErrorMessage('');
     setPipelineProgress(INITIAL_PROGRESS);
@@ -406,10 +423,12 @@ export function useAppState() {
 
     // Build user_context from intake form answers if provided
     const userContext = data?.userContext || data?.user_context || null;
+    const survey = surveyOverride ?? surveyResponses;
     const payload = {
       linkedin_url: data?.linkedinUrl || data?.linkedin_url || '',
       resume_text: data?.resumeText || data?.resume_text || '',
       ...(userContext ? { user_context: userContext } : {}),
+      ...(survey ? { survey_responses: survey as unknown as Record<string, unknown> } : {}),
       ...(data?.githubUrl || data?.github_url ? { github_url: data?.githubUrl || data?.github_url } : {}),
       ...(data?.websiteUrl || data?.website_url ? { website_url: data?.websiteUrl || data?.website_url } : {}),
     };
@@ -470,7 +489,7 @@ export function useAppState() {
       }
       window.scrollTo(0, 0);
     })();
-  }, [signupCompleted, signupSession?.accessToken, startFreePreviewWindow, subscriptionActive]);
+  }, [signupCompleted, signupSession?.accessToken, startFreePreviewWindow, subscriptionActive, surveyResponses]);
 
   // Use cached result — skip pipeline entirely
   const useCachedResult = useCallback(() => {
@@ -565,6 +584,8 @@ export function useAppState() {
 
   const goBack = useCallback(() => {
     if (currentPage === 'intake') setCurrentPage('landing');
+    if (currentPage === 'survey') setCurrentPage('intake');
+    if (currentPage === 'signup-during-onboarding') setCurrentPage('survey');
     if (currentPage === 'previewing') setCurrentPage('intake');
     if (currentPage === 'cached-prompt') setCurrentPage('intake');
     if (currentPage === 'results') setCurrentPage('landing');
@@ -792,10 +813,12 @@ export function useAppState() {
     dashboardRevealSeen,
     cachedResult,
     cachedResultAge,
+    scrapeStatus,
     goToIntake,
     goToLogin,
     goToSubscriptions,
     submitForm,
+    submitSurvey,
     confirmProfile,
     rejectProfile,
     useCachedResult,

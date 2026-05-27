@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import * as Sentry from '@sentry/react';
 import { LandingPage } from './pages/LandingPage';
 import { IntakeFormPage } from './pages/IntakeFormPage';
+import { SurveyPage } from './pages/SurveyPage';
 import { ProfilePreviewPage } from './pages/ProfilePreviewPage';
 import { AnalyzingPage } from './pages/AnalyzingPage';
 import { ErrorPage } from './pages/ErrorPage';
@@ -67,6 +68,8 @@ export function App() {
     goToLogin,
     goToSubscriptions,
     submitForm,
+    submitSurvey,
+    scrapeStatus,
     confirmProfile,
     rejectProfile,
     goToResults,
@@ -121,6 +124,34 @@ export function App() {
 
           {currentPage === 'intake' &&
           <IntakeFormPage key="intake" onSubmit={submitForm} onBack={goBack} submitting={previewLoading} />
+          }
+
+          {currentPage === 'survey' &&
+          <SurveyPage
+            key="survey"
+            onSubmit={submitSurvey}
+            onBack={goBack}
+            draftKey={formData?.linkedinUrl || formData?.linkedin_url || 'survey'}
+            scrapeStatus={scrapeStatus}
+          />
+          }
+
+          {currentPage === 'signup-during-onboarding' && (
+            <SignupPage
+              key="signup-during-onboarding"
+              variant="mid-onboarding"
+              submitting={signupSubmitting}
+              errorMessage={signupError}
+              initialMode="signup"
+              onSubmit={completeSignup}
+              onRestore={restoreSignupByEmail}
+              onOAuth={continueWithOAuth}
+              onBack={goBack}
+            />
+          )}
+
+          {currentPage === 'awaiting-score' &&
+          <AnalyzingPage key="awaiting-score" onComplete={goToResults} pipelineProgress={pipelineProgress} />
           }
 
           {currentPage === 'cached-prompt' &&

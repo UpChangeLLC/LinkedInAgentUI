@@ -22,6 +22,9 @@ interface SignupPageProps {
   onOAuth: (provider: OAuthProvider) => void
   onBack: () => void
   initialMode?: 'login' | 'signup'
+  /** 'mid-onboarding' hides the deferred profile fields (phone/company/role)
+   * to minimize friction at the post-survey signup gate (spec 01 §5). */
+  variant?: 'standard' | 'mid-onboarding'
 }
 
 export function SignupPage({
@@ -32,7 +35,9 @@ export function SignupPage({
   onOAuth,
   onBack,
   initialMode = 'login',
+  variant = 'standard',
 }: SignupPageProps) {
+  const isMidOnboarding = variant === 'mid-onboarding'
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -315,45 +320,49 @@ export function SignupPage({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Current role
-                      </label>
-                      <input
-                        value={roleTitle}
-                        onChange={(e) => setRoleTitle(e.target.value)}
-                        className="block w-full px-3 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin"
-                        placeholder="Product Manager"
-                        autoComplete="organization-title"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Company
-                      </label>
-                      <input
-                        value={company}
-                        onChange={(e) => setCompany(e.target.value)}
-                        className="block w-full px-3 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin"
-                        placeholder="Acme Inc."
-                        autoComplete="organization"
-                      />
-                    </div>
-                  </div>
+                  {!isMidOnboarding && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            Current role
+                          </label>
+                          <input
+                            value={roleTitle}
+                            onChange={(e) => setRoleTitle(e.target.value)}
+                            className="block w-full px-3 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin"
+                            placeholder="Product Manager"
+                            autoComplete="organization-title"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            Company
+                          </label>
+                          <input
+                            value={company}
+                            onChange={(e) => setCompany(e.target.value)}
+                            className="block w-full px-3 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin"
+                            placeholder="Acme Inc."
+                            autoComplete="organization"
+                          />
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Phone <span className="text-gray-400 font-normal">(optional)</span>
-                    </label>
-                    <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="block w-full px-3 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin"
-                      placeholder="+1 555 000 0000"
-                      autoComplete="tel"
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Phone <span className="text-gray-400 font-normal">(optional)</span>
+                        </label>
+                        <input
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="block w-full px-3 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin"
+                          placeholder="+1 555 000 0000"
+                          autoComplete="tel"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <label className="flex items-start gap-3 text-sm text-gray-600">
                     <input

@@ -19,8 +19,22 @@ import { WhatIfSimulatorSection } from '../components/dashboard/WhatIfSimulatorS
 import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSection';
 import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
 import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
+import { PremiumTeaser, type Tier } from '../components/dashboard/PremiumTeaser';
 import { MockResults } from '../data/mockResults';
 import { CareerChatPage } from './CareerChatPage';
+
+/** Sections gated behind Premium on the free tier (spec 01 §6.2). The score,
+ * profile overview, and share card stay free as the lead magnet + referral. */
+const PREMIUM_SECTION_TEASERS: Record<string, string> = {
+  skills: 'See exactly where your skills fall short of market demand.',
+  disruption: 'See when the changes hit your role — task by task.',
+  pathways: 'Explore alternative career trajectories tuned to your profile.',
+  whatif: 'Simulate how new skills would move your score.',
+  actions: 'Your personalized action plan, ranked by impact.',
+  roadmap: 'Your personalized 90-day roadmap.',
+  newsfeed: 'Curated AI news + role impact for your field.',
+  learning: 'Curated courses and reading matched to your gaps.',
+};
 
 const SUBSCRIPTION_PLANS = [
   { id: 'monthly', name: 'Monthly', price: '$9', cadence: '/month', months: 1, badge: 'Flexible' },
@@ -74,7 +88,6 @@ export function ResultsDashboard({
   onOpenCareerMentor,
   seedAssessmentContext,
   subscriptionActive = false,
-  paywallLocked = false,
   showScoreReveal = false,
   onScoreRevealComplete,
   subscriptionSubmitting = false,
@@ -84,14 +97,22 @@ export function ResultsDashboard({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMentorOpen, setIsMentorOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>('quarterly');
+  // Section-level freemium gating replaces the old time-window paywall: free
+  // users get a usable dashboard with premium sections shown as teasers, and the
+  // upsell modal opens on demand (from a teaser CTA) rather than on a timer.
+  const [showUpsell, setShowUpsell] = useState(false);
+  const tier: Tier = subscriptionActive ? 'premium' : 'free';
   const mainScrollRef = useRef<HTMLElement | null>(null);
-  const isPaywalled = paywallLocked && !subscriptionActive;
   const selectedSubscription = SUBSCRIPTION_PLANS.find((plan) => plan.id === selectedPlan) || SUBSCRIPTION_PLANS[1];
+  const openUpsell = useCallback(() => setShowUpsell(true), []);
   const openCareerMentor = useCallback(() => {
-    if (isPaywalled) return;
+    if (tier === 'free') {
+      setShowUpsell(true);
+      return;
+    }
     onOpenCareerMentor?.();
     setIsMentorOpen(true);
-  }, [isPaywalled, onOpenCareerMentor]);
+  }, [tier, onOpenCareerMentor]);
   const submitPayment = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -114,6 +135,11 @@ export function ResultsDashboard({
   useEffect(() => {
     mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeSection]);
+
+  // Close the upsell once the user becomes a subscriber.
+  useEffect(() => {
+    if (subscriptionActive) setShowUpsell(false);
+  }, [subscriptionActive]);
 
   useEffect(() => {
     if (!isMentorOpen) return;
@@ -216,14 +242,9 @@ export function ResultsDashboard({
       </AnimatePresence>
 
       <div className="relative h-[100dvh] min-h-0 bg-dark-bg overflow-hidden">
-        <div
-          aria-hidden={isPaywalled}
-          className={`flex flex-col h-full min-h-0 transition duration-300 ${
-            isPaywalled ? 'blur-sm scale-[0.99] pointer-events-none select-none' : ''
-          }`}
-        >
+        <div className="flex flex-col h-full min-h-0">
         <LinkedInNav
-          onCareerMentor={isPaywalled ? undefined : openCareerMentor}
+          onCareerMentor={openCareerMentor}
           onSubscriptions={onSubscriptions}
           accountName={accountName}
           onDashboard={onDashboard}
@@ -308,7 +329,19 @@ export function ResultsDashboard({
                     duration: 0.3
                   }}>
 
-                  {renderSection()}
+                  {tier === 'free' && PREMIUM_SECTION_TEASERS[activeSection] ? (
+                    <PremiumTeaser
+                      tier="free"
+                      title="Premium section"
+                      teaser={PREMIUM_SECTION_TEASERS[activeSection]}
+                      sourceSection={activeSection}
+                      onUnlock={openUpsell}
+                    >
+                      {renderSection()}
+                    </PremiumTeaser>
+                  ) : (
+                    renderSection()
+                  )}
                 </motion.div>
               </div>
             </main>
@@ -320,7 +353,7 @@ export function ResultsDashboard({
           <StickyShareBar results={results} />
         }
 
-        {!isPaywalled && !isMentorOpen && (
+        {!isMentorOpen && (
           <motion.button
             type="button"
             onClick={openCareerMentor}
@@ -337,7 +370,7 @@ export function ResultsDashboard({
         </div>
 
         <AnimatePresence>
-          {isMentorOpen && !isPaywalled && (
+          {isMentorOpen && tier === 'premium' && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -363,18 +396,27 @@ export function ResultsDashboard({
           )}
         </AnimatePresence>
 
-        {isPaywalled && (
+        {showUpsell && tier === 'free' && (
           <div className="fixed inset-0 z-[100] bg-dark-bg/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-            <div className="w-full max-w-4xl rounded-2xl border border-dark-border bg-dark-card p-6 shadow-2xl">
+            <div className="relative w-full max-w-4xl rounded-2xl border border-dark-border bg-dark-card p-6 shadow-2xl">
+              <button
+                type="button"
+                onClick={() => setShowUpsell(false)}
+                aria-label="Close"
+                className="absolute right-4 top-4 text-dark-textMuted hover:text-dark-textPri"
+              >
+                <X className="w-5 h-5" />
+              </button>
               <div className="mx-auto w-12 h-12 rounded-full bg-dark-accentDim flex items-center justify-center mb-4">
                 <LockKeyhole className="w-6 h-6 text-dark-accent" />
               </div>
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-serif font-bold text-dark-textPri mb-2">
-                  Choose a subscription to continue
+                  Unlock your full dashboard
                 </h2>
                 <p className="text-sm text-dark-textMuted">
-                  Your free preview has ended. Select a plan to keep viewing your dashboard and Career Mentor.
+                  Premium unlocks your action plan, roadmap, skill gaps, learning resources,
+                  Career Mentor, and unlimited re-runs.
                 </p>
               </div>
 
