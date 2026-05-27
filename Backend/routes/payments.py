@@ -21,12 +21,11 @@ router = APIRouter(prefix="/api/payments", tags=["payments"])
 _local_checkout_sessions: Dict[str, Dict[str, Any]] = {}
 
 
-def _hash_token(token: str) -> str:
-    return hashlib.sha256(token.strip().encode()).hexdigest()
-
-
-def _is_active(status: str, expires_at: Optional[datetime]) -> bool:
-    return status == "active" and bool(expires_at and expires_at > datetime.now(timezone.utc))
+# Shared auth primitives (single implementation in services.auth_service).
+from services.auth_service import (  # noqa: E402
+    hash_token as _hash_token,
+    is_subscription_active as _is_active,
+)
 
 
 def _session_payload(row: Any, access_token: Optional[str] = None) -> Dict[str, Any]:

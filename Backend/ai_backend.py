@@ -76,6 +76,7 @@ class AnalysisGraphState(TypedDict):
     result: Dict[str, Any]
     error: str
     user_context: Optional[Dict[str, Any]]
+    survey_responses: Optional[Dict[str, Any]]
 
 
 # ── AI client factory ─────────────────────────────────────────────────────────
@@ -255,10 +256,29 @@ async def extract_text_from_resume(file_name: str, file_bytes: bytes) -> str:
 
 # ── LinkedIn fetch — primary: Apify with cache reuse ─────────────────────────
 
-def _linkedin_cache_key(linkedin_url: str) -> str:
-    """Create a stable cache key for a LinkedIn profile URL."""
+def _linkedin_cache_key(linkedin_url: str, actor_id: str = "") -> str:
+    """Create a stable cache key for a LinkedIn profile URL.
+
+    When ``actor_id`` is provided the key is namespaced by actor so that
+    switching actors never serves a stale shape to the pipeline, and each
+    actor's cache (including the fallback) stays independent. Omitting
+    ``actor_id`` preserves the original legacy hash for backward compatibility.
+    """
     normalized = linkedin_url.strip().lower().rstrip("/")
+    if actor_id:
+        normalized = f"{normalized}|{actor_id}"
     return sha1(normalized.encode("utf-8")).hexdigest()
+
+
+def _build_run_input(actor_id: str, url: str) -> Dict[str, Any]:
+    """Build the actor-specific run input payload.
+
+    dev_fusion expects ``{"profileUrls": [...]}``; supreme_coder expects
+    ``{"urls": [{"url": ...}], ...}``.
+    """
+    if "dev_fusion" in (actor_id or ""):
+        return {"profileUrls": [url]}
+    return {"urls": [{"url": url}], "findContacts.contactCompassToken": ""}
 
 
 def _load_apify_cache(cache_file: Path) -> Dict[str, str]:
@@ -307,44 +327,44 @@ async def _apify_run_actor(actor_id: str, token: str, run_input: Dict[str, Any])
     raise RuntimeError(f"Apify actor run failed for '{actor_id}'. Last error: {last_error}")
 
 
-async def fetch_linkedin_via_apify(linkedin_url: str) -> str:
-    """Fetch LinkedIn profile via Apify, reusing prior dataset for same profile when available.
+async def _fetch_with_actor(linkedin_url: str, actor_id: str) -> str:
+    """Fetch + normalize a LinkedIn profile via a specific Apify actor.
 
-    Cache lookup order: Redis → PostgreSQL → file. Cache writes go to all backends.
+    Cache lookup order: Redis → PostgreSQL → file. The cache is namespaced per
+    actor and stores already-normalized (canonical-shape) data, so downstream
+    consumers never see raw actor output. Cache writes go to all backends.
     """
     from services.apify_cache_service import get_cached_dataset, set_cached_dataset
+    from services.apify_adapters import normalize_profile
 
     token = os.getenv("APIFY_API_TOKEN", "").strip()
-    actor_id = os.getenv("APIFY_ACTOR_ID", "supreme_coder/linkedin-profile-scraper").strip()
     if not token:
         raise RuntimeError("APIFY_API_TOKEN is not set")
     normalized_url = normalize_linkedin_profile_url(linkedin_url)
     if not normalized_url:
         raise ValueError("Invalid LinkedIn profile URL.")
 
-    key = _linkedin_cache_key(normalized_url)
+    key = _linkedin_cache_key(normalized_url, actor_id)
 
     # --- Cache read (Redis → PG → file) ---
     cached = await get_cached_dataset(key)
     if cached:
-        # If raw_data is stored, return it directly
+        # Stored data is already normalized; return it directly.
         if cached.get("raw_data"):
             return json.dumps(cached["raw_data"], ensure_ascii=True)
-        # Otherwise re-fetch from dataset
         dataset_id = cached.get("dataset_id", "")
         if dataset_id:
             try:
                 items = await _apify_get_dataset_items(dataset_id, token)
                 if items:
-                    return json.dumps(items[0], ensure_ascii=True)
+                    return json.dumps(
+                        normalize_profile(actor_id, items[0]), ensure_ascii=True
+                    )
             except Exception:
                 pass
 
     # --- Fresh scrape ---
-    run_input = {
-        "urls": [{"url": normalized_url}],
-        "findContacts.contactCompassToken": "",
-    }
+    run_input = _build_run_input(actor_id, normalized_url)
     run_data = await _apify_run_actor(actor_id=actor_id, token=token, run_input=run_input)
     dataset_id = run_data.get("defaultDatasetId", "")
     if not dataset_id:
@@ -353,8 +373,8 @@ async def fetch_linkedin_via_apify(linkedin_url: str) -> str:
     if not items:
         raise RuntimeError("Apify dataset returned no items")
 
-    # --- Cache write (Redis + PG + file) ---
-    raw_data = items[0]
+    # Normalize before caching so the cache stores canonical-shape data.
+    raw_data = normalize_profile(actor_id, items[0])
     await set_cached_dataset(
         url_hash=key,
         dataset_id=dataset_id,
@@ -363,6 +383,33 @@ async def fetch_linkedin_via_apify(linkedin_url: str) -> str:
         actor_id=actor_id,
     )
     return json.dumps(raw_data, ensure_ascii=True)
+
+
+async def fetch_linkedin_via_apify(linkedin_url: str) -> str:
+    """Fetch a LinkedIn profile via the primary Apify actor, with safe fallback.
+
+    The primary actor runs by default; on any failure (and when fallback is
+    enabled and distinct), it transparently retries with the fallback actor and
+    logs the swap. Rollback is a single env-var flip — see doc 04.
+    """
+    primary = os.getenv("APIFY_ACTOR_ID", "dev_fusion/linkedin-profile-scraper").strip()
+    fallback = os.getenv(
+        "APIFY_FALLBACK_ACTOR_ID", "supreme_coder/linkedin-profile-scraper"
+    ).strip()
+    use_fallback = os.getenv("APIFY_FALLBACK_ENABLED", "true").strip().lower() == "true"
+
+    try:
+        return await _fetch_with_actor(linkedin_url, primary)
+    except Exception as exc:
+        if not use_fallback or primary == fallback:
+            raise
+        logger.warning(
+            "apify_primary_failed_falling_back primary=%s fallback=%s error=%s",
+            primary,
+            fallback,
+            str(exc),
+        )
+        return await _fetch_with_actor(linkedin_url, fallback)
 
 
 def _extract_json_from_text(text: str) -> Dict[str, Any]:
@@ -939,7 +986,7 @@ def route_after_merge(state: AnalysisGraphState) -> Literal["error_node", "analy
 
 async def analyze_node_graph(state: AnalysisGraphState) -> AnalysisGraphState:
     """Run final scoring/risk/recommendation analysis."""
-    from services.score_calibration import calibrate_score
+    from services.ml_client import score_profile
 
     start_time = asyncio.get_running_loop().time()
     result = await analyze_profile(
@@ -947,8 +994,14 @@ async def analyze_node_graph(state: AnalysisGraphState) -> AnalysisGraphState:
         data_source=state.get("data_source", "none"),
         user_context=state.get("user_context"),
     )
-    # Post-LLM score calibration
-    result = calibrate_score(result, merged_profile=state.get("merged_profile", {}))
+    # Scoring seam: ML platform when enabled, else v0 (calibrate_score) — always
+    # returns the additive resilience/readiness shape. See services/ml_client.py.
+    result = await score_profile(
+        result,
+        merged_profile=state.get("merged_profile", {}),
+        survey_responses=state.get("survey_responses"),
+        user_context=state.get("user_context"),
+    )
     next_state = {**state, "result": result}
     return _append_trace(
         next_state,
@@ -1049,6 +1102,7 @@ def _initial_analysis_state(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    survey_responses: Optional[Dict[str, Any]] = None,
 ) -> AnalysisGraphState:
     """Create the initial state object for LangGraph invocation."""
     return {
@@ -1069,6 +1123,7 @@ def _initial_analysis_state(
         "result": {},
         "error": "",
         "user_context": user_context,
+        "survey_responses": survey_responses,
     }
 
 
@@ -1078,6 +1133,7 @@ async def run_pipeline_with_trace(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    survey_responses: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Run pipeline and return (result, node_trace)."""
     # async def _broadcast_to_mcp_payload(result: Dict[str, Any], trace: List[Dict[str, Any]]) -> None:
@@ -1113,6 +1169,7 @@ async def run_pipeline_with_trace(
     final_state = await app.ainvoke(_initial_analysis_state(
         linkedin_url, resume_text, user_context=user_context,
         github_url=github_url, website_url=website_url,
+        survey_responses=survey_responses,
     ))
     if final_state.get("error"):
         raise RuntimeError(final_state["error"])

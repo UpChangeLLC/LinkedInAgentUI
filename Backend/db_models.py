@@ -61,6 +61,14 @@ class PipelineRun(Base):
         nullable=True,
         index=True,
     )
+    # User who initiated this run (v1: every run is tied to a signed-in user;
+    # legacy/anonymous rows are NULL). See migration 008.
+    user_signup_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_signups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Pipeline execution metadata
     data_source = Column(String(50), nullable=True)
@@ -268,6 +276,18 @@ class AssessmentHistory(Base):
     dimension_scores = Column(JSONB, nullable=True)  # {dim_name: {score, ...}}
     risk_band = Column(String(100), nullable=True)
 
+    # Resilience Score v1 fields (migration 010). In v0 these mirror `score`;
+    # the ML platform later differentiates resilience vs readiness and adds SHAP.
+    resilience_score = Column(Integer, nullable=True)
+    readiness_score = Column(Integer, nullable=True)
+    shap_attribution = Column(JSONB, nullable=True)
+
+    # Historical-recompute bookkeeping (v0 -> v1 backfill, design doc §7.5)
+    is_v0_legacy = Column(Boolean, default=False)
+    recomputed_at = Column(DateTime(timezone=True), nullable=True)
+    legacy_score = Column(Integer, nullable=True)
+    legacy_dimension_scores = Column(JSONB, nullable=True)
+
     # Link to the pipeline run that produced this score
     pipeline_run_id = Column(
         UUID(as_uuid=True),
@@ -290,6 +310,34 @@ class AssessmentHistory(Base):
 
     __table_args__ = (
         Index("idx_assessment_history_url_created", "url_hash", "created_at"),
+    )
+
+
+class SurveyResponses(Base):
+    """Captured onboarding survey answers, one row per pipeline run (spec 01 §8.3)."""
+
+    __tablename__ = "survey_responses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("pipeline_runs.id", ondelete="CASCADE"),
+        nullable=True,
+        unique=True,
+    )
+    user_signup_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_signups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    url_hash = Column(String(64), nullable=True, index=True)
+    responses = Column(JSONB, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
     )
 
 

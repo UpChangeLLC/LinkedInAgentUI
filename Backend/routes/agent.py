@@ -12,9 +12,11 @@ from typing import List, Optional, Dict, Any
 
 import json
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sse_starlette.sse import EventSourceResponse
 
+from auth_deps import optional_session, require_session
+from services.rerun_gate import enforce_rerun_gate
 from models import AgentRunRequest, AgentRunResponse, AgentTraceStep
 from ai_backend import extract_text_from_resume, run_pipeline_with_trace, run_pipeline_streaming, run_preview
 
@@ -282,6 +284,7 @@ async def _record_pipeline_run(
     error_node: Optional[str] = None,
     request: Optional[Request] = None,
     profile_id: Optional[_uuid_mod.UUID] = None,
+    user_signup_id: Optional[_uuid_mod.UUID] = None,
 ) -> Optional[_uuid_mod.UUID]:
     """Insert pipeline_runs + analytics_events rows. Fire-and-forget; never raises.
 
@@ -304,6 +307,7 @@ async def _record_pipeline_run(
             url_hash=_hash_url(linkedin_url) if linkedin_url else None,
             resume_provided=resume_provided,
             profile_id=profile_id,
+            user_signup_id=user_signup_id,
             data_source=data_source,
             ai_client=ai_client,
             ai_model=ai_model,
@@ -354,6 +358,34 @@ async def _record_pipeline_run(
         return None
 
 
+async def _store_survey_responses(
+    *,
+    run_id: _uuid_mod.UUID,
+    user_signup_id: Optional[_uuid_mod.UUID],
+    url_hash: Optional[str],
+    responses: Dict[str, Any],
+) -> None:
+    """Persist onboarding survey answers. Fire-and-forget; never raises."""
+    from db import db_available, _session_factory
+    if not db_available() or not _session_factory:
+        return
+    try:
+        from db_models import SurveyResponses
+
+        async with _session_factory() as session:
+            session.add(
+                SurveyResponses(
+                    run_id=run_id,
+                    user_signup_id=user_signup_id,
+                    url_hash=url_hash,
+                    responses=responses,
+                )
+            )
+            await session.commit()
+    except Exception:
+        logger.warning("Failed to store survey responses", exc_info=True)
+
+
 # ---------------------------------------------------------------------------
 # Core pipeline runner
 # ---------------------------------------------------------------------------
@@ -366,6 +398,8 @@ async def _run_agent(
     user_context: Optional[Dict[str, Any]] = None,
     github_url: str = "",
     website_url: str = "",
+    user_signup_id: Optional[_uuid_mod.UUID] = None,
+    survey_responses: Optional[Dict[str, Any]] = None,
 ) -> AgentRunResponse:
     """Run full agent flow with step-level trace output."""
     linkedin = linkedin_url.strip()
@@ -384,6 +418,7 @@ async def _run_agent(
             user_context=user_context,
             github_url=github_url.strip(),
             website_url=website_url.strip(),
+            survey_responses=survey_responses,
         )
 
         # Optional market signals enrichment
@@ -443,7 +478,17 @@ async def _run_agent(
             duration_ms=duration_ms,
             request=request,
             profile_id=profile_id,
+            user_signup_id=user_signup_id,
         )
+
+        # Persist survey responses (fire-and-forget) once the run row exists.
+        if survey_responses and run_id:
+            await _store_survey_responses(
+                run_id=run_id,
+                user_signup_id=user_signup_id,
+                url_hash=url_hash,
+                responses=survey_responses,
+            )
 
         # F22: Store assessment history for future delta computations
         if url_hash:
@@ -492,6 +537,7 @@ async def _run_agent(
             error=str(exc),
             request=request,
             profile_id=profile_id,
+            user_signup_id=user_signup_id,
         )
 
         friendly = _normalize_error_message(str(exc))
@@ -510,8 +556,13 @@ async def _run_agent(
 # ---------------------------------------------------------------------------
 
 @router.post("/mcp/run", response_model=AgentRunResponse)
-async def mcp_run(payload: AgentRunRequest, request: Request) -> AgentRunResponse:
-    """Primary JSON API endpoint (used by frontend SPA)."""
+async def mcp_run(
+    payload: AgentRunRequest,
+    request: Request,
+    user=Depends(require_session),
+) -> AgentRunResponse:
+    """Primary JSON API endpoint (used by frontend SPA). Hard auth gate + re-run cadence."""
+    await enforce_rerun_gate(user)
     include_market = _env_bool("MARKET_SIGNALS_ENABLE", False)
     ctx = payload.user_context.model_dump() if payload.user_context else None
     return await _run_agent(
@@ -520,12 +571,19 @@ async def mcp_run(payload: AgentRunRequest, request: Request) -> AgentRunRespons
         user_context=ctx,
         github_url=payload.github_url,
         website_url=payload.website_url,
+        user_signup_id=getattr(user, "id", None),
+        survey_responses=payload.survey_responses,
     )
 
 
 @router.post("/agent/run", response_model=AgentRunResponse)
-async def agent_run(payload: AgentRunRequest, request: Request) -> AgentRunResponse:
+async def agent_run(
+    payload: AgentRunRequest,
+    request: Request,
+    user=Depends(require_session),
+) -> AgentRunResponse:
     """JSON API for agent execution (alias)."""
+    await enforce_rerun_gate(user)
     include_market = _env_bool("MARKET_SIGNALS_ENABLE", False)
     ctx = payload.user_context.model_dump() if payload.user_context else None
     return await _run_agent(
@@ -534,6 +592,8 @@ async def agent_run(payload: AgentRunRequest, request: Request) -> AgentRunRespo
         user_context=ctx,
         github_url=payload.github_url,
         website_url=payload.website_url,
+        user_signup_id=getattr(user, "id", None),
+        survey_responses=payload.survey_responses,
     )
 
 
@@ -543,9 +603,11 @@ async def agent_run_form(
     linkedin_url: str = Form(default=""),
     resume: Optional[UploadFile] = File(default=None),
     include_market: Optional[str] = Form(default=None),
+    user=Depends(require_session),
 ) -> AgentRunResponse:
     """Form API with file upload support."""
     try:
+        await enforce_rerun_gate(user)
         resume_text = ""
         if resume and (resume.filename or "").strip():
             file_bytes = await resume.read()
@@ -554,7 +616,10 @@ async def agent_run_form(
             if file_bytes:
                 resume_text = await extract_text_from_resume(resume.filename or "", file_bytes)
         user_toggle = str(include_market or "").strip().lower() in ("1", "true", "yes", "on", "checked")
-        return await _run_agent(linkedin_url, resume_text, include_market_signals=user_toggle, request=request)
+        return await _run_agent(
+            linkedin_url, resume_text, include_market_signals=user_toggle, request=request,
+            user_signup_id=getattr(user, "id", None),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except HTTPException:
@@ -565,18 +630,24 @@ async def agent_run_form(
 
 
 @router.post("/mcp/run/stream")
-async def mcp_run_stream(payload: AgentRunRequest, request: Request):
+async def mcp_run_stream(
+    payload: AgentRunRequest,
+    request: Request,
+    user=Depends(require_session),
+):
     """SSE endpoint that streams real-time pipeline progress events.
 
     Each event is a JSON-encoded PipelineEvent. The final event has
     event_type='pipeline_complete' and includes the full result payload.
     """
+    await enforce_rerun_gate(user)
     linkedin_url = (payload.linkedin_url or "").strip()
     resume_text = (payload.resume_text or "").strip()
     if not linkedin_url and not resume_text:
         raise HTTPException(status_code=400, detail="Provide linkedin_url or resume_text.")
 
     ctx = payload.user_context.model_dump() if payload.user_context else None
+    user_signup_id = getattr(user, "id", None)
 
     async def _record_streaming_run(
         final_result: Optional[Dict[str, Any]],
@@ -609,6 +680,7 @@ async def mcp_run_stream(payload: AgentRunRequest, request: Request):
                 error=error_info,
                 request=request,
                 profile_id=profile_id,
+                user_signup_id=user_signup_id,
             )
 
             if url_hash and final_result and not error_info:
@@ -675,8 +747,16 @@ async def mcp_run_stream(payload: AgentRunRequest, request: Request):
 
 
 @router.post("/mcp/preview")
-async def mcp_preview(payload: AgentRunRequest, request: Request):
+async def mcp_preview(
+    payload: AgentRunRequest,
+    request: Request,
+    user=Depends(optional_session),
+):
     """Fast profile preview — runs fetch + extract only (no LLM analysis).
+
+    Stays public (rate-limited): the scrape kicks off pre-signup, in parallel
+    with the survey. ``optional_session`` resolves the user when present but
+    never blocks anonymous callers.
 
     Returns a lightweight profile summary with completeness score so the user
     can confirm the right profile before committing to the full analysis.
