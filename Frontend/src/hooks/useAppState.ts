@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { mockResults } from '../data/mockResults';
-import { streamAnalysis, previewProfile, fetchCachedResult } from '../lib/mcp';
+import { streamAnalysis, previewProfile, fetchCachedResult, RerunLockedError } from '../lib/mcp';
 import type { PipelineEvent, ProfilePreview } from '../lib/mcp';
 import { toMockResults } from '../lib/transform';
 import { hashLinkedInUrl } from '../lib/urlHash';
@@ -90,6 +90,7 @@ export function useAppState() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>('idle');
   const [surveyResponses, setSurveyResponses] = useState<SurveyResponse | null>(null);
+  const [rerunLockedUntil, setRerunLockedUntil] = useState<string | null | undefined>(undefined);
   const [cachedResult, setCachedResult] = useState<any>(null);
   const [cachedResultAge, setCachedResultAge] = useState<string | null>(null);
   const [dashboardRevealSeen, setDashboardRevealSeen] = useState(true);
@@ -483,6 +484,13 @@ export function useAppState() {
           setCurrentPage('error');
         }
       } catch (e: any) {
+        if (e instanceof RerunLockedError) {
+          // 30-day free re-run gate hit — surface the lock modal, keep them put.
+          setRerunLockedUntil(e.nextRerunAt);
+          setCurrentPage(signupCompleted ? 'results' : 'signup');
+          window.scrollTo(0, 0);
+          return;
+        }
         setResultsBackend(null);
         setErrorMessage(e?.message || 'The analysis service did not respond. Please try again.');
         setCurrentPage('error');
@@ -490,6 +498,21 @@ export function useAppState() {
       window.scrollTo(0, 0);
     })();
   }, [signupCompleted, signupSession?.accessToken, startFreePreviewWindow, subscriptionActive, surveyResponses]);
+
+  const dismissRerunLock = useCallback(() => setRerunLockedUntil(undefined), []);
+
+  const setRerunReminder = useCallback(() => {
+    const token = signupSession?.accessToken;
+    const env = (import.meta as any).env || {};
+    const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? '';
+    if (token) {
+      void fetch(`${String(baseUrl).replace(/\/+$/, '')}/api/notifications/set-rerun-reminder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+      }).catch(() => {});
+    }
+    setRerunLockedUntil(undefined);
+  }, [signupSession?.accessToken]);
 
   // Use cached result — skip pipeline entirely
   const useCachedResult = useCallback(() => {
@@ -814,6 +837,9 @@ export function useAppState() {
     cachedResult,
     cachedResultAge,
     scrapeStatus,
+    rerunLockedUntil,
+    dismissRerunLock,
+    setRerunReminder,
     goToIntake,
     goToLogin,
     goToSubscriptions,

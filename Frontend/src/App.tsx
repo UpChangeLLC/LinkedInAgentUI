@@ -11,6 +11,7 @@ import { CachedResultPromptPage } from './pages/CachedResultPromptPage';
 import { CareerChatPage } from './pages/CareerChatPage';
 import { SignupPage } from './pages/SignupPage';
 import { SubscriptionPage } from './pages/SubscriptionPage';
+import { RerunLockModal } from './components/dashboard/RerunLockModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { buildCareerAssessmentContext } from './lib/careerChat';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -70,6 +71,9 @@ export function App() {
     submitForm,
     submitSurvey,
     scrapeStatus,
+    rerunLockedUntil,
+    dismissRerunLock,
+    setRerunReminder,
     confirmProfile,
     rejectProfile,
     goToResults,
@@ -249,6 +253,15 @@ export function App() {
             errorMessage={errorMessage} />
           }
         </AnimatePresence>
+
+        {rerunLockedUntil !== undefined && (
+          <RerunLockModal
+            nextRerunAt={rerunLockedUntil}
+            onClose={dismissRerunLock}
+            onSeePremium={() => { dismissRerunLock(); goToSubscriptions(); }}
+            onSetReminder={setRerunReminder}
+          />
+        )}
       </div>
     </ErrorBoundary>
     </Sentry.ErrorBoundary>

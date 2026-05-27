@@ -10,6 +10,7 @@ export default defineConfig({
         manualChunks: {
           sentry: ['@sentry/react'],
           vendor: ['react', 'react-dom', 'framer-motion'],
+          charts: ['recharts'],
         },
       },
     },

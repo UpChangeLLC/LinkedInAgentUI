@@ -20,6 +20,7 @@ import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSecti
 import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
 import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
 import { PremiumTeaser, type Tier } from '../components/dashboard/PremiumTeaser';
+import { ScoreTrajectorySection } from '../components/dashboard/ScoreTrajectorySection';
 import { MockResults } from '../data/mockResults';
 import { CareerChatPage } from './CareerChatPage';
 
@@ -159,7 +160,12 @@ export function ResultsDashboard({
   const renderSection = () => {
     switch (activeSection) {
       case 'overview':
-        return <PersonalOverviewSection results={results} />;
+        return (
+          <div className="space-y-8">
+            <PersonalOverviewSection results={results} />
+            <ScoreTrajectorySection urlHash={results.urlHash} tier={tier} onRerun={onRecalculate} />
+          </div>
+        );
       case 'share':
         return (
           <div className="space-y-12">
