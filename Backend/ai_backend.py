@@ -531,8 +531,9 @@ async def call_web_search_tool(query: str) -> str:
 async def llm_json_completion(system_prompt: str, user_prompt: str) -> Dict[str, Any]:
     """Call selected AI provider and return parsed JSON."""
     provider, client = get_selected_ai_client()
-    # model = get_selected_model(provider)
-    model = os.getenv("OPENAI_JSON_MODEL")
+    # OPENAI_JSON_MODEL is an optional override for JSON-mode calls; fall
+    # back to the provider's configured model when unset.
+    model = (os.getenv("OPENAI_JSON_MODEL") or "").strip() or get_selected_model(provider)
     logger.info("LLM call: provider=%s model=%s sys_prompt_len=%d user_prompt_len=%d",
                 provider, model, len(system_prompt), len(user_prompt))
     if provider == "anthropic":
