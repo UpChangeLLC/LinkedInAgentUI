@@ -42,12 +42,15 @@ const DIMS: { key: string; label: string; inverse?: boolean }[] = [
 ]
 
 function pickDim(factors: MockResults['scoreFactors'] | undefined, name: string): number {
-  const f = (factors || []).find(
-    (x) => x.name.toLowerCase().includes(name.toLowerCase().split(' ')[0]),
-  )
+  // Match the whole dim name (case-insensitive) to avoid first-token collisions.
+  const target = name.toLowerCase()
+  const f = (factors || []).find((x) => x.name.toLowerCase() === target)
+    || (factors || []).find((x) => x.name.toLowerCase().includes(target))
   if (!f) return 0
   const v = typeof f.value === 'number' ? f.value : 0
-  return v > 10 ? v / 10 : v
+  // Normalize any input scale (0–5, 0–10, or 0–100) into a 0–10 display value.
+  const tenScale = v > 10 ? v / 10 : v
+  return Math.max(0, Math.min(10, tenScale))
 }
 
 /** Mock-aligned free-tier dashboard (Career-AI/onboarding-flow-mock.html §7). */
