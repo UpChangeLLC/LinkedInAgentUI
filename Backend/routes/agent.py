@@ -513,6 +513,11 @@ async def _run_agent(
                 profile_id=profile_id,
             )
 
+        # WS-D: schedule lifecycle emails (welcome/drip/decay) for signed-in users.
+        if user_signup_id:
+            from services.email_lifecycle import enqueue_assessment_emails
+            await enqueue_assessment_emails(user_signup_id, result)
+
         return AgentRunResponse(
             status="ok",
             data_source=result.get("data_source", "unknown"),
@@ -705,6 +710,10 @@ async def mcp_run_stream(
                         pipeline_run_id=run_id,
                         profile_id=profile_id,
                     )
+
+                if user_signup_id:
+                    from services.email_lifecycle import enqueue_assessment_emails
+                    await enqueue_assessment_emails(user_signup_id, final_result)
         except Exception:
             logger.warning("Failed to record streaming pipeline run", exc_info=True)
 
