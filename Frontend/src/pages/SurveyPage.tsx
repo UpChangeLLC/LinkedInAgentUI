@@ -38,6 +38,15 @@ export function SurveyPage({ onSubmit, onBack, draftKey, scrapeStatus }: SurveyP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey])
 
+  // The slider has a visible default (50%), so initialize the underlying state
+  // when the user lands on step 8 — otherwise Next stays disabled until they
+  // physically move the slider, which the UI doesn't communicate.
+  useEffect(() => {
+    if (step === 8 && r.q_ae_1 === undefined) {
+      setR((prev) => ({ ...prev, q_ae_1: 50 }))
+    }
+  }, [step, r.q_ae_1])
+
   const update = (patch: Partial<SurveyResponse>) => {
     setR((prev) => {
       const next = { ...prev, ...patch }
