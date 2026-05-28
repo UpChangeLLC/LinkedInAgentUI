@@ -67,16 +67,16 @@ export function SurveyPage({ onSubmit, onBack, draftKey, scrapeStatus }: SurveyP
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="min-h-screen bg-dark-bg text-white"
+      className="min-h-screen bg-dark-bg text-dark-textPri"
     >
       <SurveyProgressBar answered={answeredCount} total={TOTAL} scrapeStatus={scrapeStatus} />
 
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <button onClick={onBack} className="mb-4 flex items-center gap-1 text-sm text-white/50 hover:text-white/80">
+        <button onClick={onBack} className="mb-4 flex items-center gap-1 text-sm text-dark-textMuted hover:text-dark-textSec">
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
 
-        <p className="mb-6 text-sm text-white/60">
+        <p className="mb-6 text-sm text-dark-textSec">
           90 seconds, 10 quick questions. We're reading your profile in the background while you answer.
         </p>
 

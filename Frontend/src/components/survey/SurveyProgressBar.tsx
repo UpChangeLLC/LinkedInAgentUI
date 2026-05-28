@@ -16,7 +16,7 @@ export function SurveyProgressBar({ answered, total, scrapeStatus }: SurveyProgr
   const badge = {
     idle: null,
     running: (
-      <span className="flex items-center gap-1.5 text-xs text-white/60">
+      <span className="flex items-center gap-1.5 text-xs text-dark-textSec">
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading your profile
       </span>
     ),
@@ -33,14 +33,14 @@ export function SurveyProgressBar({ answered, total, scrapeStatus }: SurveyProgr
   }[scrapeStatus]
 
   return (
-    <div className="sticky top-0 z-10 border-b border-white/10 bg-dark-bg/90 px-5 py-3 backdrop-blur">
+    <div className="sticky top-0 z-10 border-b border-dark-border bg-dark-bg/90 px-5 py-3 backdrop-blur">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-white/80">
+        <span className="text-sm font-medium text-dark-textSec">
           Question {Math.min(answered + 1, total)} of {total}
         </span>
         {badge}
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-dark-border" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
         <div className="h-full bg-linkedin transition-all" style={{ width: `${pct}%` }} />
       </div>
     </div>

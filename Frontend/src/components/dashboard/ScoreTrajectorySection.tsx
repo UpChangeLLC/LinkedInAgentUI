@@ -50,21 +50,21 @@ export function ScoreTrajectorySection({ urlHash, tier = 'free', onRerun, initia
         <ScoreDecayBanner daysSinceLastRun={decayDays} onRerun={onRerun} tier={tier} />
       )}
 
-      <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+      <section className="rounded-xl border border-dark-border bg-dark-card p-5">
         <div className="mb-3 flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-linkedin" />
-          <h3 className="text-sm font-semibold text-white">Your trajectory</h3>
+          <h3 className="text-sm font-semibold text-dark-textPri">Your trajectory</h3>
         </div>
 
         {history.length < 2 ? (
-          <p className="text-sm text-white/50" data-test="trajectory-placeholder">
+          <p className="text-sm text-dark-textMuted" data-test="trajectory-placeholder">
             Your trajectory will appear here once you re-run your score. Re-run in 30 days to start the trend.
           </p>
         ) : (
           <>
             <ScoreTrajectoryChart history={history} />
             {caption && (
-              <p className="mt-3 text-sm text-white/70">{caption} Re-run again in 30 days to keep the trend live.</p>
+              <p className="mt-3 text-sm text-dark-textSec">{caption} Re-run again in 30 days to keep the trend live.</p>
             )}
           </>
         )}

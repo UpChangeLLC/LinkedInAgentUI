@@ -34,11 +34,11 @@ export function PremiumTeaser({
 
   return (
     <section
-      className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5"
+      className="relative overflow-hidden rounded-xl border border-dark-border bg-dark-card"
       aria-label="Premium content — sign up to unlock"
     >
       <div className="px-5 pt-5">
-        <h3 className="text-sm font-semibold text-white/90">{title}</h3>
+        <h3 className="text-sm font-semibold text-dark-textPri">{title}</h3>
       </div>
 
       {/* Blurred, non-interactive preview of the real section */}
@@ -48,10 +48,10 @@ export function PremiumTeaser({
 
       {/* Upgrade overlay */}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-transparent to-black/40 px-6 text-center">
-        <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-white/60">
+        <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-dark-textSec">
           <Lock className="h-3.5 w-3.5" /> Premium
         </span>
-        <p className="max-w-xs text-sm text-white/80">{teaser}</p>
+        <p className="max-w-xs text-sm text-dark-textSec">{teaser}</p>
         <button
           type="button"
           onClick={() => onUnlock?.(sourceSection)}

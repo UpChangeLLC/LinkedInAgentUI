@@ -18,9 +18,9 @@ export function ShortText({ value, onChange, placeholder, maxLength = 140, ariaL
         maxLength={maxLength}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-linkedin focus:outline-none"
+        className="w-full rounded-lg border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:border-linkedin focus:outline-none"
       />
-      <div className="mt-1 text-right text-xs text-white/40">
+      <div className="mt-1 text-right text-xs text-dark-textMuted">
         {v.length}/{maxLength}
       </div>
     </div>

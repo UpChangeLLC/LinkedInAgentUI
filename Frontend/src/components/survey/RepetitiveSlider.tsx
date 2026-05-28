@@ -20,7 +20,7 @@ export function RepetitiveSlider({ value, onChange, ariaLabel }: RepetitiveSlide
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-linkedin"
       />
-      <div className="mt-2 flex justify-between text-xs text-white/60">
+      <div className="mt-2 flex justify-between text-xs text-dark-textSec">
         <span>{v}% repetitive</span>
         <span>{100 - v}% novel / judgment work</span>
       </div>

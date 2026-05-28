@@ -20,11 +20,11 @@ export function ScoreTrajectoryChart({ history }: ScoreTrajectoryChartProps) {
     <div className="h-56 w-full" role="img" aria-label={`Your resilience score over time: ${summary}.`}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: -16 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-          <XAxis dataKey="date" stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} />
-          <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} width={40} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.18)" />
+          <XAxis dataKey="date" stroke="rgba(128,128,128,0.7)" fontSize={12} tickLine={false} />
+          <YAxis domain={[0, 100]} stroke="rgba(128,128,128,0.7)" fontSize={12} tickLine={false} width={40} />
           <Tooltip
-            contentStyle={{ background: '#1f1f1f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
+            contentStyle={{ background: '#1f1f1f', border: '1px solid rgba(128,128,128,0.25)', borderRadius: 8, fontSize: 12 }}
             labelStyle={{ color: '#fff' }}
           />
           <Line

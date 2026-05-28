@@ -23,7 +23,7 @@ export function SingleSelectPill({ options, value, onChange, ariaLabel }: Single
             className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
               selected
                 ? 'border-linkedin bg-linkedin text-white'
-                : 'border-white/15 bg-white/5 text-white/80 hover:border-white/30'
+                : 'border-dark-border bg-dark-card text-dark-textSec hover:border-dark-borderHov'
             }`}
           >
             {opt.label}

@@ -20,17 +20,17 @@ export function RerunLockModal({ nextRerunAt, onClose, onSeePremium, onSetRemind
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" data-test="rerun-lock-modal">
-      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-dark-card p-6 text-center shadow-2xl">
-        <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 text-white/40 hover:text-white/70">
+      <div className="relative w-full max-w-md rounded-2xl border border-dark-border bg-dark-card p-6 text-center shadow-2xl">
+        <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 text-dark-textMuted hover:text-dark-textSec">
           <X className="h-5 w-5" />
         </button>
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-dark-card">
           <Clock className="h-6 w-6 text-linkedin" />
         </div>
-        <h2 className="text-lg font-semibold text-white">
+        <h2 className="text-lg font-semibold text-dark-textPri">
           {days != null ? `Your next free re-run is in ${days} day${days === 1 ? '' : 's'}` : 'Re-run not available yet'}
         </h2>
-        <p className="mt-2 text-sm text-white/60">
+        <p className="mt-2 text-sm text-dark-textSec">
           Premium tracks your trajectory whenever you want — every course, project, or new role.
         </p>
         <div className="mt-5 flex flex-col gap-2">
@@ -38,7 +38,7 @@ export function RerunLockModal({ nextRerunAt, onClose, onSeePremium, onSetRemind
             See premium
           </button>
           {onSetReminder && (
-            <button onClick={onSetReminder} className="rounded-lg border border-white/15 px-4 py-2.5 text-sm font-medium text-white/80 hover:border-white/30">
+            <button onClick={onSetReminder} className="rounded-lg border border-dark-border px-4 py-2.5 text-sm font-medium text-dark-textSec hover:border-dark-borderHov">
               Set a reminder
             </button>
           )}

@@ -28,8 +28,8 @@ export function MultiSelectFrequency({ value, onChange }: MultiSelectFrequencyPr
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-white/10">
-      <div className="grid grid-cols-[1.4fr_repeat(4,1fr)] bg-white/5 text-[11px] uppercase tracking-wide text-white/50">
+    <div className="overflow-hidden rounded-lg border border-dark-border">
+      <div className="grid grid-cols-[1.4fr_repeat(4,1fr)] bg-dark-card text-[11px] uppercase tracking-wide text-dark-textMuted">
         <div className="px-3 py-2">Tool</div>
         {FREQUENCY.map((f) => (
           <div key={f} className="px-1 py-2 text-center">{FREQ_LABELS[f]}</div>
@@ -40,9 +40,9 @@ export function MultiSelectFrequency({ value, onChange }: MultiSelectFrequencyPr
         return (
           <div
             key={tool.key}
-            className="grid grid-cols-[1.4fr_repeat(4,1fr)] items-center border-t border-white/5"
+            className="grid grid-cols-[1.4fr_repeat(4,1fr)] items-center border-t border-dark-border"
           >
-            <div className="px-3 py-2 text-sm text-white/80">{tool.label}</div>
+            <div className="px-3 py-2 text-sm text-dark-textSec">{tool.label}</div>
             {FREQUENCY.map((f) => {
               const active = selected === f
               return (
@@ -55,7 +55,7 @@ export function MultiSelectFrequency({ value, onChange }: MultiSelectFrequencyPr
                   className={`m-1 h-8 rounded-md text-xs font-medium transition ${
                     active
                       ? 'bg-linkedin text-white'
-                      : 'bg-white/5 text-white/50 hover:bg-white/10'
+                      : 'bg-dark-card text-dark-textMuted hover:bg-dark-elevated'
                   }`}
                 >
                   {active ? '✓' : ''}

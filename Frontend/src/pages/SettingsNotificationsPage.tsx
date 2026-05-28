@@ -40,10 +40,10 @@ export function SettingsNotificationsPage({ onBack }: SettingsNotificationsPageP
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="min-h-screen bg-dark-bg text-white"
+      className="min-h-screen bg-dark-bg text-dark-textPri"
     >
       <div className="mx-auto max-w-xl px-4 py-8">
-        <button onClick={onBack} className="mb-6 flex items-center gap-1 text-sm text-white/50 hover:text-white/80">
+        <button onClick={onBack} className="mb-6 flex items-center gap-1 text-sm text-dark-textMuted hover:text-dark-textSec">
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
 
@@ -53,17 +53,17 @@ export function SettingsNotificationsPage({ onBack }: SettingsNotificationsPageP
         </div>
 
         {!prefs ? (
-          <p className="text-sm text-white/50">Loading…</p>
+          <p className="text-sm text-dark-textMuted">Loading…</p>
         ) : (
           <div className="space-y-3">
             {TOGGLES.map((t) => (
               <label
                 key={t.key}
-                className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"
+                className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-dark-border bg-dark-card p-4"
               >
                 <span>
-                  <span className="block text-sm font-medium text-white">{t.label}</span>
-                  <span className="block text-xs text-white/50">{t.help}</span>
+                  <span className="block text-sm font-medium text-dark-textPri">{t.label}</span>
+                  <span className="block text-xs text-dark-textMuted">{t.help}</span>
                 </span>
                 <input
                   type="checkbox"
@@ -75,10 +75,10 @@ export function SettingsNotificationsPage({ onBack }: SettingsNotificationsPageP
                 />
               </label>
             ))}
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-white/40">
+            <div className="rounded-xl border border-dark-border bg-dark-card p-4 text-xs text-dark-textMuted">
               Account &amp; billing emails are always sent and can't be turned off.
             </div>
-            {saving && <p className="text-xs text-white/40">Saving…</p>}
+            {saving && <p className="text-xs text-dark-textMuted">Saving…</p>}
           </div>
         )}
       </div>

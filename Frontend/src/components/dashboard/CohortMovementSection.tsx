@@ -29,12 +29,12 @@ export function CohortMovementSection({ role = '', userScore, initialCohort }: C
 
   if (cohort.forming) {
     return (
-      <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+      <section className="rounded-xl border border-dark-border bg-dark-card p-5">
         <div className="mb-1 flex items-center gap-2">
           <Users className="h-4 w-4 text-linkedin" />
-          <h3 className="text-sm font-semibold text-white">Where you stand</h3>
+          <h3 className="text-sm font-semibold text-dark-textPri">Where you stand</h3>
         </div>
-        <p className="text-sm text-white/50">
+        <p className="text-sm text-dark-textMuted">
           Your cohort is forming — come back next month for peer benchmarks.
         </p>
       </section>
@@ -45,7 +45,7 @@ export function CohortMovementSection({ role = '', userScore, initialCohort }: C
   const delta = cohort.percentile_delta_30d
 
   return (
-    <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+    <section className="rounded-xl border border-dark-border bg-dark-card p-5">
       <button
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center justify-between"
@@ -53,11 +53,11 @@ export function CohortMovementSection({ role = '', userScore, initialCohort }: C
       >
         <span className="flex items-center gap-2">
           <Users className="h-4 w-4 text-linkedin" />
-          <span className="text-sm font-semibold text-white">
+          <span className="text-sm font-semibold text-dark-textPri">
             Top {topPct}% among {cohort.cohort_name}
           </span>
         </span>
-        <span className="flex items-center gap-2 text-xs text-white/50">
+        <span className="flex items-center gap-2 text-xs text-dark-textMuted">
           {delta != null && delta !== 0 && (
             <span className={delta > 0 ? 'text-green-400' : 'text-amber-400'}>
               {delta > 0 ? '▲' : '▼'} {Math.abs(delta)} this month
@@ -69,7 +69,7 @@ export function CohortMovementSection({ role = '', userScore, initialCohort }: C
 
       {expanded && (
         <div className="mt-4">
-          <p className="mb-2 text-xs text-white/50">Among {cohort.cohort_size} {cohort.cohort_name} assessed:</p>
+          <p className="mb-2 text-xs text-dark-textMuted">Among {cohort.cohort_size} {cohort.cohort_name} assessed:</p>
           <CohortDistributionChart distribution={cohort.distribution} userPercentile={cohort.user_percentile} />
         </div>
       )}

@@ -25,7 +25,7 @@ export function LikertScale({ value, onChange, lowAnchor, highAnchor, ariaLabel 
               className={`flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold transition ${
                 selected
                   ? 'border-linkedin bg-linkedin text-white'
-                  : 'border-white/15 bg-white/5 text-white/70 hover:border-white/30'
+                  : 'border-dark-border bg-dark-card text-dark-textSec hover:border-dark-borderHov'
               }`}
             >
               {p}
@@ -33,7 +33,7 @@ export function LikertScale({ value, onChange, lowAnchor, highAnchor, ariaLabel 
           )
         })}
       </div>
-      <div className="mt-2 flex justify-between text-xs text-white/50">
+      <div className="mt-2 flex justify-between text-xs text-dark-textMuted">
         <span>{lowAnchor}</span>
         <span>{highAnchor}</span>
       </div>

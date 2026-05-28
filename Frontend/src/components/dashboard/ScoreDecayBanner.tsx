@@ -40,22 +40,22 @@ export function ScoreDecayBanner({ daysSinceLastRun, onRerun, newsAnchors = [], 
 
   return (
     <div className="relative rounded-xl border border-amber-500/20 bg-amber-500/5 p-4" data-test="score-decay-banner">
-      <button onClick={dismiss} aria-label="Dismiss" className="absolute right-3 top-3 text-white/40 hover:text-white/70">
+      <button onClick={dismiss} aria-label="Dismiss" className="absolute right-3 top-3 text-dark-textMuted hover:text-dark-textSec">
         <X className="h-4 w-4" />
       </button>
       <div className="flex items-start gap-3">
         <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
         <div className="flex-1">
-          <p className="text-sm font-semibold text-white">Your score is {daysSinceLastRun} days old.</p>
-          <p className="mt-1 text-sm text-white/60">
+          <p className="text-sm font-semibold text-dark-textPri">Your score is {daysSinceLastRun} days old.</p>
+          <p className="mt-1 text-sm text-dark-textSec">
             AI tooling moved fast over the last month. Re-run your assessment to see how your role's exposure
             has shifted.
           </p>
           {newsAnchors.length > 0 && (
-            <ul className="mt-2 space-y-1 text-xs text-white/50">
+            <ul className="mt-2 space-y-1 text-xs text-dark-textMuted">
               {newsAnchors.slice(0, 2).map((n) => (
                 <li key={n.url}>
-                  <a href={n.url} target="_blank" rel="noreferrer" className="hover:text-white/80">• {n.title}</a>
+                  <a href={n.url} target="_blank" rel="noreferrer" className="hover:text-dark-textSec">• {n.title}</a>
                 </li>
               ))}
             </ul>
@@ -67,7 +67,7 @@ export function ScoreDecayBanner({ daysSinceLastRun, onRerun, newsAnchors = [], 
             Re-run my assessment
           </button>
           {tier === 'free' && (
-            <p className="mt-2 text-xs text-white/40">Free users can re-run once every 30 days. Premium = unlimited.</p>
+            <p className="mt-2 text-xs text-dark-textMuted">Free users can re-run once every 30 days. Premium = unlimited.</p>
           )}
         </div>
       </div>
