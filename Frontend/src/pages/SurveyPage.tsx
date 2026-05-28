@@ -106,41 +106,46 @@ export function SurveyPage({ onSubmit, onBack, draftKey, scrapeStatus }: SurveyP
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="min-h-screen bg-dark-bg text-dark-textPri"
+      className="min-h-screen bg-white"
     >
-      <SurveyProgressBar step={step} total={TOTAL} scrapeStatus={scrapeStatus} />
+      <header className="bg-white border-b border-surface-border">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-md bg-linkedin flex items-center justify-center">
+              <span className="text-white font-bold text-sm">u</span>
+            </div>
+            <span className="font-semibold text-[15px] text-gray-900">Upchange</span>
+          </div>
+          <button onClick={goBack} className="text-sm text-gray-500 hover:text-gray-900">← Back</button>
+        </div>
+      </header>
 
-      <div className="mx-auto max-w-2xl px-4 py-6">
-        <button onClick={goBack} className="mb-4 flex items-center gap-1 text-sm text-dark-textMuted hover:text-dark-textSec">
-          <ArrowLeft className="h-4 w-4" /> {step === 1 ? 'Back' : 'Previous'}
-        </button>
+      <div className="mx-auto max-w-2xl px-6 pt-10 pb-12">
+        <SurveyProgressBar step={step} total={TOTAL} scrapeStatus={scrapeStatus} />
 
-        {step === 1 && (
-          <p className="mb-6 text-sm text-dark-textSec">
-            90 seconds, 10 quick questions. We're reading your profile in the background while you answer.
-          </p>
-        )}
+        <div className="mt-8">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.18 }}
+            >
+              {renderStep(step, r, update)}
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.18 }}
-          >
-            {renderStep(step, r, update)}
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="mt-6 flex items-center justify-between">
+        <div className="mt-5 flex items-center justify-between">
           <button
             type="button"
             onClick={goBack}
-            className="rounded-lg border border-dark-border px-4 py-2.5 text-sm font-medium text-dark-textSec transition hover:border-dark-borderHov"
+            className="text-sm text-gray-500 hover:text-gray-900 inline-flex items-center gap-1"
           >
-            {step === 1 ? 'Cancel' : 'Back'}
+            <ArrowLeft className="h-4 w-4" /> {step === 1 ? 'Cancel' : 'Previous'}
           </button>
+          <div className="text-xs text-gray-500">Auto-saving your answers</div>
 
           {onLastStep ? (
             <button
@@ -148,7 +153,7 @@ export function SurveyPage({ onSubmit, onBack, draftKey, scrapeStatus }: SurveyP
               data-test="survey-submit"
               disabled={!complete}
               onClick={handleSubmit}
-              className="rounded-lg bg-linkedin px-5 py-2.5 text-sm font-semibold text-white transition enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg bg-linkedin hover:bg-linkedin-dark px-6 py-2.5 text-sm font-semibold text-white transition-all enabled:hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
             >
               See my score
             </button>
@@ -158,12 +163,16 @@ export function SurveyPage({ onSubmit, onBack, draftKey, scrapeStatus }: SurveyP
               data-test="survey-next"
               disabled={!canAdvance}
               onClick={goNext}
-              className="flex items-center gap-1 rounded-lg bg-linkedin px-5 py-2.5 text-sm font-semibold text-white transition enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg bg-linkedin hover:bg-linkedin-dark px-6 py-2.5 text-sm font-semibold text-white transition-all enabled:hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next <ArrowRight className="h-4 w-4" />
             </button>
           )}
         </div>
+
+        <p className="mt-8 text-center text-xs text-gray-300">
+          Auto-saved · You can leave and come back · 90s avg completion
+        </p>
       </div>
     </motion.div>
   )
@@ -177,19 +186,19 @@ function renderStep(
   switch (step) {
     case 1:
       return (
-        <QuestionCard index={1} total={TOTAL} question="Which AI tools do you use, and how often?" helpText="Tap a cell for each tool you use.">
+        <QuestionCard index={1} dim="D-AI" total={TOTAL} question="Which AI tools do you use, and how often?" helpText="Tap a cell for each tool you use.">
           <MultiSelectFrequency value={r.q_ai_1} onChange={(v) => update({ q_ai_1: v as SurveyResponse['q_ai_1'] })} />
         </QuestionCard>
       )
     case 2:
       return (
-        <QuestionCard index={2} total={TOTAL} optional question="What do you mainly use AI for?" helpText="Example: drafting emails, code review, brainstorming.">
+        <QuestionCard index={2} dim="D-AI" total={TOTAL} optional question="What do you mainly use AI for?" helpText="Example: drafting emails, code review, brainstorming.">
           <ShortText value={r.q_ai_2} onChange={(v) => update({ q_ai_2: v })} ariaLabel="What you use AI for" placeholder="Drafting email replies, code review…" />
         </QuestionCard>
       )
     case 3:
       return (
-        <QuestionCard index={3} total={TOTAL} question="Do you work on AI governance or responsible-AI topics?" helpText="Compliance, privacy, AI risk reviews, etc.">
+        <QuestionCard index={3} dim="D-GA" total={TOTAL} question="Do you work on AI governance or responsible-AI topics?" helpText="Compliance, privacy, AI risk reviews, etc.">
           <SingleSelectPill
             ariaLabel="AI governance involvement"
             value={r.q_ga_1}
@@ -205,7 +214,7 @@ function renderStep(
       )
     case 4:
       return (
-        <QuestionCard index={4} total={TOTAL} question="How many courses or certifications have you completed in the last year?">
+        <QuestionCard index={4} dim="D-LV" total={TOTAL} question="How many courses or certifications have you completed in the last year?">
           <SingleSelectPill
             ariaLabel="Courses completed last year"
             value={r.q_lv_1}
@@ -221,19 +230,19 @@ function renderStep(
       )
     case 5:
       return (
-        <QuestionCard index={5} total={TOTAL} question="“I actively seek out new skills and tools.”">
+        <QuestionCard index={5} dim="D-LV" total={TOTAL} question="“I actively seek out new skills and tools.”">
           <LikertScale ariaLabel="I actively seek new skills" value={r.q_lv_2} onChange={(v) => update({ q_lv_2: v })} lowAnchor="Strongly disagree" highAnchor="Strongly agree" />
         </QuestionCard>
       )
     case 6:
       return (
-        <QuestionCard index={6} total={TOTAL} question="How easy is it for you to reach people in your field for advice?">
+        <QuestionCard index={6} dim="D-NR" total={TOTAL} question="How easy is it for you to reach people in your field for advice?">
           <LikertScale ariaLabel="Ease of reaching your network" value={r.q_nr_1} onChange={(v) => update({ q_nr_1: v })} lowAnchor="Very difficult" highAnchor="Very easy" />
         </QuestionCard>
       )
     case 7:
       return (
-        <QuestionCard index={7} total={TOTAL} question="Do you share your work or ideas publicly (posts, talks, open source)?">
+        <QuestionCard index={7} dim="D-NR" total={TOTAL} question="Do you share your work or ideas publicly (posts, talks, open source)?">
           <SingleSelectPill
             ariaLabel="Public sharing frequency"
             value={r.q_nr_2}
@@ -248,13 +257,13 @@ function renderStep(
       )
     case 8:
       return (
-        <QuestionCard index={8} total={TOTAL} question="How much of your day-to-day work is repetitive vs. novel?">
+        <QuestionCard index={8} dim="D-AE" total={TOTAL} question="How much of your day-to-day work is repetitive vs. novel?">
           <RepetitiveSlider ariaLabel="Repetitive vs novel work" value={r.q_ae_1} onChange={(v) => update({ q_ae_1: v })} />
         </QuestionCard>
       )
     case 9:
       return (
-        <QuestionCard index={9} total={TOTAL} optional question="Do you manage or lead a team?" helpText="Helps us tailor recommendations. Optional.">
+        <QuestionCard index={9} dim="D-RW" total={TOTAL} optional question="Do you manage or lead a team?" helpText="Helps us tailor recommendations. Optional.">
           <SingleSelectPill
             ariaLabel="Leadership"
             value={r.q_rw_1}
@@ -269,7 +278,7 @@ function renderStep(
       )
     case 10:
       return (
-        <QuestionCard index={10} total={TOTAL} optional question="Are you currently exploring a role change?" helpText="Helps us tailor recommendations. Optional.">
+        <QuestionCard index={10} dim="D-RW" total={TOTAL} optional question="Are you currently exploring a role change?" helpText="Helps us tailor recommendations. Optional.">
           <SingleSelectPill
             ariaLabel="Exploring a role change"
             value={r.q_rw_2}
