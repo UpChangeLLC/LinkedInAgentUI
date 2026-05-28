@@ -1,218 +1,124 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { MockResults } from '../../data/mockResults';
-import { trackEvent } from '../../lib/analytics';
+import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowRight } from 'lucide-react'
+import { MockResults } from '../../data/mockResults'
+import { trackEvent } from '../../lib/analytics'
+
 interface ScoreRevealProps {
-  results: MockResults;
-  onComplete: () => void;
+  results: MockResults
+  onComplete: () => void
 }
+
+/** Mock-aligned reveal (Career-AI/onboarding-flow-mock.html §SCREEN 6): a
+ * full-screen white card with a count-up of the resilience score, the
+ * risk-band + cohort pills, a one-line narrative, and a 'See my full
+ * breakdown' CTA that closes the overlay onto the dashboard. */
 export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
-  const [count, setCount] = useState(0);
-  const [phase, setPhase] = useState<'counting' | 'reveal' | 'done'>('counting');
+  const [displayScore, setDisplayScore] = useState(0)
+  const target = Math.max(0, Math.min(100, results.score ?? 0))
+
   useEffect(() => {
-    // Count up animation
-    const targetScore = results.score;
-    const duration = 2000;
-    const startTime = Date.now();
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.round(eased * targetScore));
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        setPhase('reveal');
-        trackEvent('score_reveal_completed', { score: targetScore, watch_duration_ms: Date.now() - startTime });
-        setTimeout(() => {
-          setPhase('done');
-          setTimeout(onComplete, 800);
-        }, 1500);
-      }
-    };
-    // Brief pause before counting
-    const timeout = setTimeout(() => requestAnimationFrame(animate), 600);
-    return () => clearTimeout(timeout);
-  }, [results.score, onComplete]);
-  const getRiskColor = () => {
-    if (results.score >= 75) return 'from-green-400 to-emerald-500';
-    if (results.score >= 50) return 'from-amber-400 to-orange-500';
-    return 'from-red-400 to-rose-500';
-  };
+    try { trackEvent('score_revealed', { score: target, riskBand: results.riskBand }) } catch { /* ignore */ }
+    const duration = 1100
+    const start = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - t, 3) // ease-out cubic
+      setDisplayScore(Math.round(target * eased))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    const startHandle = setTimeout(() => { raf = requestAnimationFrame(tick) }, 250)
+    return () => { clearTimeout(startHandle); cancelAnimationFrame(raf) }
+  }, [target, results.riskBand])
+
+  const riskBand = results.riskBand || ''
+  const cohortLabel = results.personalProfile?.title
+    ? `Among ${results.personalProfile.title}s`
+    : 'Your cohort'
+  const summary =
+    target >= 75
+      ? "You're well-positioned for the AI shift. Several dimensions sit above your cohort — see the breakdown next."
+      : target >= 50
+        ? "You're in the middle of the pack. The biggest opportunity sits in a couple of dimensions — see the breakdown next."
+        : "There's meaningful room to grow. We've identified concrete actions to lift your score — see the breakdown next."
+
   return (
-    <motion.div
-      initial={{
-        opacity: 0
-      }}
-      animate={{
-        opacity: 1
-      }}
-      exit={{
-        opacity: 0
-      }}
-      className="fixed inset-0 z-[100] bg-dark-bg flex flex-col items-center justify-center">
-      
-      {/* Background pulse */}
+    <AnimatePresence>
       <motion.div
-        className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        animate={
-        phase === 'reveal' ?
-        {
-          scale: [1, 1.5],
-          opacity: [0.2, 0]
-        } :
-        {}
-        }
-        transition={{
-          duration: 1
-        }}>
-        
-        <div
-          className={`w-64 h-64 rounded-full bg-gradient-to-br ${getRiskColor()} blur-[80px] opacity-20`} />
-        
-      </motion.div>
-
-      <div className="relative z-10 text-center">
-        <motion.p
-          initial={{
-            opacity: 0,
-            y: 10
-          }}
-          animate={{
-            opacity: 1,
-            y: 0
-          }}
-          className="text-linkedin-light text-sm font-mono uppercase tracking-[0.3em] mb-8">
-          
-          Your AI Resilience Score
-        </motion.p>
-
-        {/* Score Number */}
-        <motion.div
-          className="relative mb-6"
-          animate={
-          phase === 'reveal' ?
-          {
-            scale: [1, 1.1, 1]
-          } :
-          {}
-          }
-          transition={{
-            duration: 0.5
-          }}>
-          
-          {/* Ring */}
-          <svg
-            className="w-48 h-48 md:w-56 md:h-56 mx-auto -rotate-90"
-            viewBox="0 0 100 100">
-            
-            <circle
-              cx="50"
-              cy="50"
-              r="44"
-              fill="none"
-              stroke="#1e3a6a"
-              strokeWidth="4" />
-            
-            <motion.circle
-              cx="50"
-              cy="50"
-              r="44"
-              fill="none"
-              stroke="#0A66C2"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray="276.5"
-              initial={{
-                strokeDashoffset: 276.5
-              }}
-              animate={{
-                strokeDashoffset: 276.5 - 276.5 * results.score / 100
-              }}
-              transition={{
-                duration: 2,
-                ease: [0.33, 1, 0.68, 1]
-              }} />
-            
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-6xl md:text-7xl font-extrabold text-white tabular-nums">
-              {count}
-            </span>
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[200] bg-white flex flex-col"
+        role="dialog"
+        aria-label="Score reveal"
+      >
+        <header className="bg-white border-b border-surface-border">
+          <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-md bg-linkedin flex items-center justify-center">
+                <span className="text-white font-bold text-sm">u</span>
+              </div>
+              <span className="font-semibold text-[15px] text-gray-900">Upchange</span>
+            </div>
           </div>
-        </motion.div>
+        </header>
 
-        {/* Risk Band */}
-        <motion.div
-          initial={{
-            opacity: 0,
-            scale: 0.8
-          }}
-          animate={
-          phase === 'reveal' || phase === 'done' ?
-          {
-            opacity: 1,
-            scale: 1
-          } :
-          {
-            opacity: 0,
-            scale: 0.8
-          }
-          }
-          transition={{
-            duration: 0.4
-          }}
-          className="mb-6">
-          
-          <span className="inline-block bg-white/10 backdrop-blur-sm text-white px-6 py-2 rounded-full font-semibold text-lg border border-white/20">
-            {results.riskBand}
-          </span>
-        </motion.div>
+        <div className="flex-1 flex items-center justify-center px-6 py-12 overflow-y-auto">
+          <motion.div
+            initial={{ y: 14, opacity: 0, scale: 0.98 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="bg-white rounded-3xl border border-surface-border shadow-sm p-10 md:p-12 max-w-2xl w-full text-center"
+          >
+            <div className="text-xs font-semibold uppercase tracking-wider text-linkedin">
+              Your AI Resilience Score
+            </div>
 
-        {/* Percentile */}
-        <motion.p
-          initial={{
-            opacity: 0
-          }}
-          animate={
-          phase === 'reveal' || phase === 'done' ?
-          {
-            opacity: 1
-          } :
-          {
-            opacity: 0
-          }
-          }
-          transition={{
-            delay: 0.3
-          }}
-          className="text-dark-textMuted text-base">
-          
-          You scored higher than{' '}
-          <span className="text-white font-bold">67%</span> of executives in
-          your industry
-        </motion.p>
+            <div className="mt-8 flex items-baseline justify-center gap-4">
+              <div className="text-8xl md:text-9xl font-bold leading-none text-gray-900 tracking-tight tabular-nums">
+                {displayScore}
+              </div>
+              <div className="text-xl text-gray-500">/ 100</div>
+            </div>
 
-        {/* Loading into dashboard */}
-        <motion.p
-          initial={{
-            opacity: 0
-          }}
-          animate={
-          phase === 'done' ?
-          {
-            opacity: 1
-          } :
-          {
-            opacity: 0
-          }
-          }
-          className="text-dark-textMuted text-sm mt-8 font-mono">
-          
-          Loading your full report...
-        </motion.p>
-      </div>
-    </motion.div>);
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.0, duration: 0.4 }}
+              className="mt-4 flex items-center justify-center gap-3 flex-wrap"
+            >
+              {riskBand && (
+                <span className="inline-block text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full">
+                  {riskBand}
+                </span>
+              )}
+              <span className="inline-block text-xs font-semibold text-linkedin bg-linkedin/10 px-3 py-1.5 rounded-full">
+                {cohortLabel}
+              </span>
+            </motion.div>
 
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.2, duration: 0.4 }}
+              className="mt-7 max-w-lg mx-auto text-gray-500 leading-relaxed"
+            >
+              {summary}
+            </motion.p>
+
+            <motion.button
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.4, duration: 0.4 }}
+              onClick={onComplete}
+              className="mt-9 inline-flex items-center gap-2 bg-linkedin hover:bg-linkedin-dark text-white font-medium px-8 py-3 rounded-full text-[15px] transition-all hover:-translate-y-0.5 shadow-sm"
+            >
+              See my full breakdown <ArrowRight className="w-4 h-4" />
+            </motion.button>
+          </motion.div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  )
 }
