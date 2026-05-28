@@ -1,646 +1,337 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react'
+import { motion } from 'framer-motion'
 import {
-  ArrowLeft,
-  Link as LinkIcon,
-  User,
-  Linkedin,
-  HelpCircle,
-  X,
-  ChevronDown,
-  Settings2,
-  Github,
-  Globe,
-} from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { ProgressBar } from '../components/ui/ProgressBar';
-import { LinkedInNav } from '../components/ui/LinkedInNav';
-import { ResumeUpload } from '../components/ui/ResumeUpload';
-import { normalizeLinkedInUrl } from '../lib/urlNormalize';
+  ArrowRight, ChevronDown, Github, Globe, HelpCircle, Info, Link as LinkIcon,
+} from 'lucide-react'
+import { ResumeUpload } from '../components/ui/ResumeUpload'
+import { normalizeLinkedInUrl } from '../lib/urlNormalize'
 
 interface IntakeFormPageProps {
-  onSubmit: (data: any) => void;
-  onBack: () => void;
-  submitting?: boolean;
+  onSubmit: (data: any) => void
+  onBack: () => void
+  submitting?: boolean
 }
 
 const CONCERN_OPTIONS = [
-  { value: 'career_pivot', label: 'Career Pivot', desc: 'Exploring new roles or industries' },
-  { value: 'upskilling', label: 'Upskilling', desc: 'Building AI skills for my current role' },
-  { value: 'team_readiness', label: 'Team Readiness', desc: 'Assessing my team\'s AI preparedness' },
-  { value: 'curiosity', label: 'Just Curious', desc: 'General interest in my AI resilience' },
-];
+  { value: 'career_pivot', label: 'Career Pivot' },
+  { value: 'upskilling', label: 'Upskilling' },
+  { value: 'team_readiness', label: 'Team Readiness' },
+  { value: 'curiosity', label: 'Just Curious' },
+]
 
 const INDUSTRY_OPTIONS = [
-  'Technology',
-  'Financial Services',
-  'Healthcare',
-  'Manufacturing',
-  'Retail & E-Commerce',
-  'Media & Entertainment',
-  'Energy & Utilities',
-  'Education',
-  'Real Estate',
-  'Consulting & Professional Services',
-  'Government & Public Sector',
-  'Telecommunications',
-  'Transportation & Logistics',
-  'Agriculture',
-  'Other',
-];
+  'Technology', 'Financial Services', 'Healthcare', 'Manufacturing',
+  'Retail & E-Commerce', 'Media & Entertainment', 'Energy & Utilities',
+  'Education', 'Real Estate', 'Consulting & Professional Services',
+  'Government & Public Sector', 'Telecommunications',
+  'Transportation & Logistics', 'Agriculture', 'Other',
+]
 
+/** Mock-aligned intake (Career-AI/onboarding-flow-mock.html §SCREEN 2):
+ * single LinkedIn URL field + two optional toggles for GitHub/Resume, with
+ * expanders that retain the existing website + role-context fields. */
 export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageProps) {
-  const [linkedinUrl, setLinkedinUrl] = useState('');
-  const [originalUrl, setOriginalUrl] = useState('');
-  const [urlCorrections, setUrlCorrections] = useState<string[]>([]);
-  const [error, setError] = useState('');
-  const [showHelp, setShowHelp] = useState(false);
-  const [showContext, setShowContext] = useState(false);
+  const [linkedinUrl, setLinkedinUrl] = useState('')
+  const [error, setError] = useState('')
+  const [urlCorrections, setUrlCorrections] = useState<string[]>([])
+  const [showHelp, setShowHelp] = useState(false)
 
-  // Resume upload state
-  const [resumeText, setResumeText] = useState('');
+  // Optional signal toggles + inputs
+  const [includeGithub, setIncludeGithub] = useState(false)
+  const [includeResume, setIncludeResume] = useState(false)
+  const [githubUrl, setGithubUrl] = useState('')
+  const [resumeText, setResumeText] = useState('')
 
-  // Multi-signal input state (F2)
-  const [githubUrl, setGithubUrl] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [showSignals, setShowSignals] = useState(false);
-  const [signalErrors, setSignalErrors] = useState<{ github?: string; website?: string }>({});
+  // "Add more signals" expander
+  const [showMore, setShowMore] = useState(false)
+  const [websiteUrl, setWebsiteUrl] = useState('')
+  const [signalErrors, setSignalErrors] = useState<{ github?: string; website?: string }>({})
 
-  // Context question state
-  const [concern, setConcern] = useState('');
-  const [aiInvolvement, setAiInvolvement] = useState(0);
-  const [industry, setIndustry] = useState('');
-  const [yearsInRole, setYearsInRole] = useState('');
+  // "Personalize" expander
+  const [showContext, setShowContext] = useState(false)
+  const [concern, setConcern] = useState('')
+  const [aiInvolvement, setAiInvolvement] = useState(0)
+  const [industry, setIndustry] = useState('')
+  const [yearsInRole, setYearsInRole] = useState('')
 
-  const isValidLinkedInUrl = (raw: string): boolean => {
+  const isValidLinkedInUrl = (raw: string) => {
     try {
-      const url = new URL(raw.includes('://') ? raw : `https://${raw}`);
-      const host = url.hostname.replace(/^www\./, '');
-      return host === 'linkedin.com' && /^\/(in|pub)\/[\w-]+\/?$/.test(url.pathname);
-    } catch {
-      return false;
-    }
-  };
-
-  const isValidGithubUrl = (raw: string): boolean => {
-    if (!raw.trim()) return true; // Optional field
+      const url = new URL(raw.includes('://') ? raw : `https://${raw}`)
+      const host = url.hostname.replace(/^www\./, '')
+      return host === 'linkedin.com' && /^\/(in|pub)\/[\w-]+\/?$/.test(url.pathname)
+    } catch { return false }
+  }
+  const isValidGithubUrl = (raw: string) => {
+    if (!raw.trim()) return true
     try {
-      const url = new URL(raw.includes('://') ? raw : `https://${raw}`);
-      const host = url.hostname.replace(/^www\./, '');
-      return host === 'github.com' && url.pathname.length > 1;
-    } catch {
-      return false;
-    }
-  };
-
-  const isValidWebsiteUrl = (raw: string): boolean => {
-    if (!raw.trim()) return true; // Optional field
+      const url = new URL(raw.includes('://') ? raw : `https://${raw}`)
+      return url.hostname.replace(/^www\./, '') === 'github.com' && url.pathname.length > 1
+    } catch { return false }
+  }
+  const isValidWebsiteUrl = (raw: string) => {
+    if (!raw.trim()) return true
     try {
-      const url = new URL(raw.includes('://') ? raw : `https://${raw}`);
-      return !!url.hostname && url.hostname.includes('.');
-    } catch {
-      return false;
-    }
-  };
+      const url = new URL(raw.includes('://') ? raw : `https://${raw}`)
+      return !!url.hostname && url.hostname.includes('.')
+    } catch { return false }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Auto-correct the URL before validation
-    const { url: normalized, corrections } = normalizeLinkedInUrl(linkedinUrl);
+    e.preventDefault()
+    const { url: normalized, corrections } = normalizeLinkedInUrl(linkedinUrl)
     if (corrections.length > 0) {
-      setOriginalUrl(linkedinUrl);
-      setLinkedinUrl(normalized);
-      setUrlCorrections(corrections);
+      setLinkedinUrl(normalized)
+      setUrlCorrections(corrections)
     }
-
     if (!isValidLinkedInUrl(normalized)) {
-      setError('Please enter a valid LinkedIn profile URL (e.g. https://linkedin.com/in/your-name)');
-      return;
+      setError('Please enter a valid LinkedIn profile URL (e.g. https://linkedin.com/in/your-name)')
+      return
     }
 
-    // Validate optional signal URLs
-    const newSignalErrors: { github?: string; website?: string } = {};
-    if (githubUrl && !isValidGithubUrl(githubUrl)) {
-      newSignalErrors.github = 'Please enter a valid GitHub URL (e.g. github.com/username)';
+    const newSignalErrors: { github?: string; website?: string } = {}
+    if (includeGithub && githubUrl && !isValidGithubUrl(githubUrl)) {
+      newSignalErrors.github = 'Please enter a valid GitHub URL (e.g. github.com/username)'
     }
     if (websiteUrl && !isValidWebsiteUrl(websiteUrl)) {
-      newSignalErrors.website = 'Please enter a valid website URL';
+      newSignalErrors.website = 'Please enter a valid website URL'
     }
     if (Object.keys(newSignalErrors).length > 0) {
-      setSignalErrors(newSignalErrors);
-      return;
+      setSignalErrors(newSignalErrors)
+      return
     }
-    setSignalErrors({});
+    setSignalErrors({})
 
-    // Build user context (only include non-empty values)
-    const userContext: Record<string, any> = {};
-    if (concern) userContext.concern = concern;
-    if (aiInvolvement > 0) userContext.ai_involvement = aiInvolvement;
-    if (industry) userContext.industry = industry;
-    const yrs = parseInt(yearsInRole, 10);
-    if (!isNaN(yrs) && yrs > 0) userContext.years_in_role = yrs;
+    const userContext: Record<string, any> = {}
+    if (concern) userContext.concern = concern
+    if (aiInvolvement > 0) userContext.ai_involvement = aiInvolvement
+    if (industry) userContext.industry = industry
+    const yrs = parseInt(yearsInRole, 10)
+    if (!isNaN(yrs) && yrs > 0) userContext.years_in_role = yrs
 
     onSubmit({
       linkedinUrl: normalized,
-      ...(resumeText ? { resumeText } : {}),
-      ...(githubUrl.trim() ? { githubUrl: githubUrl.trim() } : {}),
+      ...(includeResume && resumeText ? { resumeText } : {}),
+      ...(includeGithub && githubUrl.trim() ? { githubUrl: githubUrl.trim() } : {}),
       ...(websiteUrl.trim() ? { websiteUrl: websiteUrl.trim() } : {}),
       ...(Object.keys(userContext).length > 0 ? { userContext } : {}),
-    });
-  };
+    })
+  }
 
-  const aiLabels = ['', 'Minimal', 'Basic', 'Moderate', 'High', 'Central'];
-  const hasContext = concern || aiInvolvement > 0 || industry || yearsInRole;
+  const aiLabels = ['', 'Minimal', 'Basic', 'Moderate', 'High', 'Central']
 
   return (
-    <div className="min-h-screen bg-linkedin-bg">
-      <LinkedInNav />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-white">
+      {/* Top nav */}
+      <header className="bg-white border-b border-surface-border">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-md bg-linkedin flex items-center justify-center">
+              <span className="text-white font-bold text-sm">u</span>
+            </div>
+            <span className="font-semibold text-[15px] text-gray-900">Upchange</span>
+          </div>
+          <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-900">← Back</button>
+        </div>
+      </header>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className="py-12 px-4"
-      >
-        <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto px-6 pt-16 pb-12">
+        <div className="text-[11px] font-semibold tracking-wider uppercase text-gray-500">Step 1 of 3</div>
+        <h1 className="mt-3 text-3xl font-bold leading-tight text-gray-900">Drop your LinkedIn URL</h1>
+        <p className="mt-3 text-gray-500">
+          We'll pull your role, skills, and experience. The full survey + score takes about 3 minutes.
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-10 bg-white rounded-2xl border border-surface-border shadow-sm p-7">
+          <label htmlFor="linkedin-input" className="block text-sm font-medium text-gray-700">
+            LinkedIn profile URL
+          </label>
+          <div className="mt-2 relative">
+            <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-300">
+              <LinkIcon className="w-4 h-4" />
+            </span>
+            <input
+              id="linkedin-input"
+              type="text"
+              value={linkedinUrl}
+              onChange={(e) => { setLinkedinUrl(e.target.value); if (error) setError('') }}
+              placeholder="https://linkedin.com/in/your-name"
+              className={`w-full border ${error ? 'border-red-300' : 'border-surface-border'} rounded-lg pl-10 pr-3 py-3 text-[15px] text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition`}
+              autoComplete="off"
+            />
+          </div>
+          <p className="mt-2 text-xs text-gray-500 flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-gray-300" />
+            We don't ask you to log in. Public profile only.
+          </p>
+          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          {urlCorrections.length > 0 && (
+            <p className="mt-2 text-xs text-gray-500">We auto-corrected your URL: {urlCorrections.join(', ')}.</p>
+          )}
+
+          <details className="mt-3 group" onToggle={(e) => setShowHelp((e.target as HTMLDetailsElement).open)}>
+            <summary className="text-xs text-gray-500 hover:text-linkedin cursor-pointer inline-flex items-center gap-1 select-none">
+              <HelpCircle className="w-3.5 h-3.5" /> Where do I find my LinkedIn URL?
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHelp ? 'rotate-180' : ''}`} />
+            </summary>
+            <p className="mt-2 text-xs text-gray-500">
+              Open your LinkedIn profile, click <strong>“Me”</strong> in the top nav, then <strong>“View Profile”</strong>.
+              Copy the URL from your browser — it looks like <code>linkedin.com/in/your-name</code>.
+            </p>
+          </details>
+
+          {/* Optional signal toggles */}
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer transition border ${includeGithub ? 'border-linkedin bg-linkedin/5' : 'border-surface-border hover:border-linkedin'}`}>
+              <input type="checkbox" className="w-4 h-4 accent-linkedin" checked={includeGithub} onChange={(e) => setIncludeGithub(e.target.checked)} />
+              <Github className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-700">Include GitHub <span className="text-gray-300 text-xs">(optional)</span></span>
+            </label>
+            <label className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer transition border ${includeResume ? 'border-linkedin bg-linkedin/5' : 'border-surface-border hover:border-linkedin'}`}>
+              <input type="checkbox" className="w-4 h-4 accent-linkedin" checked={includeResume} onChange={(e) => setIncludeResume(e.target.checked)} />
+              <span className="text-sm text-gray-700">Include resume <span className="text-gray-300 text-xs">(optional)</span></span>
+            </label>
+          </div>
+
+          {includeGithub && (
+            <div className="mt-4">
+              <input
+                type="text"
+                value={githubUrl}
+                onChange={(e) => { setGithubUrl(e.target.value); setSignalErrors((p) => ({ ...p, github: undefined })) }}
+                placeholder="github.com/username"
+                className={`w-full border ${signalErrors.github ? 'border-red-300' : 'border-surface-border'} rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition`}
+              />
+              {signalErrors.github && <p className="mt-1 text-xs text-red-600">{signalErrors.github}</p>}
+            </div>
+          )}
+          {includeResume && (
+            <div className="mt-4">
+              <ResumeUpload onResumeText={setResumeText} />
+            </div>
+          )}
+
+          {/* Add more signals */}
+          <details className="mt-5 group" onToggle={(e) => setShowMore((e.target as HTMLDetailsElement).open)}>
+            <summary className="cursor-pointer inline-flex items-center gap-1.5 text-sm text-gray-700 hover:text-linkedin select-none">
+              <Globe className="w-4 h-4" /> Add more signals
+              <ChevronDown className={`w-4 h-4 transition-transform ${showMore ? 'rotate-180' : ''}`} />
+            </summary>
+            <div className="mt-3">
+              <label htmlFor="website-input" className="block text-xs font-medium text-gray-700">Personal site</label>
+              <input
+                id="website-input"
+                type="text"
+                value={websiteUrl}
+                onChange={(e) => { setWebsiteUrl(e.target.value); setSignalErrors((p) => ({ ...p, website: undefined })) }}
+                placeholder="yourdomain.com"
+                className={`mt-1.5 w-full border ${signalErrors.website ? 'border-red-300' : 'border-surface-border'} rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition`}
+              />
+              {signalErrors.website && <p className="mt-1 text-xs text-red-600">{signalErrors.website}</p>}
+            </div>
+          </details>
+
+          {/* Personalize */}
+          <details className="mt-2 group" onToggle={(e) => setShowContext((e.target as HTMLDetailsElement).open)}>
+            <summary className="cursor-pointer inline-flex items-center gap-1.5 text-sm text-gray-700 hover:text-linkedin select-none">
+              Personalize your analysis
+              <ChevronDown className={`w-4 h-4 transition-transform ${showContext ? 'rotate-180' : ''}`} />
+            </summary>
+            <div className="mt-3 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700">What brings you here?</label>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {CONCERN_OPTIONS.map((opt) => {
+                    const selected = concern === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setConcern(selected ? '' : opt.value)}
+                        className={`text-left rounded-lg px-3 py-2 text-sm border transition ${selected ? 'border-linkedin bg-linkedin/5 text-gray-900' : 'border-surface-border text-gray-700 hover:border-linkedin'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="industry-select" className="block text-xs font-medium text-gray-700">Industry</label>
+                  <select
+                    id="industry-select"
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                    className="mt-1.5 w-full border border-surface-border rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition bg-white"
+                  >
+                    <option value="">Select industry</option>
+                    {INDUSTRY_OPTIONS.map((i) => <option key={i} value={i}>{i}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="years-input" className="block text-xs font-medium text-gray-700">Years in current role</label>
+                  <input
+                    id="years-input"
+                    type="number"
+                    min={0}
+                    max={50}
+                    value={yearsInRole}
+                    onChange={(e) => setYearsInRole(e.target.value)}
+                    placeholder="3"
+                    className="mt-1.5 w-full border border-surface-border rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700">How AI-involved is your day-to-day?</label>
+                <div className="mt-2 flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setAiInvolvement(aiInvolvement === n ? 0 : n)}
+                      className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium border transition ${aiInvolvement === n ? 'border-linkedin bg-linkedin text-white' : 'border-surface-border text-gray-700 hover:border-linkedin'}`}
+                      aria-pressed={aiInvolvement === n}
+                    >
+                      {aiLabels[n]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </details>
+
           <button
-            onClick={onBack}
-            className="flex items-center text-gray-500 hover:text-gray-900 mb-6 transition-colors"
+            type="submit"
+            disabled={submitting}
+            className="mt-7 w-full inline-flex items-center justify-center gap-2 bg-linkedin hover:bg-linkedin-dark text-white font-medium py-3 rounded-lg text-[15px] transition-all enabled:hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
+            {submitting ? 'Loading…' : 'Continue to survey'} <ArrowRight className="w-4 h-4" />
           </button>
 
-          <Card className="overflow-hidden shadow-sm border border-gray-200 bg-white">
-            <div className="border-b border-gray-100 bg-gradient-to-br from-white via-linkedin/5 to-white px-8 py-7 md:px-10">
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-linkedin/15 bg-white px-3 py-1.5 text-xs font-semibold text-linkedin shadow-sm">
-                    <Linkedin className="h-3.5 w-3.5" />
-                    Profile analysis
-                  </div>
-                  <span className="text-xs font-semibold text-gray-500">Step 1 of 3</span>
-                </div>
+          <div className="mt-5 pt-5 border-t border-surface-border text-xs text-gray-500 flex items-start gap-2">
+            <Info className="w-4 h-4 text-gray-300 shrink-0 mt-0.5" />
+            <span>Your profile data is only used to compute your score. We never repost or share it.</span>
+          </div>
+        </form>
 
-                <div>
-                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                    Paste your LinkedIn profile
-                  </h1>
-                  <p className="text-gray-600 max-w-xl">
-                    Start with your public profile URL. You can add resume, GitHub, website, and context signals next.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <ProgressBar progress={33} className="h-1.5 bg-gray-100" />
-                  <span className="shrink-0 text-xs font-medium text-gray-500">33%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8 md:p-10">
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* LinkedIn URL input */}
-              <div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <LinkIcon className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    className={`block w-full pl-10 pr-3 py-4 border ${error ? 'border-red-300' : 'border-gray-300'} rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-linkedin focus:ring-1 focus:ring-linkedin sm:text-lg transition duration-150 ease-in-out`}
-                    placeholder="https://linkedin.com/in/your-profile"
-                    value={linkedinUrl}
-                    onChange={(e) => {
-                      setLinkedinUrl(e.target.value);
-                      if (error) setError('');
-                    }}
-                  />
-                  {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-                  {urlCorrections.length > 0 && !error && (
-                    <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
-                      <span>Auto-corrected: {urlCorrections.join(', ')}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLinkedinUrl(originalUrl);
-                          setUrlCorrections([]);
-                        }}
-                        className="text-xs text-gray-400 hover:text-gray-600 underline"
-                      >
-                        Undo
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Help: Where to find your LinkedIn URL */}
-                <button
-                  type="button"
-                  onClick={() => setShowHelp(!showHelp)}
-                  className="mt-3 flex items-center gap-1.5 text-sm text-gray-400 hover:text-linkedin transition-colors"
-                >
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  <span>Where do I find my LinkedIn URL?</span>
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform ${showHelp ? 'rotate-180' : ''}`}
-                  />
-                </button>
-
-                <AnimatePresence>
-                  {showHelp && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <p className="text-sm text-gray-600 font-medium">
-                            Go to your LinkedIn profile and copy the URL from
-                            your browser's address bar:
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setShowHelp(false)}
-                            className="text-gray-400 hover:text-gray-600 ml-2 flex-shrink-0"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
-                          <div className="bg-gray-100 px-3 py-2 flex items-center gap-2 border-b border-gray-200">
-                            <div className="flex gap-1.5">
-                              <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                              <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                              <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-                            </div>
-                            <div className="flex-1 bg-white rounded px-3 py-1 text-xs text-gray-600 font-mono border border-gray-200">
-                              <span className="text-gray-400">https://</span>
-                              <span className="text-linkedin font-semibold">
-                                linkedin.com/in/your-name
-                              </span>
-                            </div>
-                          </div>
-                          <div className="p-4 flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                              <User className="w-8 h-8 text-gray-400" />
-                            </div>
-                            <div>
-                              <div className="h-4 w-32 bg-gray-200 rounded mb-2" />
-                              <div className="h-3 w-48 bg-gray-100 rounded mb-1" />
-                              <div className="h-3 w-40 bg-gray-100 rounded" />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-3 flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-linkedin text-[10px] font-bold">1</span>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Open LinkedIn and go to your profile page
-                          </p>
-                        </div>
-                        <div className="mt-2 flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-linkedin text-[10px] font-bold">2</span>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Copy the full URL from your browser address bar (it
-                            looks like{' '}
-                            <span className="font-mono text-gray-700">
-                              linkedin.com/in/your-name
-                            </span>
-                            )
-                          </p>
-                        </div>
-                        <div className="mt-2 flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-linkedin text-[10px] font-bold">3</span>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Paste it in the field above
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Profile URL detected indicator */}
-              {linkedinUrl.length > 10 && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="border border-gray-200 rounded-lg p-4 bg-gray-50 flex items-center gap-4"
-                >
-                  <div className="w-12 h-12 rounded-full bg-linkedin/10 flex items-center justify-center flex-shrink-0">
-                    <LinkIcon className="w-6 h-6 text-linkedin" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">LinkedIn profile detected</p>
-                    <p className="text-sm text-gray-600">
-                      We'll analyze your public profile information
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* ── Resume Upload ────────────────────────── */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload Resume <span className="text-gray-400 font-normal">(Optional)</span>
-                </label>
-                <ResumeUpload onResumeText={setResumeText} />
-              </div>
-
-              {/* ── Multi-Signal Input (F2) ────────────────────────── */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowSignals(!showSignals)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">
-                      Add More Signals
-                    </span>
-                    {(githubUrl || websiteUrl) && (
-                      <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                        {[githubUrl, websiteUrl].filter(Boolean).length} added
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">Optional</span>
-                    <ChevronDown
-                      className={`w-4 h-4 text-gray-400 transition-transform ${showSignals ? 'rotate-180' : ''}`}
-                    />
-                  </div>
-                </button>
-
-                <AnimatePresence>
-                  {showSignals && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-4 py-5 space-y-4 border-t border-gray-200">
-                        <p className="text-xs text-gray-500">
-                          Add additional profile links for a more comprehensive analysis.
-                        </p>
-
-                        {/* GitHub URL */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            GitHub Profile
-                          </label>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <Github className="h-4 w-4 text-gray-400" />
-                            </div>
-                            <input
-                              type="text"
-                              className={`block w-full pl-10 pr-3 py-2.5 border ${signalErrors.github ? 'border-red-300' : 'border-gray-300'} rounded-lg bg-white text-sm placeholder-gray-400 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin transition`}
-                              placeholder="github.com/username"
-                              value={githubUrl}
-                              onChange={(e) => {
-                                setGithubUrl(e.target.value);
-                                if (signalErrors.github) setSignalErrors((prev) => ({ ...prev, github: undefined }));
-                              }}
-                            />
-                          </div>
-                          {signalErrors.github && (
-                            <p className="mt-1 text-xs text-red-600">{signalErrors.github}</p>
-                          )}
-                        </div>
-
-                        {/* Website URL */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            Personal Website
-                          </label>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <LinkIcon className="h-4 w-4 text-gray-400" />
-                            </div>
-                            <input
-                              type="text"
-                              className={`block w-full pl-10 pr-3 py-2.5 border ${signalErrors.website ? 'border-red-300' : 'border-gray-300'} rounded-lg bg-white text-sm placeholder-gray-400 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin transition`}
-                              placeholder="https://yourwebsite.com"
-                              value={websiteUrl}
-                              onChange={(e) => {
-                                setWebsiteUrl(e.target.value);
-                                if (signalErrors.website) setSignalErrors((prev) => ({ ...prev, website: undefined }));
-                              }}
-                            />
-                          </div>
-                          {signalErrors.website && (
-                            <p className="mt-1 text-xs text-red-600">{signalErrors.website}</p>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* ── Contextual Intake Questions (Optional) ────────────── */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowContext(!showContext)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Settings2 className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">
-                      Personalize Your Analysis
-                    </span>
-                    {hasContext && (
-                      <span className="text-xs bg-linkedin/10 text-linkedin px-2 py-0.5 rounded-full font-medium">
-                        Customized
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">Optional</span>
-                    <ChevronDown
-                      className={`w-4 h-4 text-gray-400 transition-transform ${showContext ? 'rotate-180' : ''}`}
-                    />
-                  </div>
-                </button>
-
-                <AnimatePresence>
-                  {showContext && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-4 py-5 space-y-5 border-t border-gray-200">
-                        <p className="text-xs text-gray-500">
-                          Answer a few quick questions to get a more tailored analysis.
-                          All questions are optional.
-                        </p>
-
-                        {/* Q1: Primary Concern */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            What's your primary concern?
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            {CONCERN_OPTIONS.map((opt) => (
-                              <button
-                                key={opt.value}
-                                type="button"
-                                onClick={() =>
-                                  setConcern(concern === opt.value ? '' : opt.value)
-                                }
-                                className={`text-left p-3 rounded-lg border transition-all ${
-                                  concern === opt.value
-                                    ? 'border-linkedin bg-linkedin/5 ring-1 ring-linkedin'
-                                    : 'border-gray-200 hover:border-gray-300 bg-white'
-                                }`}
-                              >
-                                <p
-                                  className={`text-sm font-medium ${
-                                    concern === opt.value
-                                      ? 'text-linkedin'
-                                      : 'text-gray-900'
-                                  }`}
-                                >
-                                  {opt.label}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                  {opt.desc}
-                                </p>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Q2: AI Involvement Slider */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            How involved is AI in your current work?
-                          </label>
-                          <div className="space-y-2">
-                            <input
-                              type="range"
-                              min="0"
-                              max="5"
-                              value={aiInvolvement}
-                              onChange={(e) =>
-                                setAiInvolvement(parseInt(e.target.value, 10))
-                              }
-                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-linkedin"
-                            />
-                            <div className="flex justify-between text-xs text-gray-400">
-                              <span>Not specified</span>
-                              <span>
-                                {aiInvolvement > 0
-                                  ? `${aiLabels[aiInvolvement]} (${aiInvolvement}/5)`
-                                  : 'Slide to rate'}
-                              </span>
-                              <span>Central</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Q3: Industry */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Your industry
-                          </label>
-                          <select
-                            value={industry}
-                            onChange={(e) => setIndustry(e.target.value)}
-                            className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm text-gray-900 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin"
-                          >
-                            <option value="">Select your industry...</option>
-                            {INDUSTRY_OPTIONS.map((ind) => (
-                              <option key={ind} value={ind}>
-                                {ind}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Q4: Years in current role */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Years in current role
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="50"
-                            placeholder="e.g. 3"
-                            value={yearsInRole}
-                            onChange={(e) => setYearsInRole(e.target.value)}
-                            className="block w-32 px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm text-gray-900 focus:outline-none focus:border-linkedin focus:ring-1 focus:ring-linkedin"
-                          />
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  fullWidth
-                  size="lg"
-                  disabled={submitting}
-                  className="bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {submitting ? 'Submitting...' : 'Analyze My Profile'}
-                </Button>
-                <p className="mt-4 text-center text-xs text-gray-500">
-                  We only access your public profile information
-                </p>
-              </div>
-            </form>
-
-            {/* LinkedIn Login Option — Coming Soon */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-400">or</span>
-              </div>
-            </div>
-
-            <button
-              disabled
-              className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border border-gray-200 rounded-lg opacity-50 cursor-not-allowed"
-            >
-              <Linkedin className="w-5 h-5 text-[#0A66C2]" />
-              <span className="text-gray-700 font-medium">
-                Sign in with LinkedIn
-              </span>
-              <span className="text-xs text-gray-400 ml-1">(Coming Soon)</span>
-            </button>
-            <p className="mt-3 text-center text-xs text-gray-400">
-              Don&apos;t know your profile URL? LinkedIn sign-in is coming soon.
-            </p>
-
-            </div>
-          </Card>
+        {/* What happens next */}
+        <div className="mt-8 grid grid-cols-3 gap-3 text-center">
+          <NextStep emoji="📋" title="90s survey" sub="10 quick questions" />
+          <NextStep emoji="⚡" title="Profile parsed" sub="in parallel — no wait" />
+          <NextStep emoji="🎯" title="Score + breakdown" sub="free dashboard" />
         </div>
-      </motion.div>
+      </div>
+    </motion.div>
+  )
+}
+
+function NextStep({ emoji, title, sub }: { emoji: string; title: string; sub: string }) {
+  return (
+    <div className="bg-white rounded-xl p-4 border border-surface-border">
+      <div className="text-2xl">{emoji}</div>
+      <div className="text-xs font-semibold mt-2 text-gray-900">{title}</div>
+      <div className="text-[11px] text-gray-500 mt-1">{sub}</div>
     </div>
-  );
+  )
 }
