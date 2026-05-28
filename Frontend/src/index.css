@@ -87,6 +87,14 @@
 :root:not([data-theme="light"]) .placeholder-gray-400::placeholder {
   color: rgb(var(--text-muted)) !important;
 }
+/* In dark mode, default form-control text to text-pri so user-typed input is
+   legible on the remapped dark surface. Explicit Tailwind color classes like
+   .text-gray-900 still win via the !important rules above. */
+:root:not([data-theme="light"]) input,
+:root:not([data-theme="light"]) textarea,
+:root:not([data-theme="light"]) select {
+  color: rgb(var(--text-pri));
+}
 /* Override gradient backgrounds in dark mode */
 :root:not([data-theme="light"]) .from-white {
   --tw-gradient-from: rgb(var(--bg)) !important;

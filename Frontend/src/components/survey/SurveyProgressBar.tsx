@@ -1,42 +1,36 @@
-import { Check, Loader2, AlertTriangle } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 
 export type ScrapeStatus = 'idle' | 'running' | 'parse_complete' | 'failed'
 
 interface SurveyProgressBarProps {
-  answered: number
+  /** 1-based current step (e.g. 3 means "Question 3 of N"). */
+  step: number
   total: number
   scrapeStatus: ScrapeStatus
 }
 
-/** Sticky header: question progress + the parallel-scrape status badge that
- * reassures users the background profile fetch is working (spec 01 §4.6). */
-export function SurveyProgressBar({ answered, total, scrapeStatus }: SurveyProgressBarProps) {
-  const pct = Math.round((answered / total) * 100)
+/** Sticky header: per-step progress + parallel-scrape status badge.
+ * The 'failed' state is intentionally not surfaced — when there's no Apify
+ * token (or the scrape can't run), a persistent warning was just noise. */
+export function SurveyProgressBar({ step, total, scrapeStatus }: SurveyProgressBarProps) {
+  const pct = Math.round((step / total) * 100)
 
-  const badge = {
-    idle: null,
-    running: (
+  const badge =
+    scrapeStatus === 'running' ? (
       <span className="flex items-center gap-1.5 text-xs text-dark-textSec">
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading your profile
       </span>
-    ),
-    parse_complete: (
+    ) : scrapeStatus === 'parse_complete' ? (
       <span className="flex items-center gap-1.5 text-xs text-green-400">
         <Check className="h-3.5 w-3.5" /> Profile loaded
       </span>
-    ),
-    failed: (
-      <span className="flex items-center gap-1.5 text-xs text-amber-400">
-        <AlertTriangle className="h-3.5 w-3.5" /> We'll retry
-      </span>
-    ),
-  }[scrapeStatus]
+    ) : null
 
   return (
     <div className="sticky top-0 z-10 border-b border-dark-border bg-dark-bg/90 px-5 py-3 backdrop-blur">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-dark-textSec">
-          Question {Math.min(answered + 1, total)} of {total}
+          Question {step} of {total}
         </span>
         {badge}
       </div>
