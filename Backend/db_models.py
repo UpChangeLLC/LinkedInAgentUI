@@ -386,6 +386,49 @@ class EmailQueue(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
+class MlInferenceLog(Base):
+    """Audit row for each scoring call (Workstream C, plan §Migrations).
+
+    The ML platform stays stateless; the orchestrator writes one row here after
+    receiving (or falling back from) a score, so we can audit which model
+    produced which result and watch the v1 fall-through rate during cutover.
+    """
+
+    __tablename__ = "ml_inference_log"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pipeline_run_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("pipeline_runs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    user_signup_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_signups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Which scorer answered + provenance.
+    scoring_version = Column(String(10), nullable=False, default="v0")  # v0|v1
+    model_version = Column(String(100), nullable=True)
+    onet_version = Column(String(100), nullable=True)
+
+    # Whether the ML platform was attempted and whether we fell back to v0.
+    platform_attempted = Column(Boolean, nullable=False, default=False)
+    fell_back = Column(Boolean, nullable=False, default=False)
+    latency_ms = Column(Integer, nullable=True)
+    error = Column(Text, nullable=True)
+
+    # Score snapshot for audit (not authoritative — assessment_history is).
+    resilience_score = Column(Integer, nullable=True)
+    readiness_score = Column(Integer, nullable=True)
+    shap_attribution = Column(JSONB, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
 class ActionItem(Base):
     """Personalized action items generated per assessment (F24)."""
 

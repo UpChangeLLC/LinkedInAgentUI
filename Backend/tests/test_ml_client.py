@@ -80,3 +80,50 @@ class TestV1Path:
         assert out["readiness_score"] == 58
         assert out["resilience_percentile"] == 72
         assert out["shap_attribution"][0]["dimension"] == "ai_fluency"
+
+
+@pytest.mark.asyncio
+class TestMlMeta:
+    """The ephemeral `_ml_meta` drives ml_inference_log; assert each path stamps it."""
+
+    async def test_v0_disabled_meta(self):
+        import services.ml_client as ml_client
+
+        with patch.dict(os.environ, {"USE_ML_PLATFORM": "false"}):
+            out = await ml_client.score_profile(_base_result(), merged_profile={})
+
+        meta = out[ml_client.ML_META_KEY]
+        assert meta["platform_attempted"] is False
+        assert meta["fell_back"] is False
+        assert meta["error"] is None
+
+    async def test_v1_fallback_meta(self):
+        import services.ml_client as ml_client
+
+        async def boom(payload):
+            raise RuntimeError("ml platform down")
+
+        with patch.dict(os.environ, {"USE_ML_PLATFORM": "true"}):
+            with patch.object(ml_client, "_call_ml_platform", side_effect=boom):
+                out = await ml_client.score_profile(_base_result(), merged_profile={})
+
+        meta = out[ml_client.ML_META_KEY]
+        assert meta["platform_attempted"] is True
+        assert meta["fell_back"] is True
+        assert "ml platform down" in (meta["error"] or "")
+        assert isinstance(meta["latency_ms"], int)
+
+    async def test_v1_success_meta(self):
+        import services.ml_client as ml_client
+
+        async def ok(payload):
+            return {"resilience_score": 71, "readiness_score": 58, "scoring_version": "v1", "model_version": "res-v1.0.0"}
+
+        with patch.dict(os.environ, {"USE_ML_PLATFORM": "true"}):
+            with patch.object(ml_client, "_call_ml_platform", side_effect=ok):
+                out = await ml_client.score_profile(_base_result(), merged_profile={})
+
+        meta = out[ml_client.ML_META_KEY]
+        assert meta["platform_attempted"] is True
+        assert meta["fell_back"] is False
+        assert meta["model_version"] == "res-v1.0.0"

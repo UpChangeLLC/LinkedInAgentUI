@@ -15,11 +15,16 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Any, Dict, Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# Ephemeral key stamped onto the result describing how it was scored. The route
+# reads it to write `ml_inference_log`, then pops it before returning to clients.
+ML_META_KEY = "_ml_meta"
 
 
 def _platform_enabled() -> bool:
@@ -94,10 +99,39 @@ async def score_profile(
             "user_context": user_context or {},
             "include_explain": True,
         }
+        started = time.perf_counter()
         try:
             scored = await _call_ml_platform(payload)
-            return _apply_v1(result, scored)
+            result = _apply_v1(result, scored)
+            result[ML_META_KEY] = {
+                "platform_attempted": True,
+                "fell_back": False,
+                "latency_ms": int((time.perf_counter() - started) * 1000),
+                "model_version": scored.get("model_version"),
+                "onet_version": scored.get("onet_version"),
+                "error": None,
+            }
+            return result
         except Exception as exc:  # noqa: BLE001 — never fail the pipeline
             logger.warning("ml_platform_failed_falling_back_to_v0 error=%s", str(exc))
+            result = _score_v0(result, merged_profile)
+            result[ML_META_KEY] = {
+                "platform_attempted": True,
+                "fell_back": True,
+                "latency_ms": int((time.perf_counter() - started) * 1000),
+                "model_version": None,
+                "onet_version": None,
+                "error": str(exc)[:500],
+            }
+            return result
 
-    return _score_v0(result, merged_profile)
+    result = _score_v0(result, merged_profile)
+    result[ML_META_KEY] = {
+        "platform_attempted": False,
+        "fell_back": False,
+        "latency_ms": None,
+        "model_version": None,
+        "onet_version": None,
+        "error": None,
+    }
+    return result

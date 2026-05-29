@@ -386,6 +386,49 @@ async def _store_survey_responses(
         logger.warning("Failed to store survey responses", exc_info=True)
 
 
+async def _record_ml_inference(
+    *,
+    run_id: Optional[_uuid_mod.UUID],
+    user_signup_id: Optional[_uuid_mod.UUID],
+    result: Dict[str, Any],
+) -> None:
+    """Write one ml_inference_log row from the score result. Never raises.
+
+    Reads the ephemeral `_ml_meta` stamped by `ml_client.score_profile` and
+    pops it so it doesn't leak into the API response.
+    """
+    from services.ml_client import ML_META_KEY
+
+    meta = result.pop(ML_META_KEY, None) if isinstance(result, dict) else None
+    from db import db_available, _session_factory
+    if not db_available() or not _session_factory:
+        return
+    try:
+        from db_models import MlInferenceLog
+
+        meta = meta or {}
+        async with _session_factory() as session:
+            session.add(
+                MlInferenceLog(
+                    pipeline_run_id=run_id,
+                    user_signup_id=user_signup_id,
+                    scoring_version=str(result.get("scoring_version") or "v0")[:10],
+                    model_version=meta.get("model_version"),
+                    onet_version=meta.get("onet_version"),
+                    platform_attempted=bool(meta.get("platform_attempted", False)),
+                    fell_back=bool(meta.get("fell_back", False)),
+                    latency_ms=meta.get("latency_ms"),
+                    error=meta.get("error"),
+                    resilience_score=result.get("resilience_score"),
+                    readiness_score=result.get("readiness_score"),
+                    shap_attribution=result.get("shap_attribution") or [],
+                )
+            )
+            await session.commit()
+    except Exception:
+        logger.warning("Failed to record ml inference log", exc_info=True)
+
+
 # ---------------------------------------------------------------------------
 # Core pipeline runner
 # ---------------------------------------------------------------------------
@@ -489,6 +532,13 @@ async def _run_agent(
                 url_hash=url_hash,
                 responses=survey_responses,
             )
+
+        # WS-C: audit which scorer produced this result (v0/v1 + fall-through).
+        await _record_ml_inference(
+            run_id=run_id,
+            user_signup_id=user_signup_id,
+            result=result,
+        )
 
         # F22: Store assessment history for future delta computations
         if url_hash:
@@ -687,6 +737,13 @@ async def mcp_run_stream(
                 profile_id=profile_id,
                 user_signup_id=user_signup_id,
             )
+
+            if final_result and not error_info:
+                await _record_ml_inference(
+                    run_id=run_id,
+                    user_signup_id=user_signup_id,
+                    result=final_result,
+                )
 
             if url_hash and final_result and not error_info:
                 current_score = int(final_result.get("profile_score", 0))

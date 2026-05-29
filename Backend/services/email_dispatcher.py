@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional
 
 from services.auth_service import is_subscription_active
 from services.email import send_email
+from services.email_templates import render as render_template
 
 logger = logging.getLogger(__name__)
 
@@ -104,10 +105,21 @@ async def dispatch_due(limit: int = 50) -> int:
                 item.status = "skipped"
                 continue
 
+            # Merge subject/body from the local template registry into the model so
+            # vendors without server-side templates (Resend) can render directly.
+            # Postmark ignores these and uses TemplateAlias — fine either way.
+            subject, body = render_template(item.template, item.model or {})
+            if not subject and item.message_stream != "transactional":
+                # Unknown template alias — don't poison the queue with retries.
+                item.status = "skipped"
+                item.error = f"unknown template: {item.template}"
+                continue
+            merged_model = {**(item.model or {}), "subject": subject, "text": body}
+
             ok = await send_email(
                 template=item.template,
                 to=(user.email if user else "") or "",
-                model=item.model or {},
+                model=merged_model,
                 message_stream=item.message_stream or "outbound",
             )
             if ok:
