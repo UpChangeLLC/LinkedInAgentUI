@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Users, ChevronDown } from 'lucide-react'
-import { CohortDistributionChart } from './CohortDistributionChart'
 import { fetchCohort, type CohortResponse } from '../../lib/retention'
+
+// Recharts is heavy (~150KB gzip); load it only when the histogram expands.
+const CohortDistributionChart = lazy(() =>
+  import('./CohortDistributionChart').then((m) => ({ default: m.CohortDistributionChart }))
+)
 
 interface CohortMovementSectionProps {
   role?: string
@@ -70,7 +74,9 @@ export function CohortMovementSection({ role = '', userScore, initialCohort }: C
       {expanded && (
         <div className="mt-4">
           <p className="mb-2 text-xs text-dark-textMuted">Among {cohort.cohort_size} {cohort.cohort_name} assessed:</p>
-          <CohortDistributionChart distribution={cohort.distribution} userPercentile={cohort.user_percentile} />
+          <Suspense fallback={<div className="h-48" aria-hidden />}>
+            <CohortDistributionChart distribution={cohort.distribution} userPercentile={cohort.user_percentile} />
+          </Suspense>
         </div>
       )}
     </section>

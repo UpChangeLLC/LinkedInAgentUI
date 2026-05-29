@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { TrendingUp } from 'lucide-react'
-import { ScoreTrajectoryChart } from './ScoreTrajectoryChart'
 import { ScoreDecayBanner } from './ScoreDecayBanner'
 import { fetchTrajectory, trajectoryCaption, type TrajectoryEntry } from '../../lib/retention'
+
+// Recharts is heavy (~150KB gzip); load it only when a chart actually renders.
+const ScoreTrajectoryChart = lazy(() =>
+  import('./ScoreTrajectoryChart').then((m) => ({ default: m.ScoreTrajectoryChart }))
+)
 
 interface ScoreTrajectorySectionProps {
   urlHash?: string
@@ -62,7 +66,9 @@ export function ScoreTrajectorySection({ urlHash, tier = 'free', onRerun, initia
           </p>
         ) : (
           <>
-            <ScoreTrajectoryChart history={history} />
+            <Suspense fallback={<div className="h-48" aria-hidden />}>
+              <ScoreTrajectoryChart history={history} />
+            </Suspense>
             {caption && (
               <p className="mt-3 text-sm text-dark-textSec">{caption} Re-run again in 30 days to keep the trend live.</p>
             )}
