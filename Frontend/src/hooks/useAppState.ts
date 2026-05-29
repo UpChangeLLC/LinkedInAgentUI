@@ -5,6 +5,7 @@ import type { PipelineEvent, ProfilePreview } from '../lib/mcp';
 import { toMockResults } from '../lib/transform';
 import { hashLinkedInUrl } from '../lib/urlHash';
 import { clearDraft } from '../lib/surveyDraft';
+import { trackEvent } from '../lib/analytics';
 import type { SurveyResponse } from '../lib/survey';
 import type { ScrapeStatus } from '../components/survey/SurveyProgressBar';
 import {
@@ -110,6 +111,37 @@ export function useAppState() {
   const [continueToSubscriptionsAfterAuth, setContinueToSubscriptionsAfterAuth] = useState(false);
   const [authRestoring, setAuthRestoring] = useState(true);
   const [signupInitialMode, setSignupInitialMode] = useState<'login' | 'signup'>('login');
+
+  // ---- Onboarding funnel instrumentation (G4 gate: survey completion >85%,
+  // signup conversion >35%). Emit one event per stage so the backend can
+  // compute conversion rates. "Started/shown" events fire on page entry;
+  // "completed" events fire from the explicit submit handlers below. ----
+  const lastFunnelPage = useRef<Page | null>(null);
+  const signupShownInOnboarding = useRef(false);
+  const prevSignupCompleted = useRef(signupCompleted);
+
+  useEffect(() => {
+    const PAGE_EVENTS: Partial<Record<Page, string>> = {
+      survey: 'funnel_survey_started',
+      'signup-during-onboarding': 'funnel_signup_shown',
+    };
+    if (lastFunnelPage.current !== currentPage) {
+      if (currentPage === 'signup-during-onboarding') signupShownInOnboarding.current = true;
+      const evt = PAGE_EVENTS[currentPage];
+      if (evt) trackEvent(evt);
+      lastFunnelPage.current = currentPage;
+    }
+  }, [currentPage]);
+
+  // Mid-onboarding signup conversion: only count the false->true flip that
+  // happens after the gate was shown (not session-restore on app load).
+  useEffect(() => {
+    if (!prevSignupCompleted.current && signupCompleted && signupShownInOnboarding.current) {
+      trackEvent('funnel_signup_completed');
+      signupShownInOnboarding.current = false;
+    }
+    prevSignupCompleted.current = signupCompleted;
+  }, [signupCompleted]);
 
   const startFreePreviewWindow = useCallback((isSubscribed: boolean) => {
     if (isSubscribed) {
@@ -338,6 +370,7 @@ export function useAppState() {
   // the background (spec 01 §2). Returning signed-in users with a cached result
   // still short-circuit to the cached-result prompt.
   const submitForm = useCallback((data: any) => {
+    trackEvent('funnel_intake_submitted');
     setFormData(data);
     setErrorMessage('');
     setSignupError('');
@@ -392,6 +425,7 @@ export function useAppState() {
   // Survey submitted: persist responses, then gate on signup (mid-onboarding)
   // or go straight to analysis for already-signed-in users.
   const submitSurvey = useCallback((responses: SurveyResponse) => {
+    trackEvent('funnel_survey_completed');
     setSurveyResponses(responses);
     clearDraft();
     window.scrollTo(0, 0);

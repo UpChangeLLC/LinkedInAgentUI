@@ -427,6 +427,81 @@ async def track_event(payload: EventPayload) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
+# GET /api/funnel — onboarding conversion funnel (G4 gate metrics)
+# ---------------------------------------------------------------------------
+
+# Ordered funnel stages; the frontend emits one event per stage (useAppState).
+FUNNEL_STAGES = [
+    "funnel_intake_submitted",
+    "funnel_survey_started",
+    "funnel_survey_completed",
+    "funnel_signup_shown",
+    "funnel_signup_completed",
+]
+
+
+def _rate(numerator: int, denominator: int) -> Optional[float]:
+    """Conversion rate in [0,1], rounded to 4dp; None when denominator is 0."""
+    if not denominator:
+        return None
+    return round(numerator / denominator, 4)
+
+
+@router.get("/api/funnel")
+async def get_funnel(days: int = 30) -> JSONResponse:
+    """Onboarding conversion funnel over the last `days` (default 30).
+
+    Returns per-stage counts plus the two G4 gate rates:
+      * survey_completion_rate = survey_completed / survey_started
+      * signup_conversion_rate = signup_completed / signup_shown
+    DB-graceful: returns zeroed counts when the database is unavailable.
+    """
+    window_days = max(1, min(days, 365))
+    counts: Dict[str, int] = {stage: 0 for stage in FUNNEL_STAGES}
+
+    from db import db_available, _session_factory
+    if db_available() and _session_factory:
+        try:
+            from datetime import datetime, timedelta, timezone
+
+            from sqlalchemy import func, select
+
+            from db_models import AnalyticsEvent
+
+            since = datetime.now(timezone.utc) - timedelta(days=window_days)
+            async with _session_factory() as session:
+                stmt = (
+                    select(AnalyticsEvent.event_type, func.count())
+                    .where(
+                        AnalyticsEvent.event_type.in_(FUNNEL_STAGES),
+                        AnalyticsEvent.created_at >= since,
+                    )
+                    .group_by(AnalyticsEvent.event_type)
+                )
+                for event_type, count in (await session.execute(stmt)).all():
+                    counts[event_type] = int(count or 0)
+        except Exception:
+            logger.warning("Failed to query funnel from DB", exc_info=True)
+
+    return JSONResponse({
+        "status": "ok",
+        "window_days": window_days,
+        "stages": [{"stage": s, "count": counts[s]} for s in FUNNEL_STAGES],
+        "rates": {
+            "survey_completion_rate": _rate(
+                counts["funnel_survey_completed"], counts["funnel_survey_started"]
+            ),
+            "signup_conversion_rate": _rate(
+                counts["funnel_signup_completed"], counts["funnel_signup_shown"]
+            ),
+            "intake_to_signup_rate": _rate(
+                counts["funnel_signup_completed"], counts["funnel_intake_submitted"]
+            ),
+        },
+    })
+
+
+# ---------------------------------------------------------------------------
 # GET /api/learning-resources — matched learning resources (F17)
 # ---------------------------------------------------------------------------
 
