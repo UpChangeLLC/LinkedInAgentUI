@@ -18,6 +18,7 @@ import {
   consumeOAuthRedirect,
   consumePendingOAuthSignup,
   getStoredSignupSession,
+  refreshSignupSession,
   restoreSignupSession,
   saveSignupSession,
   saveSignupAssessment,
@@ -319,6 +320,44 @@ export function useAppState() {
       }
     })();
   }, [showSavedResult, startFreePreviewWindow]);
+
+  // Re-check subscription status on an already-open tab so an out-of-band
+  // upgrade (manual grant, webhook-confirmed payment) unlocks the dashboard
+  // without a re-login. The session is otherwise only refetched at
+  // login/full-reload, which is why a fresh grant looked "stuck" on free.
+  const refreshSubscription = useCallback(async () => {
+    const session = await refreshSignupSession();
+    if (!session) return;
+    setSignupSession(session);
+    setSubscriptionActive(session.subscriptionActive);
+    if (session.subscriptionActive) {
+      setPaywallLocked(false);
+      setPaywallDeadlineMs(null);
+      try {
+        localStorage.removeItem(PAYWALL_DEADLINE_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const lastSubRefreshRef = useRef(0);
+  useEffect(() => {
+    const maybeRefresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      if (!getStoredSignupSession()?.accessToken) return;
+      const now = Date.now();
+      if (now - lastSubRefreshRef.current < 5_000) return; // throttle focus storms
+      lastSubRefreshRef.current = now;
+      void refreshSubscription();
+    };
+    window.addEventListener('focus', maybeRefresh);
+    document.addEventListener('visibilitychange', maybeRefresh);
+    return () => {
+      window.removeEventListener('focus', maybeRefresh);
+      document.removeEventListener('visibilitychange', maybeRefresh);
+    };
+  }, [refreshSubscription]);
 
   useEffect(() => {
     if (subscriptionActive) {
