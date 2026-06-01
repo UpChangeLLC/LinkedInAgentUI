@@ -53,6 +53,21 @@ export function toMockResults(backend: any): MockResults {
     // Build MockResults with safe fallbacks
     const out = {
         score: Math.round(asNumber(r.profile_score, derivedProfileScore)),
+        // Resilience-score v1 shape (additive — present from the ml_client seam,
+        // both v0 and v1). Left undefined for mock/no-backend data so the
+        // dashboard's legacy placeholders still apply.
+        resilienceScore: typeof r.resilience_score === 'number' ? Math.round(r.resilience_score) : undefined,
+        readinessScore: typeof r.readiness_score === 'number' ? Math.round(r.readiness_score) : undefined,
+        resiliencePercentile: typeof r.resilience_percentile === 'number' ? r.resilience_percentile : null,
+        readinessPercentile: typeof r.readiness_percentile === 'number' ? r.readiness_percentile : null,
+        scoringVersion: asString(r.scoring_version, '') || undefined,
+        shapAttribution: Array.isArray(r.shap_attribution)
+            ? r.shap_attribution.map((s: any) => ({
+                dimension: asString(s?.dimension, ''),
+                contribution_points: asNumber(s?.contribution_points, 0),
+                direction: (s?.direction === 'positive' || s?.direction === 'negative') ? s.direction : undefined,
+            }))
+            : undefined,
         riskBand: readinessBand,
         scoreNarrative: asString(r.score_narrative, ''),
         executiveBrief: asString(r.executive_summary, asString(r.summary, '')),

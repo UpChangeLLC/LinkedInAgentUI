@@ -38,6 +38,34 @@ describe('toMockResults', () => {
     expect(techProx!.value).toBe(60); // 3 * 20
   });
 
+  it('maps the resilience/readiness scoring shape additively', () => {
+    const backend = {
+      profile_score: 70,
+      resilience_score: 82,
+      readiness_score: 64,
+      resilience_percentile: 88,
+      readiness_percentile: 72,
+      scoring_version: 'v1',
+      shap_attribution: [{ dimension: 'ai_fluency', contribution_points: 4.2, direction: 'positive' }],
+      dimension_scores: { ai_fluency: { score: 5 } },
+    };
+    const r = toMockResults(backend);
+    expect(r.resilienceScore).toBe(82);
+    expect(r.readinessScore).toBe(64);
+    expect(r.resiliencePercentile).toBe(88);
+    expect(r.readinessPercentile).toBe(72);
+    expect(r.scoringVersion).toBe('v1');
+    expect(r.shapAttribution).toHaveLength(1);
+    expect(r.shapAttribution![0].dimension).toBe('ai_fluency');
+  });
+
+  it('leaves resilience/readiness undefined when the backend omits them', () => {
+    const r = toMockResults({ profile_score: 50, dimension_scores: { ai_fluency: { score: 3 } } });
+    expect(r.resilienceScore).toBeUndefined();
+    expect(r.readinessScore).toBeUndefined();
+    expect(r.scoringVersion).toBeUndefined();
+  });
+
   it('fills dimensions the 6-entry score_breakdown_list omits from dimension_scores', () => {
     // The LLM returns only 6 curated breakdown entries (no Automation Exposure /
     // Network Relevance), but dimension_scores always has all 8. The transform

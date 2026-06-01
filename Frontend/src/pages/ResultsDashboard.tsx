@@ -71,8 +71,10 @@ export function ResultsDashboard({
   const tier: 'free' | 'premium' = subscriptionActive ? 'premium' : 'free'
   const openUpsell = () => (onSubscriptions ? onSubscriptions() : setUpsellOpen(true))
 
-  const score = results.score ?? 0
-  const readiness = Math.max(0, Math.round(score - 12)) // best-effort placeholder until v1 ML
+  // Prefer the ml_client resilience/readiness shape; fall back to legacy score
+  // (and the readiness placeholder) only for mock/no-backend data.
+  const score = results.resilienceScore ?? results.score ?? 0
+  const readiness = results.readinessScore ?? Math.max(0, Math.round((results.score ?? 0) - 12))
   const riskBand = results.riskBand || 'Moderate Risk'
   const cohortName = results.personalProfile?.title || 'your cohort'
   const displayName = accountName || results.personalProfile?.name || 'there'
