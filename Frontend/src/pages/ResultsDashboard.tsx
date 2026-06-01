@@ -1,13 +1,21 @@
 import React, { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
-  ArrowRight, BarChart3, Clock, History, LayoutGrid, Lock, MessageSquare,
-  Share2, Sparkles, Target, TrendingUp, User, X,
+  ArrowLeft, ArrowRight, BarChart3, BookOpen, Clock, History, LayoutGrid, ListChecks,
+  Lock, MessageSquare, Share2, Sparkles, Target, TrendingUp, User, X,
 } from 'lucide-react'
 import { MockResults } from '../data/mockResults'
+import { rerunNote } from '../lib/dashboardCopy'
 import { ScoreReveal } from '../components/dashboard/ScoreReveal'
 import { ScoreTrajectorySection } from '../components/dashboard/ScoreTrajectorySection'
 import { CohortMovementSection } from '../components/dashboard/CohortMovementSection'
+import { PersonalRoadmapSection } from '../components/dashboard/PersonalRoadmapSection'
+import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSection'
+import { SkillGapMatrixSection } from '../components/dashboard/SkillGapMatrixSection'
+import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection'
+import { DimensionRadar } from '../components/dashboard/DimensionRadar'
+
+export type DashboardSection = 'overview' | 'roadmap' | 'actions' | 'skills' | 'learning'
 
 interface ResultsDashboardProps {
   results: MockResults
@@ -56,9 +64,10 @@ function pickDim(factors: MockResults['scoreFactors'] | undefined, name: string)
 /** Mock-aligned free-tier dashboard (Career-AI/onboarding-flow-mock.html §7). */
 export function ResultsDashboard({
   results, formData, onSubscriptions, accountName, onLogout, onRecalculate,
-  subscriptionActive = false, showScoreReveal = false, onScoreRevealComplete,
+  onOpenCareerMentor, subscriptionActive = false, showScoreReveal = false, onScoreRevealComplete,
 }: ResultsDashboardProps) {
   const [upsellOpen, setUpsellOpen] = useState(false)
+  const [activeSection, setActiveSection] = useState<DashboardSection>('overview')
   const tier: 'free' | 'premium' = subscriptionActive ? 'premium' : 'free'
   const openUpsell = () => (onSubscriptions ? onSubscriptions() : setUpsellOpen(true))
 
@@ -83,42 +92,58 @@ export function ResultsDashboard({
         />
 
         <div className="max-w-7xl mx-auto px-6 py-8 grid lg:grid-cols-[220px_1fr] gap-8">
-          <Sidebar tier={tier} onUpsell={openUpsell} />
+          <Sidebar
+            tier={tier}
+            activeSection={activeSection}
+            onSelect={setActiveSection}
+            onOpenCareerMentor={onOpenCareerMentor}
+            onUpsell={openUpsell}
+          />
 
           <main className="space-y-6">
-            <WelcomeStrip onRerun={onRecalculate} />
-
-            <HeadlineScoresCard
-              score={score}
-              readiness={readiness}
-              riskBand={riskBand}
-              cohortName={cohortName}
-            />
-
-            <DimensionBreakdownCard factors={results.scoreFactors} tier={tier} onUpsell={openUpsell} />
-
-            <SummaryParagraphCard
-              name={displayName.split(/\s+/)[0]}
-              score={score}
-              cohortName={cohortName}
-              factors={results.scoreFactors}
-              backendResult={formData?.backend?.result}
-            />
-
-            <ScoreTrajectorySection urlHash={results.urlHash} tier={tier} onRerun={onRecalculate} />
-            <CohortMovementSection role={results.personalProfile?.title} userScore={score} />
-
-            {tier === 'free' && (
+            {activeSection === 'overview' ? (
               <>
-                <PersonalRoadmapTeaser onUnlock={openUpsell} />
-                <div className="grid md:grid-cols-2 gap-6">
-                  <MentorChatTeaser onUnlock={openUpsell} />
-                  <LearningTeaser onUnlock={openUpsell} />
-                </div>
-              </>
-            )}
+                <WelcomeStrip onRerun={onRecalculate} tier={tier} />
 
-            <ReassessCTA tier={tier} onUpsell={openUpsell} />
+                <HeadlineScoresCard
+                  score={score}
+                  readiness={readiness}
+                  riskBand={riskBand}
+                  cohortName={cohortName}
+                />
+
+                <DimensionBreakdownCard factors={results.scoreFactors} tier={tier} onUpsell={openUpsell} />
+
+                <SummaryParagraphCard
+                  name={displayName.split(/\s+/)[0]}
+                  score={score}
+                  cohortName={cohortName}
+                  factors={results.scoreFactors}
+                  backendResult={formData?.backend?.result}
+                />
+
+                <ScoreTrajectorySection urlHash={results.urlHash} tier={tier} onRerun={onRecalculate} />
+                <CohortMovementSection role={results.personalProfile?.title} userScore={score} />
+
+                {tier === 'free' && (
+                  <>
+                    <PersonalRoadmapTeaser onUnlock={openUpsell} />
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <MentorChatTeaser onUnlock={openUpsell} />
+                      <LearningTeaser onUnlock={openUpsell} />
+                    </div>
+                  </>
+                )}
+
+                <ReassessCTA tier={tier} onUpsell={openUpsell} />
+              </>
+            ) : (
+              <SectionView
+                section={activeSection}
+                results={results}
+                onBack={() => setActiveSection('overview')}
+              />
+            )}
           </main>
         </div>
       </div>
@@ -127,6 +152,29 @@ export function ResultsDashboard({
         <UpsellModal onClose={() => setUpsellOpen(false)} onSubscribe={onSubscriptions} />
       )}
     </>
+  )
+}
+
+// ── Premium section view ────────────────────────────────────────────────
+
+function SectionView({
+  section, results, onBack,
+}: { section: DashboardSection; results: MockResults; onBack: () => void }) {
+  return (
+    <div className="space-y-6">
+      <button
+        onClick={onBack}
+        className="text-sm font-medium text-linkedin hover:underline inline-flex items-center gap-1"
+      >
+        <ArrowLeft className="w-4 h-4" /> Back to overview
+      </button>
+      <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7">
+        {section === 'roadmap' && <PersonalRoadmapSection results={results} />}
+        {section === 'actions' && <ActionTrackerSection urlHash={results.urlHash ?? ''} />}
+        {section === 'skills' && <SkillGapMatrixSection skills={results.skillGapMatrix} />}
+        {section === 'learning' && <LearningResourcesSection skills={results.skillGapMatrix} />}
+      </div>
+    </div>
   )
 }
 
@@ -169,9 +217,18 @@ function DashboardHeader({
 
 // ── Sidebar ─────────────────────────────────────────────────────────────
 
-function Sidebar({ tier, onUpsell }: { tier: 'free' | 'premium'; onUpsell: () => void }) {
+export function Sidebar({
+  tier, activeSection, onSelect, onOpenCareerMentor, onUpsell,
+}: {
+  tier: 'free' | 'premium'
+  activeSection: DashboardSection
+  onSelect: (section: DashboardSection) => void
+  onOpenCareerMentor?: () => void
+  onUpsell: () => void
+}) {
   const item = (active: boolean, locked: boolean, icon: React.ReactNode, label: string, onClick?: () => void) => (
     <button
+      key={label}
       onClick={onClick}
       className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-left text-sm transition ${
         active
@@ -185,30 +242,40 @@ function Sidebar({ tier, onUpsell }: { tier: 'free' | 'premium'; onUpsell: () =>
     </button>
   )
 
+  const services: { icon: React.ReactNode; label: string; section?: DashboardSection; mentor?: boolean }[] = [
+    { icon: <Target className="w-4 h-4" />, label: 'Personal roadmap', section: 'roadmap' },
+    { icon: <ListChecks className="w-4 h-4" />, label: 'Action tracker', section: 'actions' },
+    { icon: <LayoutGrid className="w-4 h-4" />, label: 'Skill gap matrix', section: 'skills' },
+    { icon: <BookOpen className="w-4 h-4" />, label: 'Learning library', section: 'learning' },
+    { icon: <MessageSquare className="w-4 h-4" />, label: 'Career mentor', mentor: true },
+  ]
+
   return (
     <aside className="hidden lg:block">
       <nav className="space-y-1">
-        {item(true, false, <LayoutGrid className="w-4 h-4" />, 'Overview')}
-        {item(false, false, <User className="w-4 h-4" />, 'Your score')}
-        {item(false, false, <BarChart3 className="w-4 h-4" />, 'Dim breakdown')}
+        {item(activeSection === 'overview', false, <LayoutGrid className="w-4 h-4" />, 'Overview', () => onSelect('overview'))}
+        {item(false, false, <User className="w-4 h-4" />, 'Your score', () => onSelect('overview'))}
+        {item(false, false, <BarChart3 className="w-4 h-4" />, 'Dim breakdown', () => onSelect('overview'))}
 
         <div className="my-3 border-t border-surface-border" />
         {tier === 'free' && (
           <div className="text-[10px] uppercase tracking-wider text-gray-300 px-3 mb-2">Premium</div>
         )}
-        {[
-          { icon: <Target className="w-4 h-4" />, label: 'Personal roadmap' },
-          { icon: <Lock className="w-4 h-4" />, label: 'Action tracker' },
-          { icon: <Lock className="w-4 h-4" />, label: 'Skill gap matrix' },
-          { icon: <Lock className="w-4 h-4" />, label: 'Learning library' },
-          { icon: <MessageSquare className="w-4 h-4" />, label: 'Career mentor' },
-        ].map((it) => item(
-          false,
-          tier === 'free',
-          tier === 'free' ? <Lock className="w-4 h-4" /> : it.icon,
-          it.label,
-          tier === 'free' ? onUpsell : undefined,
-        ))}
+        {services.map((it) => {
+          const active = !!it.section && activeSection === it.section
+          const onClick = tier === 'free'
+            ? onUpsell
+            : it.mentor
+              ? onOpenCareerMentor
+              : () => it.section && onSelect(it.section)
+          return item(
+            active,
+            tier === 'free',
+            tier === 'free' ? <Lock className="w-4 h-4" /> : it.icon,
+            it.label,
+            onClick,
+          )
+        })}
 
         <div className="my-3 border-t border-surface-border" />
         {item(false, false, <History className="w-4 h-4" />, 'History')}
@@ -220,13 +287,13 @@ function Sidebar({ tier, onUpsell }: { tier: 'free' | 'premium'; onUpsell: () =>
 
 // ── Welcome strip ───────────────────────────────────────────────────────
 
-function WelcomeStrip({ onRerun }: { onRerun?: () => void }) {
+function WelcomeStrip({ onRerun, tier }: { onRerun?: () => void; tier: 'free' | 'premium' }) {
   return (
     <div className="flex items-center justify-between flex-wrap gap-3">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Your AI Resilience Score</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Computed just now · Re-run available in 30 days (free) or anytime (Premium)
+          {rerunNote(tier)}
         </p>
       </div>
       {onRerun && (
@@ -298,8 +365,10 @@ function DimensionBreakdownCard({
             Each scored 0–10. Full rationales unlocked in Premium.
           </p>
         </div>
-        <span className="text-xs text-gray-500 hidden md:block">read-only · free tier</span>
+        <span className="text-xs text-gray-500 hidden md:block">read-only</span>
       </div>
+
+      <DimensionRadar data={DIMS.map((d) => ({ dimension: d.label, score: pickDim(factors, d.key) }))} />
 
       <div className="mt-6 grid md:grid-cols-2 gap-x-8 gap-y-4">
         {DIMS.map((d) => {

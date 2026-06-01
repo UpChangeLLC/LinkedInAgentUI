@@ -89,6 +89,7 @@ export function App() {
     activateSubscription,
     markDashboardRevealSeen,
     goBackFromCareerChat,
+    goToCareerChat,
     careerMentorSeedContext,
     resultsBackend,
   } = useAppState();
@@ -237,6 +238,14 @@ export function App() {
                 results as unknown as Record<string, unknown>,
                 resultsBackend as Record<string, unknown> | null | undefined,
                 formData as Record<string, unknown> | null | undefined
+              )}
+              onOpenCareerMentor={() => goToCareerChat(
+                buildCareerAssessmentContext(
+                  results as unknown as Record<string, unknown>,
+                  resultsBackend as Record<string, unknown> | null | undefined,
+                  formData as Record<string, unknown> | null | undefined
+                ),
+                'results'
               )}
               subscriptionActive={subscriptionActive}
               paywallLocked={paywallLocked}
