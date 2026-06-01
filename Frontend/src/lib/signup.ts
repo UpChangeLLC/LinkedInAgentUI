@@ -267,6 +267,25 @@ export async function restoreSignupSession(args: {
     return json
 }
 
+/**
+ * Re-fetch the current session by its stored access token and persist the
+ * fresh subscription state. Used to pick up an out-of-band upgrade (e.g. a
+ * manual grant or a webhook-confirmed payment) on an already-open tab without
+ * forcing a re-login. Returns the updated session, or null when there is no
+ * stored session or the refresh fails (callers keep the existing state on
+ * failure rather than clobbering a good session).
+ */
+export async function refreshSignupSession(): Promise<StoredSignupSession | null> {
+    const stored = getStoredSignupSession()
+    if (!stored?.accessToken) return null
+    try {
+        const resp = await restoreSignupSession({ accessToken: stored.accessToken })
+        return saveSignupSession(resp)
+    } catch {
+        return null
+    }
+}
+
 export async function activateDummySubscription(accessToken: string, months = 1): Promise<SignupResponse> {
     const res = await fetch(`${baseUrl()}/api/signup/subscribe`, {
         method: 'POST',

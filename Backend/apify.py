@@ -64,11 +64,15 @@ def main() -> None:
     if not token:
         raise RuntimeError("APIFY_API_TOKEN is not set")
 
-    actor_id = "supreme_coder/linkedin-profile-scraper"
-    run_input = {
-        "urls": [{"url": "https://www.linkedin.com/in/yogesh-yadav-203216154"}],
-        "findContacts.contactCompassToken": "",
-    }
+    actor_id = (os.getenv("APIFY_ACTOR_ID") or "dev_fusion/linkedin-profile-scraper").strip()
+    test_url = "https://www.linkedin.com/in/yogesh-yadav-203216154"
+    if "dev_fusion" in actor_id:
+        run_input: Dict[str, Any] = {"profileUrls": [test_url]}
+    else:
+        run_input = {
+            "urls": [{"url": test_url}],
+            "findContacts.contactCompassToken": "",
+        }
     run = run_actor(actor_id=actor_id, token=token, run_input=run_input)
     dataset_id = run.get("defaultDatasetId", "")
     if not dataset_id:

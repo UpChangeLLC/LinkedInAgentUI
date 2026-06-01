@@ -24,6 +24,10 @@ class AgentRunRequest(BaseModel):
     github_url: str = Field(default="")
     website_url: str = Field(default="")
     user_context: Optional[UserContext] = Field(default=None)
+    # Onboarding survey answers (spec 01 §4.1). Optional for backward compat;
+    # required in the v1 flow once the SurveyPage ships.
+    survey_responses: Optional[Dict[str, Any]] = Field(default=None)
+    linkedin_run_id: Optional[str] = Field(default=None)
 
 
 class AgentTraceStep(BaseModel):

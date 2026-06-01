@@ -33,41 +33,16 @@ def _valid_email(email: str) -> bool:
     return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip()))
 
 
-def _hash_token(token: str) -> str:
-    return hashlib.sha256(token.strip().encode()).hexdigest()
-
-
-_PASSWORD_ITERATIONS = 310_000
-
-
-def _hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    digest = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt.encode("utf-8"),
-        _PASSWORD_ITERATIONS,
-    ).hex()
-    return f"pbkdf2_sha256${_PASSWORD_ITERATIONS}${salt}${digest}"
-
-
-def _verify_password(password: str, stored_hash: Optional[str]) -> bool:
-    if not stored_hash:
-        return False
-    try:
-        scheme, iterations_raw, salt, expected = stored_hash.split("$", 3)
-        if scheme != "pbkdf2_sha256":
-            return False
-        iterations = int(iterations_raw)
-        actual = hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            salt.encode("utf-8"),
-            iterations,
-        ).hex()
-        return secrets.compare_digest(actual, expected)
-    except Exception:
-        return False
+# Auth primitives now live in services.auth_service (single implementation,
+# shared with payments.py and auth_deps.py). Kept as module-local aliases so the
+# rest of this file is unchanged.
+from services.auth_service import (  # noqa: E402
+    hash_password as _hash_password,
+    hash_token as _hash_token,
+    is_subscription_active as _is_active,
+    new_access_token as _new_access_token,
+    verify_password as _verify_password,
+)
 
 
 def _valid_password(password: str) -> bool:
@@ -76,16 +51,6 @@ def _valid_password(password: str) -> bool:
     has_alpha = any(ch.isalpha() for ch in password)
     has_digit = any(ch.isdigit() for ch in password)
     return has_alpha and has_digit
-
-
-def _new_access_token() -> str:
-    return secrets.token_urlsafe(32)
-
-
-def _is_active(status: str, expires_at: Optional[datetime]) -> bool:
-    if status != "active" or not expires_at:
-        return False
-    return expires_at > datetime.now(timezone.utc)
 
 
 def _session_payload(row: Any, access_token: Optional[str] = None) -> Dict[str, Any]:
@@ -155,6 +120,19 @@ class SignupRequest(BaseModel):
     user_context: Dict[str, Any] = Field(default_factory=dict)
     assessment_snapshot: Dict[str, Any] = Field(default_factory=dict)
     marketing_opt_in: bool = False
+
+
+class OnboardingSignupRequest(BaseModel):
+    """Lighter mid-onboarding signup — defers phone/company/role to post-signup."""
+
+    # Length validation is done in the handler (_valid_email/_valid_password)
+    # so failures return a friendly 400 rather than a Pydantic 422.
+    full_name: str = Field(default="", max_length=200)
+    email: str = Field(default="", max_length=320)
+    password: str = Field(default="", max_length=128)
+    marketing_opt_in: bool = False
+    linkedin_url: Optional[str] = Field(default=None, max_length=500)
+    linkedin_run_id: Optional[str] = Field(default=None, max_length=64)
 
 
 class SignupSessionRequest(BaseModel):
@@ -462,6 +440,91 @@ async def create_signup(body: SignupRequest) -> JSONResponse:
         return JSONResponse(_session_payload(row, access_token=access_token))
     except Exception:
         logger.warning("Failed to persist signup", exc_info=True)
+        return JSONResponse(
+            {"status": "error", "detail": "Could not save signup details."},
+            status_code=500,
+        )
+
+
+@router.post("/onboarding")
+async def create_onboarding_signup(body: OnboardingSignupRequest) -> JSONResponse:
+    """Mid-onboarding signup gate (spec 01 §5). Lighter than the full signup —
+    only name/email/password — but persists through the same UserSignup path and
+    returns the same session payload so the frontend stores it identically.
+    """
+    from db import _session_factory, db_available
+
+    email = body.email.strip().lower()
+    if not _valid_email(email):
+        return JSONResponse({"status": "error", "detail": "Invalid email address."}, status_code=400)
+    if not _valid_password(body.password):
+        return JSONResponse(
+            {
+                "status": "error",
+                "detail": "Password must be 8-128 characters and include at least one letter and one number.",
+            },
+            status_code=400,
+        )
+
+    if not db_available() or not _session_factory:
+        logger.warning("Onboarding signup received but DATABASE_URL is not configured; not persisted.")
+        return JSONResponse(
+            {
+                "status": "ok",
+                "persisted": False,
+                "signup_id": None,
+                "email": email,
+                "full_name": body.full_name.strip(),
+                "access_token": _new_access_token(),
+                "subscription_status": "trial",
+                "subscription_active": False,
+                "subscription_expires_at": None,
+                "is_returning_user": False,
+            }
+        )
+
+    try:
+        from sqlalchemy import select
+        from db_models import UserSignup
+
+        async with _session_factory() as session:
+            existing = (
+                await session.execute(
+                    select(UserSignup.id).where(UserSignup.email == email).limit(1)
+                )
+            ).first()
+            if existing:
+                # Returning user — frontend swaps to login mode (spec 01 §8.6).
+                return JSONResponse(
+                    {
+                        "status": "error",
+                        "is_returning_user": True,
+                        "detail": "An account with this email already exists. Please log in instead.",
+                    },
+                    status_code=409,
+                )
+
+            row = UserSignup(
+                full_name=body.full_name.strip(),
+                email=email,
+                linkedin_url=(body.linkedin_url or "").strip() or None,
+                url_hash=_hash_url(body.linkedin_url or ""),
+                marketing_opt_in=body.marketing_opt_in,
+                subscription_status="trial",
+                created_at=datetime.now(timezone.utc),
+            )
+            access_token = _new_access_token()
+            row.access_token_hash = _hash_token(access_token)
+            row.password_hash = _hash_password(body.password)
+            session.add(row)
+            await session.commit()
+            await session.refresh(row)
+
+        payload = _session_payload(row, access_token=access_token)
+        payload["is_returning_user"] = False
+        return JSONResponse(payload)
+    except Exception:
+        logger.warning("Failed to persist onboarding signup", exc_info=True)
         return JSONResponse(
             {"status": "error", "detail": "Could not save signup details."},
             status_code=500,

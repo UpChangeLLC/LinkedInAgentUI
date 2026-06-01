@@ -1,9 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { mockResults } from '../data/mockResults';
-import { streamAnalysis, previewProfile, fetchCachedResult } from '../lib/mcp';
+import { streamAnalysis, previewProfile, fetchCachedResult, RerunLockedError } from '../lib/mcp';
 import type { PipelineEvent, ProfilePreview } from '../lib/mcp';
 import { toMockResults } from '../lib/transform';
 import { hashLinkedInUrl } from '../lib/urlHash';
+import { clearDraft } from '../lib/surveyDraft';
+import { trackEvent } from '../lib/analytics';
+import type { SurveyResponse } from '../lib/survey';
+import type { ScrapeStatus } from '../components/survey/SurveyProgressBar';
 import {
   buildOAuthCompletePayload,
   buildSignupPayload,
@@ -14,6 +18,7 @@ import {
   consumeOAuthRedirect,
   consumePendingOAuthSignup,
   getStoredSignupSession,
+  refreshSignupSession,
   restoreSignupSession,
   saveSignupSession,
   saveSignupAssessment,
@@ -30,6 +35,9 @@ import type { MockResults } from '../data/mockResults';
 type Page =
   | 'landing'
   | 'intake'
+  | 'survey'
+  | 'signup-during-onboarding'
+  | 'awaiting-score'
   | 'previewing'
   | 'analyzing'
   | 'results'
@@ -37,7 +45,8 @@ type Page =
   | 'subscriptions'
   | 'error'
   | 'cached-prompt'
-  | 'career-chat';
+  | 'career-chat'
+  | 'settings-notifications';
 
 export interface PipelineProgress {
   /** 0-100 overall progress */
@@ -82,6 +91,9 @@ export function useAppState() {
   const [pipelineProgress, setPipelineProgress] = useState<PipelineProgress>(INITIAL_PROGRESS);
   const [previewData, setPreviewData] = useState<ProfilePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>('idle');
+  const [surveyResponses, setSurveyResponses] = useState<SurveyResponse | null>(null);
+  const [rerunLockedUntil, setRerunLockedUntil] = useState<string | null | undefined>(undefined);
   const [cachedResult, setCachedResult] = useState<any>(null);
   const [cachedResultAge, setCachedResultAge] = useState<string | null>(null);
   const [dashboardRevealSeen, setDashboardRevealSeen] = useState(true);
@@ -100,6 +112,37 @@ export function useAppState() {
   const [continueToSubscriptionsAfterAuth, setContinueToSubscriptionsAfterAuth] = useState(false);
   const [authRestoring, setAuthRestoring] = useState(true);
   const [signupInitialMode, setSignupInitialMode] = useState<'login' | 'signup'>('login');
+
+  // ---- Onboarding funnel instrumentation (G4 gate: survey completion >85%,
+  // signup conversion >35%). Emit one event per stage so the backend can
+  // compute conversion rates. "Started/shown" events fire on page entry;
+  // "completed" events fire from the explicit submit handlers below. ----
+  const lastFunnelPage = useRef<Page | null>(null);
+  const signupShownInOnboarding = useRef(false);
+  const prevSignupCompleted = useRef(signupCompleted);
+
+  useEffect(() => {
+    const PAGE_EVENTS: Partial<Record<Page, string>> = {
+      survey: 'funnel_survey_started',
+      'signup-during-onboarding': 'funnel_signup_shown',
+    };
+    if (lastFunnelPage.current !== currentPage) {
+      if (currentPage === 'signup-during-onboarding') signupShownInOnboarding.current = true;
+      const evt = PAGE_EVENTS[currentPage];
+      if (evt) trackEvent(evt);
+      lastFunnelPage.current = currentPage;
+    }
+  }, [currentPage]);
+
+  // Mid-onboarding signup conversion: only count the false->true flip that
+  // happens after the gate was shown (not session-restore on app load).
+  useEffect(() => {
+    if (!prevSignupCompleted.current && signupCompleted && signupShownInOnboarding.current) {
+      trackEvent('funnel_signup_completed');
+      signupShownInOnboarding.current = false;
+    }
+    prevSignupCompleted.current = signupCompleted;
+  }, [signupCompleted]);
 
   const startFreePreviewWindow = useCallback((isSubscribed: boolean) => {
     if (isSubscribed) {
@@ -278,6 +321,44 @@ export function useAppState() {
     })();
   }, [showSavedResult, startFreePreviewWindow]);
 
+  // Re-check subscription status on an already-open tab so an out-of-band
+  // upgrade (manual grant, webhook-confirmed payment) unlocks the dashboard
+  // without a re-login. The session is otherwise only refetched at
+  // login/full-reload, which is why a fresh grant looked "stuck" on free.
+  const refreshSubscription = useCallback(async () => {
+    const session = await refreshSignupSession();
+    if (!session) return;
+    setSignupSession(session);
+    setSubscriptionActive(session.subscriptionActive);
+    if (session.subscriptionActive) {
+      setPaywallLocked(false);
+      setPaywallDeadlineMs(null);
+      try {
+        localStorage.removeItem(PAYWALL_DEADLINE_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const lastSubRefreshRef = useRef(0);
+  useEffect(() => {
+    const maybeRefresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      if (!getStoredSignupSession()?.accessToken) return;
+      const now = Date.now();
+      if (now - lastSubRefreshRef.current < 5_000) return; // throttle focus storms
+      lastSubRefreshRef.current = now;
+      void refreshSubscription();
+    };
+    window.addEventListener('focus', maybeRefresh);
+    document.addEventListener('visibilitychange', maybeRefresh);
+    return () => {
+      window.removeEventListener('focus', maybeRefresh);
+      document.removeEventListener('visibilitychange', maybeRefresh);
+    };
+  }, [refreshSubscription]);
+
   useEffect(() => {
     if (subscriptionActive) {
       setPaywallLocked(false);
@@ -324,26 +405,21 @@ export function useAppState() {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
-  // Submit form: check cache first, then fetch preview or show confirmation
+  // Submit intake form: route into the survey while the LinkedIn scrape runs in
+  // the background (spec 01 §2). Returning signed-in users with a cached result
+  // still short-circuit to the cached-result prompt.
   const submitForm = useCallback((data: any) => {
+    trackEvent('funnel_intake_submitted');
     setFormData(data);
-    setPreviewLoading(true);
     setErrorMessage('');
     setSignupError('');
     setCachedResult(null);
     setCachedResultAge(null);
+    setPreviewData(null);
+    setSurveyResponses(null);
     window.scrollTo(0, 0);
 
-    if (!signupCompleted) {
-      setAuthEntryPoint('intake');
-      setSignupInitialMode('signup');
-      setPreviewLoading(false);
-      setCurrentPage('signup');
-      return;
-    }
-
     const linkedinUrl = data?.linkedinUrl || data?.linkedin_url || '';
-
     const payload = {
       linkedin_url: linkedinUrl,
       resume_text: data?.resumeText || data?.resume_text || '',
@@ -352,38 +428,54 @@ export function useAppState() {
     };
 
     (async () => {
-      // Check for cached results first
-      if (linkedinUrl) {
+      // Returning signed-in users: surface a cached result instead of re-running.
+      if (signupCompleted && linkedinUrl) {
         try {
           const urlHash = await hashLinkedInUrl(linkedinUrl);
           const cached = await fetchCachedResult(urlHash);
           if (cached.status === 'hit' && cached.result) {
             setCachedResult(cached.result);
             setCachedResultAge(cached.created_at || null);
-            setPreviewLoading(false);
             setCurrentPage('cached-prompt');
             return;
           }
         } catch {
-          // Cache check failed, proceed with normal flow
+          // Cache check failed — continue to the survey.
         }
       }
 
-      // No cache hit — proceed with preview
-      setCurrentPage('previewing');
-      try {
-        const preview = await previewProfile(payload);
-        setPreviewData(preview);
-        setPreviewLoading(false);
-      } catch (e: any) {
-        // If preview fails, skip directly to full analysis
-        console.warn('Preview failed, skipping to full analysis:', e?.message);
-        setPreviewData(null);
-        setPreviewLoading(false);
-        startFullAnalysis(data);
-      }
+      // Kick off the profile scrape in the background; the survey shows its status.
+      setScrapeStatus('running');
+      void previewProfile(payload)
+        .then((preview) => {
+          setPreviewData(preview);
+          setScrapeStatus('parse_complete');
+        })
+        .catch(() => {
+          setPreviewData(null);
+          setScrapeStatus('failed');
+        });
+
+      setCurrentPage('survey');
+      window.scrollTo(0, 0);
     })();
   }, [signupCompleted]);
+
+  // Survey submitted: persist responses, then gate on signup (mid-onboarding)
+  // or go straight to analysis for already-signed-in users.
+  const submitSurvey = useCallback((responses: SurveyResponse) => {
+    trackEvent('funnel_survey_completed');
+    setSurveyResponses(responses);
+    clearDraft();
+    window.scrollTo(0, 0);
+    if (!signupCompleted) {
+      setAuthEntryPoint('intake');
+      setSignupInitialMode('signup');
+      setCurrentPage('signup-during-onboarding');
+      return;
+    }
+    startFullAnalysis(formData, false, undefined, responses);
+  }, [signupCompleted, formData]);
 
   // Confirm profile and start full analysis
   const confirmProfile = useCallback(() => {
@@ -398,7 +490,7 @@ export function useAppState() {
   }, []);
 
   // Run the full pipeline (SSE streaming)
-  const startFullAnalysis = useCallback((data: any, authenticatedOverride = false, accessTokenOverride?: string | null) => {
+  const startFullAnalysis = useCallback((data: any, authenticatedOverride = false, accessTokenOverride?: string | null, surveyOverride?: SurveyResponse | null) => {
     setCurrentPage('analyzing');
     setErrorMessage('');
     setPipelineProgress(INITIAL_PROGRESS);
@@ -406,10 +498,12 @@ export function useAppState() {
 
     // Build user_context from intake form answers if provided
     const userContext = data?.userContext || data?.user_context || null;
+    const survey = surveyOverride ?? surveyResponses;
     const payload = {
       linkedin_url: data?.linkedinUrl || data?.linkedin_url || '',
       resume_text: data?.resumeText || data?.resume_text || '',
       ...(userContext ? { user_context: userContext } : {}),
+      ...(survey ? { survey_responses: survey as unknown as Record<string, unknown> } : {}),
       ...(data?.githubUrl || data?.github_url ? { github_url: data?.githubUrl || data?.github_url } : {}),
       ...(data?.websiteUrl || data?.website_url ? { website_url: data?.websiteUrl || data?.website_url } : {}),
     };
@@ -464,13 +558,35 @@ export function useAppState() {
           setCurrentPage('error');
         }
       } catch (e: any) {
+        if (e instanceof RerunLockedError) {
+          // 30-day free re-run gate hit — surface the lock modal, keep them put.
+          setRerunLockedUntil(e.nextRerunAt);
+          setCurrentPage(signupCompleted ? 'results' : 'signup');
+          window.scrollTo(0, 0);
+          return;
+        }
         setResultsBackend(null);
         setErrorMessage(e?.message || 'The analysis service did not respond. Please try again.');
         setCurrentPage('error');
       }
       window.scrollTo(0, 0);
     })();
-  }, [signupCompleted, signupSession?.accessToken, startFreePreviewWindow, subscriptionActive]);
+  }, [signupCompleted, signupSession?.accessToken, startFreePreviewWindow, subscriptionActive, surveyResponses]);
+
+  const dismissRerunLock = useCallback(() => setRerunLockedUntil(undefined), []);
+
+  const setRerunReminder = useCallback(() => {
+    const token = signupSession?.accessToken;
+    const env = (import.meta as any).env || {};
+    const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? '';
+    if (token) {
+      void fetch(`${String(baseUrl).replace(/\/+$/, '')}/api/notifications/set-rerun-reminder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+      }).catch(() => {});
+    }
+    setRerunLockedUntil(undefined);
+  }, [signupSession?.accessToken]);
 
   // Use cached result — skip pipeline entirely
   const useCachedResult = useCallback(() => {
@@ -522,6 +638,11 @@ export function useAppState() {
     setCurrentPage('landing');
   }, []);
 
+  const goToNotificationSettings = useCallback(() => {
+    setCurrentPage('settings-notifications');
+    window.scrollTo(0, 0);
+  }, []);
+
   const logout = useCallback(() => {
     clearStoredSignupSession();
     setSignupSession(null);
@@ -565,14 +686,17 @@ export function useAppState() {
 
   const goBack = useCallback(() => {
     if (currentPage === 'intake') setCurrentPage('landing');
+    if (currentPage === 'survey') setCurrentPage('intake');
+    if (currentPage === 'signup-during-onboarding') setCurrentPage('survey');
     if (currentPage === 'previewing') setCurrentPage('intake');
     if (currentPage === 'cached-prompt') setCurrentPage('intake');
     if (currentPage === 'results') setCurrentPage('landing');
     if (currentPage === 'signup') setCurrentPage(authEntryPoint === 'landing' ? 'landing' : 'intake');
     if (currentPage === 'subscriptions') setCurrentPage(subscriptionReturnPage);
     if (currentPage === 'error') setCurrentPage('landing');
+    if (currentPage === 'settings-notifications') setCurrentPage(signupCompleted ? 'results' : 'landing');
     if (currentPage === 'career-chat') goBackFromCareerChat();
-  }, [authEntryPoint, currentPage, goBackFromCareerChat, subscriptionReturnPage]);
+  }, [authEntryPoint, currentPage, goBackFromCareerChat, signupCompleted, subscriptionReturnPage]);
 
   const continueAfterAuth = useCallback(async (resp: SignupResponse, data: any) => {
     if (continueToSubscriptionsAfterAuth) {
@@ -792,10 +916,16 @@ export function useAppState() {
     dashboardRevealSeen,
     cachedResult,
     cachedResultAge,
+    scrapeStatus,
+    rerunLockedUntil,
+    dismissRerunLock,
+    setRerunReminder,
     goToIntake,
     goToLogin,
     goToSubscriptions,
+    goToNotificationSettings,
     submitForm,
+    submitSurvey,
     confirmProfile,
     rejectProfile,
     useCachedResult,

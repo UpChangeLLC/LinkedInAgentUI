@@ -1,5 +1,6 @@
 // Lightweight client for the MCP HTTP adapter
 import { AgentRunResponseSchema, type AgentRunResponse } from './schemas'
+import { getStoredSignupSession } from './signup'
 
 export interface UserContext {
     concern: string
@@ -12,6 +13,26 @@ export type McpRunPayload = {
     linkedin_url?: string
     resume_text?: string
     user_context?: UserContext | null
+    survey_responses?: Record<string, unknown> | null
+    linkedin_run_id?: string | null
+}
+
+/** Raised when the backend rejects a run because the 30-day free re-run gate is active. */
+export class RerunLockedError extends Error {
+    nextRerunAt: string | null
+    constructor(nextRerunAt: string | null) {
+        super('RERUN_LOCKED')
+        this.name = 'RerunLockedError'
+        this.nextRerunAt = nextRerunAt
+    }
+}
+
+/** Raised when the backend requires a session (hard auth gate) and none was sent. */
+export class AuthRequiredError extends Error {
+    constructor() {
+        super('AUTH_REQUIRED')
+        this.name = 'AuthRequiredError'
+    }
 }
 
 function mcpAuthHeaders(): Record<string, string> {
@@ -21,8 +42,30 @@ function mcpAuthHeaders(): Record<string, string> {
     return { Authorization: `Bearer ${key}` }
 }
 
+/** Per-user identity for the hard auth gate. Distinct from the static
+ * MCP_API_KEY carried in Authorization — the backend reads X-Session-Token. */
+function sessionHeaders(): Record<string, string> {
+    const token = getStoredSignupSession()?.accessToken?.trim()
+    return token ? { 'X-Session-Token': token } : {}
+}
+
 function jsonHeaders(): Record<string, string> {
-    return { 'Content-Type': 'application/json', ...mcpAuthHeaders() }
+    return { 'Content-Type': 'application/json', ...mcpAuthHeaders(), ...sessionHeaders() }
+}
+
+/** Map a non-OK run response to a typed error (429 RERUN_LOCKED / 401 AUTH_REQUIRED). */
+async function raiseRunError(res: Response): Promise<never> {
+    let body: any = null
+    const text = await res.text().catch(() => '')
+    try { body = text ? JSON.parse(text) : null } catch { /* not JSON */ }
+    const code = body?.detail?.code ?? body?.code
+    if (res.status === 429 || code === 'RERUN_LOCKED') {
+        throw new RerunLockedError(body?.detail?.next_rerun_at ?? body?.next_rerun_at ?? null)
+    }
+    if (res.status === 401 || code === 'AUTH_REQUIRED') {
+        throw new AuthRequiredError()
+    }
+    throw new Error(text || `HTTP ${res.status}`)
 }
 
 /** AbortSignal.timeout is missing on Safari <16.4 — without this, fetch throws before any request (mobile shows "Load failed"). */
@@ -60,12 +103,13 @@ export async function mcpRun(payload: McpRunPayload): Promise<AgentRunResponse> 
             linkedin_url: payload.linkedin_url ?? '',
             resume_text: payload.resume_text ?? '',
             ...(payload.user_context ? { user_context: payload.user_context } : {}),
+            ...(payload.survey_responses ? { survey_responses: payload.survey_responses } : {}),
+            ...(payload.linkedin_run_id ? { linkedin_run_id: payload.linkedin_run_id } : {}),
         }),
         signal: timeoutSignal(RUN_TIMEOUT_MS),
     })
     if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
+        await raiseRunError(res)
     }
     const json = await res.json()
     return AgentRunResponseSchema.parse(json)
@@ -156,11 +200,17 @@ export async function streamAnalysis(
                 linkedin_url: payload.linkedin_url ?? '',
                 resume_text: payload.resume_text ?? '',
                 ...(payload.user_context ? { user_context: payload.user_context } : {}),
+                ...(payload.survey_responses ? { survey_responses: payload.survey_responses } : {}),
+                ...(payload.linkedin_run_id ? { linkedin_run_id: payload.linkedin_run_id } : {}),
             }),
             signal: timeoutSignal(SSE_TIMEOUT_MS),
         })
 
         if (!res.ok) {
+            // Surface auth/re-run gate errors as typed errors (don't fall back to a retry).
+            if (res.status === 401 || res.status === 429) {
+                await raiseRunError(res)
+            }
             throw new Error(`HTTP ${res.status}`)
         }
 
@@ -212,6 +262,8 @@ export async function streamAnalysis(
         // If we got here without a result, fall back
         throw new Error('SSE stream ended without result')
     } catch (err: any) {
+        // Never retry auth / re-run gate rejections — surface them as-is.
+        if (err instanceof RerunLockedError || err instanceof AuthRequiredError) throw err
         // Fallback to polling if SSE fails to connect
         if (err?.message?.includes('Pipeline')) throw err
         console.warn('SSE stream failed, falling back to polling:', err?.message)

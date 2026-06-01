@@ -19,6 +19,15 @@ os.environ.setdefault("MCP_API_KEY", "")
 os.environ.setdefault("OPENAI_API_KEY", "test-key-not-real")
 os.environ.setdefault("AI_CLIENT", "openai")
 
+# Default test posture: anon allowed + rerun gate off + dispatcher off, so the
+# baseline suite is unaffected by production config.env (where these are now
+# flipped to the hard-gate cutover values). Tests that exercise the hard gate /
+# rerun lock patch these explicitly. Force-set (not setdefault) so the
+# container's env_file values don't bleed in. See plan §"DB-unavailable test path".
+os.environ["ALLOW_ANON_RUN"] = "true"
+os.environ["RERUN_GATE_DAYS"] = "0"
+os.environ["EMAIL_DISPATCHER_ENABLED"] = "false"
+
 
 @pytest.fixture(scope="session")
 def app():

@@ -1,470 +1,625 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, CreditCard, LockKeyhole, Menu, MessageCircle, X } from 'lucide-react';
-import { LinkedInNav } from '../components/ui/LinkedInNav';
-import { Button } from '../components/ui/Button';
-import { Sidebar } from '../components/dashboard/Sidebar';
-import { PersonalOverviewSection } from '../components/dashboard/PersonalOverviewSection';
-import { PersonalRoadmapSection } from '../components/dashboard/PersonalRoadmapSection';
-import { NextStepsSection } from '../components/dashboard/NextStepsSection';
-import { ShareScoreCard } from '../components/dashboard/ShareScoreCard';
-import { PeerBenchmarkSection } from '../components/dashboard/PeerBenchmarkSection';
-import { ChallengeColleagueSection } from '../components/dashboard/ChallengeColleagueSection';
-import { ScoreReveal } from '../components/dashboard/ScoreReveal';
-import { StickyShareBar } from '../components/dashboard/StickyShareBar';
-import { SkillGapMatrixSection } from '../components/dashboard/SkillGapMatrixSection';
-import { DisruptionTimelineSection } from '../components/dashboard/DisruptionTimelineSection';
-import { CareerPathwaysSection } from '../components/dashboard/CareerPathwaysSection';
-import { WhatIfSimulatorSection } from '../components/dashboard/WhatIfSimulatorSection';
-import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSection';
-import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection';
-import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection';
-import { MockResults } from '../data/mockResults';
-import { CareerChatPage } from './CareerChatPage';
+import React, { useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import {
+  ArrowLeft, ArrowRight, BarChart3, BookOpen, Clock, History, LayoutGrid, ListChecks,
+  Lock, MessageSquare, Share2, Sparkles, Target, TrendingUp, User, X,
+} from 'lucide-react'
+import { MockResults } from '../data/mockResults'
+import { rerunNote } from '../lib/dashboardCopy'
+import { ScoreReveal } from '../components/dashboard/ScoreReveal'
+import { ScoreTrajectorySection } from '../components/dashboard/ScoreTrajectorySection'
+import { CohortMovementSection } from '../components/dashboard/CohortMovementSection'
+import { PersonalRoadmapSection } from '../components/dashboard/PersonalRoadmapSection'
+import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSection'
+import { SkillGapMatrixSection } from '../components/dashboard/SkillGapMatrixSection'
+import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection'
+import { DimensionRadar } from '../components/dashboard/DimensionRadar'
 
-const SUBSCRIPTION_PLANS = [
-  { id: 'monthly', name: 'Monthly', price: '$9', cadence: '/month', months: 1, badge: 'Flexible' },
-  { id: 'quarterly', name: 'Quarterly', price: '$24', cadence: '/3 months', months: 3, badge: 'Popular' },
-  { id: 'annual', name: 'Annual', price: '$79', cadence: '/year', months: 12, badge: 'Best value' },
-] as const;
-
-type SubscriptionPlanId = (typeof SUBSCRIPTION_PLANS)[number]['id'];
-
-const SECTION_DESCRIPTIONS: Record<string, string> = {
-  overview: 'Your overall AI readiness profile based on your LinkedIn data. This is how you compare to professionals in your role and industry.',
-  skills: 'A map of your skills plotted by current proficiency vs. market demand. Focus on skills with high demand and low proficiency.',
-  disruption: 'A timeline showing when specific tasks in your role are likely to be automated. Earlier dates mean higher urgency to adapt.',
-  pathways: 'Three possible career directions based on your current skills and market trends. The recommended path has the best fit for your profile.',
-  whatif: 'Explore how acquiring new skills or certifications would change your score. Try different scenarios to find the highest-impact investments.',
-  actions: 'Your personalized action items organized by priority. Complete these to improve your AI readiness over the next 90 days.',
-  share: 'Share your score with your network or compare against industry benchmarks. Sharing drives accountability and attracts AI-ready talent.',
-  roadmap: 'A month-by-month plan for the next 90 days. Each action is tied to a specific skill gap or opportunity from your assessment.',
-  newsfeed: 'AI developments relevant to your role and industry. Stay current on the trends that directly affect your career trajectory.',
-  learning: 'Curated courses, articles, and tools matched to your specific skill gaps. Start with the highest-priority resources.',
-};
+export type DashboardSection = 'overview' | 'roadmap' | 'actions' | 'skills' | 'learning'
 
 interface ResultsDashboardProps {
-  results: MockResults;
-  formData: any;
-  onBackToHome?: () => void;
-  onSubscriptions?: () => void;
-  accountName?: string;
-  onDashboard?: () => void;
-  onRecalculate?: () => void;
-  onLogout?: () => void;
-  /** Opens Career Mentor with assessment context from this dashboard. */
-  onOpenCareerMentor?: () => void;
-  seedAssessmentContext?: string;
-  subscriptionActive?: boolean;
-  paywallLocked?: boolean;
-  showScoreReveal?: boolean;
-  onScoreRevealComplete?: () => void;
-  subscriptionSubmitting?: boolean;
-  onActivateSubscription?: (planId?: string, paymentMethod?: Record<string, unknown>) => void;
+  results: MockResults
+  formData: any
+  onBackToHome?: () => void
+  onSubscriptions?: () => void
+  accountName?: string
+  onDashboard?: () => void
+  onRecalculate?: () => void
+  onLogout?: () => void
+  onSettings?: () => void
+  onOpenCareerMentor?: () => void
+  seedAssessmentContext?: string
+  subscriptionActive?: boolean
+  paywallLocked?: boolean
+  showScoreReveal?: boolean
+  onScoreRevealComplete?: () => void
+  subscriptionSubmitting?: boolean
+  onActivateSubscription?: (planId?: string, paymentMethod?: Record<string, unknown>) => void
 }
+
+/** Canonical 8 dimensions in mock order. */
+const DIMS: { key: string; label: string; inverse?: boolean }[] = [
+  { key: 'AI Fluency', label: 'AI Fluency' },
+  { key: 'Automation Exposure', label: 'Automation Exposure', inverse: true },
+  { key: 'Learning Velocity', label: 'Learning Velocity' },
+  { key: 'Technical Proximity', label: 'Technical Proximity' },
+  { key: 'Execution Credibility', label: 'Execution Credibility' },
+  { key: 'Leadership Readiness', label: 'Leadership Readiness' },
+  { key: 'Governance Awareness', label: 'Governance Awareness' },
+  { key: 'Network Relevance', label: 'Network Relevance' },
+]
+
+function pickDim(factors: MockResults['scoreFactors'] | undefined, name: string): number {
+  // Match the whole dim name (case-insensitive) to avoid first-token collisions.
+  const target = name.toLowerCase()
+  const f = (factors || []).find((x) => x.name.toLowerCase() === target)
+    || (factors || []).find((x) => x.name.toLowerCase().includes(target))
+  if (!f) return 0
+  const v = typeof f.value === 'number' ? f.value : 0
+  // Normalize any input scale (0–5, 0–10, or 0–100) into a 0–10 display value.
+  const tenScale = v > 10 ? v / 10 : v
+  return Math.max(0, Math.min(10, tenScale))
+}
+
+/** Mock-aligned free-tier dashboard (Career-AI/onboarding-flow-mock.html §7). */
 export function ResultsDashboard({
-  results,
-  formData,
-  onBackToHome,
-  onSubscriptions,
-  accountName,
-  onDashboard,
-  onRecalculate,
-  onLogout,
-  onOpenCareerMentor,
-  seedAssessmentContext,
-  subscriptionActive = false,
-  paywallLocked = false,
-  showScoreReveal = false,
-  onScoreRevealComplete,
-  subscriptionSubmitting = false,
-  onActivateSubscription,
+  results, formData, onSubscriptions, accountName, onLogout, onRecalculate,
+  onOpenCareerMentor, subscriptionActive = false, showScoreReveal = false, onScoreRevealComplete,
 }: ResultsDashboardProps) {
-  const [activeSection, setActiveSection] = useState('overview');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isMentorOpen, setIsMentorOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>('quarterly');
-  const mainScrollRef = useRef<HTMLElement | null>(null);
-  const isPaywalled = paywallLocked && !subscriptionActive;
-  const selectedSubscription = SUBSCRIPTION_PLANS.find((plan) => plan.id === selectedPlan) || SUBSCRIPTION_PLANS[1];
-  const openCareerMentor = useCallback(() => {
-    if (isPaywalled) return;
-    onOpenCareerMentor?.();
-    setIsMentorOpen(true);
-  }, [isPaywalled, onOpenCareerMentor]);
-  const submitPayment = useCallback((event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    onActivateSubscription?.(selectedSubscription.id, {
-      name_on_card: String(form.get('name_on_card') || ''),
-      card_number: String(form.get('card_number') || ''),
-      expiry: String(form.get('expiry') || ''),
-      cvc: String(form.get('cvc') || ''),
-    });
-  }, [onActivateSubscription, selectedSubscription.id]);
-  const handleRevealComplete = useCallback(() => {
-    onScoreRevealComplete?.();
-  }, [onScoreRevealComplete]);
+  const [upsellOpen, setUpsellOpen] = useState(false)
+  const [activeSection, setActiveSection] = useState<DashboardSection>('overview')
+  const tier: 'free' | 'premium' = subscriptionActive ? 'premium' : 'free'
+  const openUpsell = () => (onSubscriptions ? onSubscriptions() : setUpsellOpen(true))
 
-  const handleNavigateSection = useCallback((section: string) => {
-    setActiveSection(section);
-    setIsSidebarOpen(false);
-  }, []);
+  const score = results.score ?? 0
+  const readiness = Math.max(0, Math.round(score - 12)) // best-effort placeholder until v1 ML
+  const riskBand = results.riskBand || 'Moderate Risk'
+  const cohortName = results.personalProfile?.title || 'your cohort'
+  const displayName = accountName || results.personalProfile?.name || 'there'
 
-  useEffect(() => {
-    mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [activeSection]);
-
-  useEffect(() => {
-    if (!isMentorOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsMentorOpen(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isMentorOpen]);
-  // If backend result exists, scroll to top once shown
-  useEffect(() => {
-    if (formData?.backend?.result) {
-      window.scrollTo(0, 0);
-    }
-  }, [formData]);
-
-  const renderSection = () => {
-    switch (activeSection) {
-      case 'overview':
-        return <PersonalOverviewSection results={results} />;
-      case 'share':
-        return (
-          <div className="space-y-12">
-            <ShareScoreCard results={results} />
-            <PeerBenchmarkSection results={results} />
-            <ChallengeColleagueSection
-              urlHash={results.urlHash}
-              score={results.score}
-              displayName={results.personalProfile?.name || 'You'}
-              roleCategory={results.personalProfile?.title || ''}
-            />
-          </div>);
-      case 'skills':
-        return <SkillGapMatrixSection skills={results.skillGapMatrix} />;
-      case 'disruption':
-        return (
-          <DisruptionTimelineSection
-            items={results.disruptionTimeline}
-            roleName={results.personalProfile?.title}
-          />
-        );
-      case 'pathways':
-        return (
-          <CareerPathwaysSection
-            pathways={results.careerPathways}
-            currentRole={results.personalProfile?.title}
-          />
-        );
-      case 'whatif':
-        return (
-          <WhatIfSimulatorSection
-            currentScore={results.score}
-            riskBand={results.riskBand}
-            currentRole={results.personalProfile?.title}
-          />
-        );
-      case 'actions':
-        return (
-          <ActionTrackerSection
-            urlHash={results.urlHash || ''}
-            fallbackActions={results.actionItems?.map((a) => ({
-              id: a.id,
-              title: a.title,
-              description: a.description,
-              category: a.category,
-              priority: a.priority,
-              estimated_hours: a.estimatedHours,
-              resource_url: a.resourceUrl,
-              resource_title: a.resourceTitle,
-              status: a.status,
-              completed_at: a.completedAt,
-            })) || []}
-          />
-        );
-      case 'roadmap':
-        return <PersonalRoadmapSection results={results} />;
-      case 'newsfeed':
-        return (
-          <AINewsFeedSection
-            role={results.personalProfile?.title}
-            industry={results.personalProfile?.industry}
-            topSkillGaps={results.skillGapMatrix?.slice(0, 3).map((s) => s.name)}
-          />
-        );
-      case 'learning':
-        return <LearningResourcesSection skills={results.skillGapMatrix} />;
-      case 'next':
-        return <NextStepsSection />;
-      default:
-        return <PersonalOverviewSection results={results} />;
-    }
-  };
   return (
     <>
-      {/* Score Reveal Overlay */}
       <AnimatePresence>
-        {showScoreReveal &&
-          <ScoreReveal results={results} onComplete={handleRevealComplete} />
-        }
+        {showScoreReveal && <ScoreReveal results={results} onComplete={onScoreRevealComplete ?? (() => {})} />}
       </AnimatePresence>
 
-      <div className="relative h-[100dvh] min-h-0 bg-dark-bg overflow-hidden">
-        <div
-          aria-hidden={isPaywalled}
-          className={`flex flex-col h-full min-h-0 transition duration-300 ${
-            isPaywalled ? 'blur-sm scale-[0.99] pointer-events-none select-none' : ''
-          }`}
-        >
-        <LinkedInNav
-          onCareerMentor={isPaywalled ? undefined : openCareerMentor}
-          onSubscriptions={onSubscriptions}
-          accountName={accountName}
-          onDashboard={onDashboard}
-          onRecalculate={onRecalculate}
+      <div className="min-h-screen bg-surface-off">
+        <DashboardHeader
+          accountName={displayName}
+          tier={tier}
+          onUpsell={openUpsell}
           onLogout={onLogout}
         />
 
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 py-8 grid lg:grid-cols-[220px_1fr] gap-8">
           <Sidebar
+            tier={tier}
             activeSection={activeSection}
-            onNavigate={handleNavigateSection}
-            isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
-            results={results}
-            onBackToHome={onBackToHome} />
+            onSelect={setActiveSection}
+            onOpenCareerMentor={onOpenCareerMentor}
+            onUpsell={openUpsell}
+          />
 
+          <main className="space-y-6">
+            {activeSection === 'overview' ? (
+              <>
+                <WelcomeStrip onRerun={onRecalculate} tier={tier} />
 
-          <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-            {/* Mobile Header Toggle */}
-            <button
-              className="lg:hidden absolute top-4 right-4 z-40 p-2 bg-dark-card rounded-md border border-dark-border text-dark-textSec"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                <HeadlineScoresCard
+                  score={score}
+                  readiness={readiness}
+                  riskBand={riskBand}
+                  cohortName={cohortName}
+                />
 
-              {isSidebarOpen ?
-                <X className="w-6 h-6" /> :
+                <DimensionBreakdownCard factors={results.scoreFactors} tier={tier} onUpsell={openUpsell} />
 
-                <Menu className="w-6 h-6" />
-              }
-            </button>
+                <SummaryParagraphCard
+                  name={displayName.split(/\s+/)[0]}
+                  score={score}
+                  cohortName={cohortName}
+                  factors={results.scoreFactors}
+                  backendResult={formData?.backend?.result}
+                />
 
-            {/* Main Content Area */}
-            <main ref={mainScrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 scroll-smooth">
-              <div className="max-w-5xl mx-auto space-y-8 pb-28">
-                {/* Backend Executive Summary (if available) */}
-                {formData?.backend?.result && (
-                  <div className="mb-6 p-4 rounded-md border border-dark-accent/20 bg-dark-accentDim">
-                    <div className="text-sm text-dark-accent font-semibold mb-1">
-                      Live Analysis Summary
+                <ScoreTrajectorySection urlHash={results.urlHash} tier={tier} onRerun={onRecalculate} />
+                <CohortMovementSection role={results.personalProfile?.title} userScore={score} />
+
+                {tier === 'free' && (
+                  <>
+                    <PersonalRoadmapTeaser onUnlock={openUpsell} />
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <MentorChatTeaser onUnlock={openUpsell} />
+                      <LearningTeaser onUnlock={openUpsell} />
                     </div>
-                    <div className="text-dark-textPri text-sm whitespace-pre-line">
-                      {formData.backend.result.executive_summary ||
-                        formData.backend.result.summary ||
-                        'Analysis completed.'}
-                    </div>
-                  </div>
+                  </>
                 )}
-                <div className="mb-8">
-                  <div className="flex items-center gap-2 text-[11px] text-dark-accent mb-2 uppercase tracking-widest font-semibold">
-                    Personal Dashboard
-                  </div>
-                  <h1 className="text-3xl font-bold font-serif text-dark-textPri capitalize">
-                    {activeSection === 'next' ?
-                      'Next Steps' :
-                      activeSection === 'share' ?
-                        'Share & Compare' :
-                        activeSection === 'actions' ?
-                          'Action Tracker' :
-                          activeSection === 'newsfeed' ?
-                            'AI News Feed' :
-                            activeSection === 'learning' ?
-                              'Learning Resources' :
-                              activeSection.replace(/([A-Z])/g, ' $1').trim()}
-                  </h1>
-                  {SECTION_DESCRIPTIONS[activeSection] && (
-                    <p className="text-sm text-dark-textMuted mt-2">
-                      {SECTION_DESCRIPTIONS[activeSection]}
-                    </p>
-                  )}
-                </div>
 
-                <motion.div
-                  key={activeSection}
-                  initial={{
-                    opacity: 0,
-                    y: 10
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 0
-                  }}
-                  transition={{
-                    duration: 0.3
-                  }}>
+                <ReassessCTA tier={tier} onUpsell={openUpsell} />
+              </>
+            ) : (
+              <SectionView
+                section={activeSection}
+                results={results}
+                onBack={() => setActiveSection('overview')}
+              />
+            )}
+          </main>
+        </div>
+      </div>
 
-                  {renderSection()}
-                </motion.div>
-              </div>
-            </main>
+      {upsellOpen && tier === 'free' && (
+        <UpsellModal onClose={() => setUpsellOpen(false)} onSubscribe={onSubscriptions} />
+      )}
+    </>
+  )
+}
+
+// ── Premium section view ────────────────────────────────────────────────
+
+function SectionView({
+  section, results, onBack,
+}: { section: DashboardSection; results: MockResults; onBack: () => void }) {
+  return (
+    <div className="space-y-6">
+      <button
+        onClick={onBack}
+        className="text-sm font-medium text-linkedin hover:underline inline-flex items-center gap-1"
+      >
+        <ArrowLeft className="w-4 h-4" /> Back to overview
+      </button>
+      <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7">
+        {section === 'roadmap' && <PersonalRoadmapSection results={results} />}
+        {section === 'actions' && <ActionTrackerSection urlHash={results.urlHash ?? ''} />}
+        {section === 'skills' && <SkillGapMatrixSection skills={results.skillGapMatrix} />}
+        {section === 'learning' && <LearningResourcesSection skills={results.skillGapMatrix} />}
+      </div>
+    </div>
+  )
+}
+
+// ── Header ──────────────────────────────────────────────────────────────
+
+function DashboardHeader({
+  accountName, tier, onUpsell, onLogout,
+}: { accountName: string; tier: 'free' | 'premium'; onUpsell: () => void; onLogout?: () => void }) {
+  return (
+    <header className="bg-white border-b border-surface-border">
+      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-md bg-linkedin flex items-center justify-center">
+            <span className="text-white font-bold text-sm">u</span>
+          </div>
+          <span className="font-semibold text-[15px] text-gray-900">Upchange</span>
+          <span className="text-gray-500 text-xs ml-2">Dashboard</span>
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          {tier === 'free' && (
+            <>
+              <span className="text-gray-500 hidden md:inline">Free tier</span>
+              <button
+                onClick={onUpsell}
+                className="bg-linkedin hover:bg-linkedin-dark text-white font-medium px-4 py-1.5 rounded-full text-xs inline-flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Unlock Premium — $9/mo
+              </button>
+            </>
+          )}
+          <span className="text-sm text-gray-500 hidden md:inline">{accountName}</span>
+          {onLogout && (
+            <button onClick={onLogout} className="text-gray-500 hover:text-gray-900 text-xs">Log out</button>
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+// ── Sidebar ─────────────────────────────────────────────────────────────
+
+export function Sidebar({
+  tier, activeSection, onSelect, onOpenCareerMentor, onUpsell,
+}: {
+  tier: 'free' | 'premium'
+  activeSection: DashboardSection
+  onSelect: (section: DashboardSection) => void
+  onOpenCareerMentor?: () => void
+  onUpsell: () => void
+}) {
+  const item = (active: boolean, locked: boolean, icon: React.ReactNode, label: string, onClick?: () => void) => (
+    <button
+      key={label}
+      onClick={onClick}
+      className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-left text-sm transition ${
+        active
+          ? 'bg-linkedin/5 text-linkedin font-medium'
+          : locked
+            ? 'text-gray-500 hover:bg-surface-off'
+            : 'text-gray-700 hover:bg-surface-off'
+      }`}
+    >
+      {icon} {label}
+    </button>
+  )
+
+  const services: { icon: React.ReactNode; label: string; section?: DashboardSection; mentor?: boolean }[] = [
+    { icon: <Target className="w-4 h-4" />, label: 'Personal roadmap', section: 'roadmap' },
+    { icon: <ListChecks className="w-4 h-4" />, label: 'Action tracker', section: 'actions' },
+    { icon: <LayoutGrid className="w-4 h-4" />, label: 'Skill gap matrix', section: 'skills' },
+    { icon: <BookOpen className="w-4 h-4" />, label: 'Learning library', section: 'learning' },
+    { icon: <MessageSquare className="w-4 h-4" />, label: 'Career mentor', mentor: true },
+  ]
+
+  return (
+    <aside className="hidden lg:block">
+      <nav className="space-y-1">
+        {item(activeSection === 'overview', false, <LayoutGrid className="w-4 h-4" />, 'Overview', () => onSelect('overview'))}
+        {item(false, false, <User className="w-4 h-4" />, 'Your score', () => onSelect('overview'))}
+        {item(false, false, <BarChart3 className="w-4 h-4" />, 'Dim breakdown', () => onSelect('overview'))}
+
+        <div className="my-3 border-t border-surface-border" />
+        {tier === 'free' && (
+          <div className="text-[10px] uppercase tracking-wider text-gray-300 px-3 mb-2">Premium</div>
+        )}
+        {services.map((it) => {
+          const active = !!it.section && activeSection === it.section
+          const onClick = tier === 'free'
+            ? onUpsell
+            : it.mentor
+              ? onOpenCareerMentor
+              : () => it.section && onSelect(it.section)
+          return item(
+            active,
+            tier === 'free',
+            tier === 'free' ? <Lock className="w-4 h-4" /> : it.icon,
+            it.label,
+            onClick,
+          )
+        })}
+
+        <div className="my-3 border-t border-surface-border" />
+        {item(false, false, <History className="w-4 h-4" />, 'History')}
+        {item(false, false, <Share2 className="w-4 h-4" />, 'Share')}
+      </nav>
+    </aside>
+  )
+}
+
+// ── Welcome strip ───────────────────────────────────────────────────────
+
+function WelcomeStrip({ onRerun, tier }: { onRerun?: () => void; tier: 'free' | 'premium' }) {
+  return (
+    <div className="flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Your AI Resilience Score</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          {rerunNote(tier)}
+        </p>
+      </div>
+      {onRerun && (
+        <button
+          onClick={onRerun}
+          className="text-xs font-medium text-linkedin hover:underline inline-flex items-center gap-1"
+        >
+          Run a fresh assessment <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Headline scores ─────────────────────────────────────────────────────
+
+function HeadlineScoresCard({
+  score, readiness, riskBand, cohortName,
+}: { score: number; readiness: number; riskBand: string; cohortName: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7">
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Resilience</div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-6xl font-bold text-gray-900 tabular-nums">{score}</span>
+            <span className="text-sm text-gray-500">/ 100</span>
+          </div>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span className="inline-block text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+              {riskBand}
+            </span>
+            <span className="text-xs text-gray-500">primary score</span>
           </div>
         </div>
-
-        {/* Sticky Share Bar */}
-        {!showScoreReveal && activeSection !== 'share' &&
-          <StickyShareBar results={results} />
-        }
-
-        {!isPaywalled && !isMentorOpen && (
-          <motion.button
-            type="button"
-            onClick={openCareerMentor}
-            initial={{ opacity: 0, y: 12, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            whileHover={{ scale: 1.03, y: -1 }}
-            whileTap={{ scale: 0.98 }}
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-linkedin px-5 py-3 text-sm font-semibold text-white shadow-2xl hover:bg-linkedin/90 transition-colors"
-          >
-            <MessageCircle className="w-4 h-4" />
-            Career Mentor
-          </motion.button>
-        )}
+        <div className="md:border-l md:border-surface-border md:pl-6">
+          <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Readiness</div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-6xl font-bold text-gray-700 tabular-nums">{readiness}</span>
+            <span className="text-sm text-gray-500">/ 100</span>
+          </div>
+          <div className="mt-2">
+            <span className="text-xs text-gray-500">how prepared you are <em>today</em></span>
+          </div>
         </div>
+      </div>
 
-        <AnimatePresence>
-          {isMentorOpen && !isPaywalled && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[90] bg-black/10"
-              onClick={() => setIsMentorOpen(false)}
-            >
-              <motion.aside
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: 'spring', stiffness: 280, damping: 32 }}
-                className="absolute right-0 top-0 h-full w-full max-w-[440px] border-l border-dark-border bg-dark-bg shadow-2xl"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <CareerChatPage
-                  embedded
-                  seedAssessmentContext={seedAssessmentContext}
-                  onClose={() => setIsMentorOpen(false)}
-                />
-              </motion.aside>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="mt-7 p-4 bg-linkedin/5 rounded-xl flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <div className="text-sm font-medium text-gray-900">Top quartile among {cohortName}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Cohort percentile updates as more peers assess</div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-        {isPaywalled && (
-          <div className="fixed inset-0 z-[100] bg-dark-bg/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-            <div className="w-full max-w-4xl rounded-2xl border border-dark-border bg-dark-card p-6 shadow-2xl">
-              <div className="mx-auto w-12 h-12 rounded-full bg-dark-accentDim flex items-center justify-center mb-4">
-                <LockKeyhole className="w-6 h-6 text-dark-accent" />
+// ── Dimension breakdown ─────────────────────────────────────────────────
+
+function DimensionBreakdownCard({
+  factors, tier, onUpsell,
+}: { factors: MockResults['scoreFactors'] | undefined; tier: 'free' | 'premium'; onUpsell: () => void }) {
+  return (
+    <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7">
+      <div className="flex items-start justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Your 8 dimensions</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Each scored 0–10. Full rationales unlocked in Premium.
+          </p>
+        </div>
+        <span className="text-xs text-gray-500 hidden md:block">read-only</span>
+      </div>
+
+      <DimensionRadar data={DIMS.map((d) => ({ dimension: d.label, score: pickDim(factors, d.key) }))} />
+
+      <div className="mt-6 grid md:grid-cols-2 gap-x-8 gap-y-4">
+        {DIMS.map((d) => {
+          const value = pickDim(factors, d.key)
+          const pct = Math.max(0, Math.min(100, Math.round(value * 10)))
+          return (
+            <div key={d.key}>
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span className="font-medium text-gray-900">
+                  {d.label}
+                  {d.inverse && <span className="text-gray-300 text-[10px] ml-1">(inverse)</span>}
+                </span>
+                <span className="font-semibold text-gray-900 tabular-nums">{value.toFixed(1)}</span>
               </div>
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-serif font-bold text-dark-textPri mb-2">
-                  Choose a subscription to continue
-                </h2>
-                <p className="text-sm text-dark-textMuted">
-                  Your free preview has ended. Select a plan to keep viewing your dashboard and Career Mentor.
-                </p>
+              <div className="h-2 bg-surface-off rounded-full overflow-hidden">
+                <div className="h-full bg-linkedin rounded-full" style={{ width: `${pct}%` }} />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-                {SUBSCRIPTION_PLANS.map((plan) => {
-                  const active = selectedPlan === plan.id;
-                  return (
-                    <button
-                      key={plan.id}
-                      type="button"
-                      onClick={() => setSelectedPlan(plan.id)}
-                      className={`text-left rounded-xl border p-4 transition-colors ${
-                        active
-                          ? 'border-linkedin bg-linkedin/10 ring-1 ring-linkedin'
-                          : 'border-dark-border bg-dark-bg/50 hover:border-dark-accent/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <span className="font-semibold text-dark-textPri">{plan.name}</span>
-                        <span className="rounded-full bg-dark-accentDim px-2 py-0.5 text-[11px] text-dark-accent">
-                          {plan.badge}
-                        </span>
-                      </div>
-                      <div className="flex items-end gap-1">
-                        <span className="text-3xl font-bold text-dark-textPri">{plan.price}</span>
-                        <span className="text-sm text-dark-textMuted mb-1">{plan.cadence}</span>
-                      </div>
-                      {active && (
-                        <div className="mt-3 flex items-center gap-1 text-xs text-linkedin">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Selected
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <form onSubmit={submitPayment} className="rounded-xl border border-dark-border bg-dark-bg/60 p-4">
-                <div className="flex items-center gap-2 text-dark-textPri font-semibold mb-4">
-                  <CreditCard className="w-4 h-4 text-dark-accent" />
-                  Payment method
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input
-                    required
-                    name="name_on_card"
-                    placeholder="Name on card"
-                    className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
-                  />
-                  <input
-                    required
-                    name="card_number"
-                    inputMode="numeric"
-                    placeholder="Card number"
-                    className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
-                  />
-                  <input
-                    required
-                    name="expiry"
-                    placeholder="MM / YY"
-                    className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
-                  />
-                  <input
-                    required
-                    name="cvc"
-                    inputMode="numeric"
-                    placeholder="CVC"
-                    className="rounded-lg border border-dark-border bg-dark-card px-3 py-3 text-sm text-dark-textPri placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-dark-accent/40"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  fullWidth
-                  disabled={subscriptionSubmitting || !onActivateSubscription}
-                  className="bg-linkedin hover:bg-linkedin/90 mt-4"
+              {tier === 'free' && (
+                <button
+                  onClick={onUpsell}
+                  className="mt-1 text-[11px] text-gray-500 bg-surface-off px-2 py-0.5 rounded inline-flex items-center gap-1 hover:text-linkedin"
                 >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  {subscriptionSubmitting
-                    ? 'Processing payment...'
-                    : `Pay ${selectedSubscription.price} and continue`}
-                </Button>
-                <p className="text-xs text-dark-textMuted text-center mt-3">
-                  Secure checkout. You can cancel anytime from your account settings.
-                </p>
-              </form>
+                  <Lock className="w-3 h-3" /> Premium unlocks why
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Summary paragraph ───────────────────────────────────────────────────
+
+function SummaryParagraphCard({
+  name, score, cohortName, factors, backendResult,
+}: { name: string; score: number; cohortName: string; factors: MockResults['scoreFactors'] | undefined; backendResult?: any }) {
+  // Prefer a real backend narrative if available.
+  const backendSummary: string | undefined =
+    backendResult?.executive_summary || backendResult?.summary
+
+  const top = (factors || []).slice().sort((a, b) => (b.value || 0) - (a.value || 0))[0]?.name
+  const bottom = (factors || []).slice().sort((a, b) => (a.value || 0) - (b.value || 0))[0]?.name
+
+  const generated =
+    `${name}, your resilience score of ${score} ` +
+    (score >= 75 ? 'puts you in the top quartile' : score >= 50 ? 'is solid' : 'has meaningful room to grow') +
+    (cohortName ? ` among ${cohortName}.` : '. ') +
+    (top ? ` Your strongest dimension is ${top.toLowerCase()}.` : '') +
+    (bottom ? ` The biggest opportunity sits in ${bottom.toLowerCase()}.` : '')
+
+  return (
+    <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7">
+      <h2 className="text-lg font-bold text-gray-900">What your score means</h2>
+      <p className="mt-3 text-gray-700 leading-relaxed whitespace-pre-line">
+        {backendSummary || generated}
+      </p>
+      <div className="mt-4 text-xs text-gray-300 italic">
+        Short summary · free tier. Premium unlocks per-dim rationales + 90-day plan.
+      </div>
+    </div>
+  )
+}
+
+// ── Premium teasers ─────────────────────────────────────────────────────
+
+function PersonalRoadmapTeaser({ onUnlock }: { onUnlock: () => void }) {
+  return (
+    <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7 relative overflow-hidden">
+      <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Your personal AI roadmap</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            <strong className="text-gray-900">10 personalized actions</strong> ranked by impact, tied to your gaps.
+          </p>
+        </div>
+        <span className="text-xs font-semibold text-gray-500 bg-surface-off px-2 py-1 rounded inline-flex items-center gap-1">
+          <Lock className="w-3 h-3" /> Premium
+        </span>
+      </div>
+      <div className="relative">
+        <div className="space-y-2 [filter:blur(8px)] select-none pointer-events-none" aria-hidden>
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="flex items-center gap-3 p-3 bg-surface-off rounded-lg">
+              <div className="w-7 h-7 bg-linkedin/20 rounded-full flex items-center justify-center text-xs font-semibold text-gray-900">{n}</div>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-900">Sample action title here</div>
+                <div className="text-xs text-gray-500 mt-0.5">Impact: +1.0 · Est. 8 hrs</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="bg-white rounded-xl border border-surface-border shadow-sm p-5 text-center max-w-sm">
+            <Lock className="mx-auto w-6 h-6 text-gray-500" />
+            <div className="mt-2 font-semibold text-gray-900">10 personalized actions waiting</div>
+            <div className="text-xs text-gray-500 mt-1">Ranked by impact. Each tied to your specific score gaps.</div>
+            <button
+              onClick={onUnlock}
+              className="mt-4 bg-linkedin hover:bg-linkedin-dark text-white font-medium px-5 py-2 rounded-full text-sm transition-all"
+            >
+              Unlock my action plan
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MentorChatTeaser({ onUnlock }: { onUnlock: () => void }) {
+  return (
+    <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-6">
+      <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
+        <div>
+          <h3 className="text-base font-bold text-gray-900">AI Career Mentor</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Ask anything about your career strategy</p>
+        </div>
+        <span className="text-[10px] font-semibold text-gray-500 bg-surface-off px-2 py-1 rounded inline-flex items-center gap-1">
+          <Lock className="w-3 h-3" /> Premium
+        </span>
+      </div>
+      <div className="bg-surface-off rounded-xl p-3 space-y-2">
+        <div className="flex">
+          <div className="bg-white border border-surface-border rounded-lg px-3 py-2 text-xs max-w-[80%] text-gray-700">
+            What should I learn next given my score?
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <div className="bg-linkedin/10 rounded-lg px-3 py-2 text-xs max-w-[80%] text-gray-700">
+            Your weakest dim is governance — consider…
+          </div>
+        </div>
+        <div className="[filter:blur(8px)] select-none pointer-events-none" aria-hidden>
+          <div className="flex">
+            <div className="bg-white border border-surface-border rounded-lg px-3 py-2 text-xs max-w-[80%] text-gray-700">
+              Tell me more about AI governance basics.
             </div>
           </div>
+        </div>
+      </div>
+      <button
+        onClick={onUnlock}
+        className="mt-4 w-full bg-white border border-linkedin text-linkedin hover:bg-linkedin hover:text-white font-medium py-2 rounded-lg text-sm transition-all"
+      >
+        First message on us → unlock chat
+      </button>
+    </div>
+  )
+}
+
+function LearningTeaser({ onUnlock }: { onUnlock: () => void }) {
+  const items = [
+    { t: 'AWS AI Practitioner Cert', s: '14 hrs · Aligned to AI fluency gap' },
+    { t: 'DeepLearning.AI Prompt Engineering', s: '3 hrs · Aligned to AI fluency gap' },
+    { t: 'NIST AI RMF for PMs', s: '6 hrs · Aligned to governance gap' },
+  ]
+  return (
+    <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-6">
+      <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
+        <div>
+          <h3 className="text-base font-bold text-gray-900">Curated learning</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            <strong className="text-gray-900">23 resources</strong> picked for your role + gaps
+          </p>
+        </div>
+        <span className="text-[10px] font-semibold text-gray-500 bg-surface-off px-2 py-1 rounded inline-flex items-center gap-1">
+          <Lock className="w-3 h-3" /> Premium
+        </span>
+      </div>
+      <div className="[filter:blur(8px)] select-none pointer-events-none space-y-2" aria-hidden>
+        {items.map((it) => (
+          <div key={it.t} className="flex items-center gap-2 p-2 bg-surface-off rounded">
+            <div className="w-8 h-8 bg-linkedin/20 rounded" />
+            <div className="flex-1">
+              <div className="text-xs font-medium text-gray-900">{it.t}</div>
+              <div className="text-[10px] text-gray-500">{it.s}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={onUnlock}
+        className="mt-4 w-full bg-white border border-linkedin text-linkedin hover:bg-linkedin hover:text-white font-medium py-2 rounded-lg text-sm transition-all"
+      >
+        See my 23 resources
+      </button>
+    </div>
+  )
+}
+
+// ── Reassess + upsell ───────────────────────────────────────────────────
+
+function ReassessCTA({ tier, onUpsell }: { tier: 'free' | 'premium'; onUpsell: () => void }) {
+  return (
+    <div className="bg-gradient-to-br from-linkedin/5 to-linkedin/10 border border-linkedin/20 rounded-2xl p-6">
+      <div className="flex items-start justify-between gap-6 flex-wrap">
+        <div className="flex items-start gap-3">
+          <Clock className="w-6 h-6 text-linkedin shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-bold text-gray-900">Your score is fresh</h3>
+            <p className="text-sm text-gray-700 mt-1">
+              {tier === 'premium'
+                ? 'Re-run anytime. We track your trajectory whenever you want.'
+                : "Re-run again in 30 days to see how you've changed. Free."}
+            </p>
+            {tier === 'free' && (
+              <p className="text-xs text-gray-500 mt-2">
+                <span className="text-linkedin font-medium">Premium = unlimited re-runs</span>
+              </p>
+            )}
+          </div>
+        </div>
+        {tier === 'free' && (
+          <button onClick={onUpsell} className="text-sm font-medium text-linkedin hover:underline inline-flex items-center gap-1">
+            Want unlimited? See premium <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
-    </>);
+    </div>
+  )
+}
 
+function UpsellModal({ onClose, onSubscribe }: { onClose: () => void; onSubscribe?: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/40 p-4">
+      <div className="relative w-full max-w-md bg-white rounded-2xl border border-surface-border shadow-xl p-6">
+        <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 text-gray-500 hover:text-gray-900">
+          <X className="w-5 h-5" />
+        </button>
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-linkedin/10">
+          <Sparkles className="h-6 w-6 text-linkedin" />
+        </div>
+        <h2 className="text-center text-xl font-bold text-gray-900">Unlock the full dashboard</h2>
+        <p className="mt-2 text-center text-sm text-gray-500">
+          Premium unlocks per-dim rationales, your personalized action plan, the AI Career Mentor, curated learning, and unlimited re-runs.
+        </p>
+        <button
+          onClick={() => { onSubscribe?.(); onClose() }}
+          className="mt-5 w-full bg-linkedin hover:bg-linkedin-dark text-white font-semibold px-4 py-2.5 rounded-lg text-sm inline-flex items-center justify-center gap-2"
+        >
+          <TrendingUp className="w-4 h-4" /> See plans
+        </button>
+        <button
+          onClick={onClose}
+          className="mt-2 w-full bg-white border border-surface-border text-gray-700 hover:bg-surface-off font-medium px-4 py-2.5 rounded-lg text-sm"
+        >
+          Not now
+        </button>
+      </div>
+    </div>
+  )
 }

@@ -7,9 +7,22 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          sentry: ['@sentry/react'],
-          vendor: ['react', 'react-dom', 'framer-motion'],
+        // Function form: split by module path so we can peel victory-vendor
+        // (recharts' bundled d3) into its own chunk — it only exposes subpath
+        // exports, so the object form can't resolve it as an entry. Both chart
+        // chunks are lazy-loaded (fetched only when a dashboard chart renders).
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('victory-vendor') || /node_modules\/d3-/.test(id)) return 'charts-d3'
+            if (id.includes('recharts')) return 'charts'
+            if (id.includes('@sentry')) return 'sentry'
+            if (
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-dom/') ||
+              id.includes('framer-motion')
+            )
+              return 'vendor'
+          }
         },
       },
     },

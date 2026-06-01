@@ -60,6 +60,7 @@ from routes.reports import router as reports_router  # noqa: E402
 from routes.career_chat import router as career_chat_router  # noqa: E402
 from routes.signup import router as signup_router  # noqa: E402
 from routes.payments import router as payments_router  # noqa: E402
+from routes.retention import router as retention_router  # noqa: E402
 
 app.include_router(health_router)
 app.include_router(agent_router)
@@ -70,6 +71,7 @@ app.include_router(reports_router)
 app.include_router(career_chat_router)
 app.include_router(signup_router)
 app.include_router(payments_router)
+app.include_router(retention_router)
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +86,12 @@ from cache import init_redis, close_redis  # noqa: E402
 async def lifespan(application: FastAPI):
     await init_db()
     await init_redis()
+    # Retention email dispatcher — no-ops unless EMAIL_DISPATCHER_ENABLED=true.
+    import asyncio
+    from services.email_dispatcher import run_dispatcher_loop
+    dispatcher_task = asyncio.create_task(run_dispatcher_loop())
     yield
+    dispatcher_task.cancel()
     await close_redis()
     await close_db()
 
