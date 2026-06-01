@@ -101,8 +101,7 @@ export function toMockResults(backend: any): MockResults {
                 evidence: mapEvidence(x?.evidence, r.data_source?.includes('resume') ? 'resume' : 'linkedin'),
                 narrative: asString(x?.narrative, '') || undefined,
             }))
-            if (byList.length) return byList
-            // Fallback: derive from dimension_scores (1-5 scale → 0-100)
+            // All 8 dimensions from dimension_scores (1-5 scale → 0-100).
             const dimWeightMap: Record<string, string> = {
                 ai_fluency: 'High', technical_proximity: 'High',
                 governance_awareness: 'Med', learning_velocity: 'Med',
@@ -117,7 +116,7 @@ export function toMockResults(backend: any): MockResults {
             }
             const dims = r.dimension_scores && typeof r.dimension_scores === 'object' ? r.dimension_scores : {}
             const dataSource = asString(r.data_source, 'linkedin')
-            return Object.keys(dims).map((k) => {
+            const fromDims = Object.keys(dims).map((k) => {
                 const v = (dims as any)[k] || {}
                 const raw = asNumber(v.score, 0)
                 return {
@@ -131,6 +130,15 @@ export function toMockResults(backend: any): MockResults {
                     narrative: asString(v.narrative, '') || undefined,
                 }
             })
+            // No curated LLM breakdown → use the full dimension set.
+            if (!byList.length) return fromDims
+            // The LLM's score_breakdown_list usually covers only ~6 dimensions.
+            // Keep its richer entries, but append any canonical dimension it
+            // omitted (e.g. Automation Exposure, Network Relevance) so the
+            // dashboard shows all 8 real scores instead of 0 for the gaps.
+            const present = new Set(byList.map((f: any) => String(f.name).trim().toLowerCase()))
+            const missing = fromDims.filter((f) => f.name && !present.has(f.name.trim().toLowerCase()))
+            return [...byList, ...missing]
         })(),
         workflowItems: (Array.isArray(r.workflow_items) ? r.workflow_items : []).map((x: any) => ({
             name: asString(x?.name, ''),
