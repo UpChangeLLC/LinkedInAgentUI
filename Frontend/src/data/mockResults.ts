@@ -160,6 +160,13 @@ export interface CareerPathway {
 
 export interface MockResults {
   score: number;
+  // Resilience-score v1 shape (from the ml_client seam; optional — absent for mock data).
+  resilienceScore?: number;
+  readinessScore?: number;
+  resiliencePercentile?: number | null;
+  readinessPercentile?: number | null;
+  scoringVersion?: string;
+  shapAttribution?: { dimension: string; contribution_points: number; direction?: 'positive' | 'negative' }[];
   riskBand: string;
   scoreNarrative: string;
   executiveBrief: string;
