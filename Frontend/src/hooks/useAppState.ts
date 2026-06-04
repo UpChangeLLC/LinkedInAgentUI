@@ -18,6 +18,7 @@ import {
   consumeOAuthRedirect,
   consumePendingOAuthSignup,
   getStoredSignupSession,
+  isAuthRestoreError,
   refreshSignupSession,
   restoreSignupSession,
   saveSignupSession,
@@ -306,7 +307,7 @@ export function useAppState() {
             setCurrentPage('landing');
           }
         }
-      } catch {
+      } catch (err: any) {
         clearStoredSignupSession();
         setSignupSession(null);
         setSignupCompleted(false);
@@ -314,7 +315,17 @@ export function useAppState() {
         setSubscriptionActive(false);
         setPaywallLocked(false);
         setPaywallDeadlineMs(null);
-        setCurrentPage('landing');
+        // An expired/invalid token shouldn't silently drop the user to the
+        // logged-out landing page (where premium features look "broken").
+        // Surface a clear re-login prompt; only fall back to landing on a
+        // transient network/server error.
+        if (isAuthRestoreError(err?.message)) {
+          setSignupError('Your session expired — please log in again.');
+          setSignupInitialMode('login');
+          setCurrentPage('signup');
+        } else {
+          setCurrentPage('landing');
+        }
       } finally {
         setAuthRestoring(false);
       }

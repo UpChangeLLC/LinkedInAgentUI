@@ -134,6 +134,16 @@ export function getStoredSignupSession(): StoredSignupSession | null {
     }
 }
 
+/**
+ * True when a session-restore error indicates an expired/invalid token
+ * (auth) rather than a transient network/server failure. Used to decide
+ * whether to surface a "session expired — please log in" prompt vs. silently
+ * staying logged out.
+ */
+export function isAuthRestoreError(message: string): boolean {
+    return /not found|invalid|expired|unauthor|forbidden|\b40[0-9]\b/i.test(String(message || ''))
+}
+
 export function clearStoredSignupSession(): void {
     try {
         localStorage.removeItem(SESSION_KEY)
