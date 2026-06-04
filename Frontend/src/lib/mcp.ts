@@ -93,6 +93,42 @@ const RUN_TIMEOUT_MS = 5 * 60 * 1000   // 5 minutes for full pipeline
 const PREVIEW_TIMEOUT_MS = 30 * 1000    // 30 seconds for preview
 const SSE_TIMEOUT_MS = 6 * 60 * 1000    // 6 minutes for SSE stream
 
+// ── What-If simulator client ─────────────────────────────────────────────
+
+export interface SimulateScenario { type: string; value?: unknown }
+
+export interface SimulateResult {
+    available: boolean
+    resilience_score: number | null
+    readiness_score: number | null
+    dimension_scores?: Record<string, unknown>
+    scoring_version?: string
+}
+
+/** Re-score the profile with What-If scenario patches applied (POST /api/simulate).
+ * Returns {available:false} when the base profile isn't cached / on any error. */
+export async function simulateScore(payload: {
+    linkedin_url: string
+    survey_responses?: Record<string, unknown> | null
+    user_context?: Record<string, unknown> | null
+    scenarios: SimulateScenario[]
+}): Promise<SimulateResult> {
+    const env = (import.meta as any).env || {}
+    const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? ''
+    try {
+        const res = await fetch(`${String(baseUrl).replace(/\/+$/, '')}/api/simulate`, {
+            method: 'POST',
+            headers: jsonHeaders(),
+            body: JSON.stringify(payload),
+            signal: timeoutSignal(20_000),
+        })
+        if (!res.ok) return { available: false, resilience_score: null, readiness_score: null }
+        return (await res.json()) as SimulateResult
+    } catch {
+        return { available: false, resilience_score: null, readiness_score: null }
+    }
+}
+
 export async function mcpRun(payload: McpRunPayload): Promise<AgentRunResponse> {
     const env = (import.meta as any).env || {}
     const baseUrl = (env.VITE_MCP_BASE_URL as string | undefined) ?? ''

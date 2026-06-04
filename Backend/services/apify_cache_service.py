@@ -125,6 +125,45 @@ async def _pg_get(url_hash: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+async def _pg_get_any_age(url_hash: str) -> Optional[Dict[str, Any]]:
+    """Like _pg_get but WITHOUT the expires_at filter — the row's raw_data is
+    still a valid profile snapshot even after the 7-day scrape TTL lapses."""
+    try:
+        from db import _session_factory
+        if not _session_factory:
+            return None
+        from sqlalchemy import select
+        from db_models import ApifyCache
+
+        async with _session_factory() as session:
+            stmt = select(ApifyCache).where(ApifyCache.url_hash == url_hash)
+            row = (await session.execute(stmt)).scalar_one_or_none()
+            if not row:
+                return None
+            return {"dataset_id": row.dataset_id, "raw_data": row.raw_data}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("apify_cache_pg_read_error", error=str(exc))
+        return None
+
+
+async def get_cached_dataset_any_age(url_hash: str) -> Optional[Dict[str, Any]]:
+    """Read cached Apify data ignoring TTL expiry (Redis → PostgreSQL).
+
+    Used by the What-If simulator: a slightly-stale base profile is acceptable
+    for a re-score, and the simulator shouldn't silently fall back to estimates
+    just because the 7-day scrape cache lapsed.
+    """
+    if redis_available():
+        hit = await cache_get_json(_redis_key(url_hash))
+        if hit and isinstance(hit, dict) and hit.get("dataset_id"):
+            return hit
+    if db_available():
+        row = await _pg_get_any_age(url_hash)
+        if row:
+            return row
+    return None
+
+
 async def _pg_record_hit(url_hash: str) -> None:
     try:
         from db import _session_factory
