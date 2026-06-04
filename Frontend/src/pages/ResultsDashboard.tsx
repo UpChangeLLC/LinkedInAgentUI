@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
-  ArrowLeft, ArrowRight, BarChart3, BookOpen, Clock, History, LayoutGrid, ListChecks,
-  Lock, MessageSquare, Share2, Sparkles, Target, TrendingUp, User, X,
+  AlertTriangle, ArrowLeft, ArrowRight, BarChart3, BookOpen, Building2, CheckCircle2, Clock,
+  History, LayoutGrid, ListChecks, Lock, MessageSquare, Newspaper, Sparkles, Target,
+  TrendingUp, User, X,
 } from 'lucide-react'
 import { MockResults } from '../data/mockResults'
 import { rerunNote } from '../lib/dashboardCopy'
@@ -13,9 +14,14 @@ import { PersonalRoadmapSection } from '../components/dashboard/PersonalRoadmapS
 import { ActionTrackerSection } from '../components/dashboard/ActionTrackerSection'
 import { SkillGapMatrixSection } from '../components/dashboard/SkillGapMatrixSection'
 import { LearningResourcesSection } from '../components/dashboard/LearningResourcesSection'
+import { CareerPathwaysSection } from '../components/dashboard/CareerPathwaysSection'
+import { AINewsFeedSection } from '../components/dashboard/AINewsFeedSection'
+import { WhatIfSimulatorSection } from '../components/dashboard/WhatIfSimulatorSection'
+import { PremiumTeaser } from '../components/dashboard/PremiumTeaser'
 import { DimensionRadar } from '../components/dashboard/DimensionRadar'
 
-export type DashboardSection = 'overview' | 'roadmap' | 'actions' | 'skills' | 'learning'
+export type DashboardSection =
+  | 'overview' | 'roadmap' | 'actions' | 'skills' | 'learning' | 'pathways' | 'whatif' | 'news'
 
 interface ResultsDashboardProps {
   results: MockResults
@@ -71,6 +77,14 @@ export function ResultsDashboard({
   const tier: 'free' | 'premium' = subscriptionActive ? 'premium' : 'free'
   const openUpsell = () => (onSubscriptions ? onSubscriptions() : setUpsellOpen(true))
 
+  // Sidebar items for content that lives on the overview (score, dimensions,
+  // history) switch back to overview and scroll to the relevant card.
+  const goToOverviewAnchor = (id: string) => {
+    setActiveSection('overview')
+    requestAnimationFrame(() =>
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
+
   // Prefer the ml_client resilience/readiness shape; fall back to legacy score
   // (and the readiness placeholder) only for mock/no-backend data.
   const score = results.resilienceScore ?? results.score ?? 0
@@ -98,6 +112,7 @@ export function ResultsDashboard({
             tier={tier}
             activeSection={activeSection}
             onSelect={setActiveSection}
+            onAnchor={goToOverviewAnchor}
             onOpenCareerMentor={onOpenCareerMentor}
             onUpsell={openUpsell}
           />
@@ -107,14 +122,39 @@ export function ResultsDashboard({
               <>
                 <WelcomeStrip onRerun={onRecalculate} tier={tier} />
 
-                <HeadlineScoresCard
-                  score={score}
-                  readiness={readiness}
-                  riskBand={riskBand}
-                  cohortName={cohortName}
-                />
+                <div id="overview-score">
+                  <HeadlineScoresCard
+                    score={score}
+                    readiness={readiness}
+                    riskBand={riskBand}
+                    cohortName={cohortName}
+                  />
+                </div>
 
-                <DimensionBreakdownCard factors={results.scoreFactors} tier={tier} onUpsell={openUpsell} />
+                <div id="overview-dimensions">
+                  <DimensionBreakdownCard factors={results.scoreFactors} tier={tier} onUpsell={openUpsell} />
+                </div>
+
+                <div id="overview-strengths">
+                  <PremiumTeaser tier={tier} title="Personal Strength Analysis"
+                    teaser="See the specific strengths anchoring your resilience." onUnlock={openUpsell}>
+                    <StrengthsCard strengths={results.personalRisk?.keyStrengths || []} />
+                  </PremiumTeaser>
+                </div>
+
+                <div id="overview-vulnerabilities">
+                  <PremiumTeaser tier={tier} title="Critical Vulnerabilities"
+                    teaser="See where you're most exposed to AI disruption — and how urgent it is." onUnlock={openUpsell}>
+                    <VulnerabilitiesCard vulnerabilities={results.personalRisk?.vulnerabilities || []} />
+                  </PremiumTeaser>
+                </div>
+
+                <div id="overview-industry">
+                  <PremiumTeaser tier={tier} title="Industry Context"
+                    teaser="How AI is reshaping your industry, with the top threat and opportunity." onUnlock={openUpsell}>
+                    <IndustryContextCard industry={results.industryContext} />
+                  </PremiumTeaser>
+                </div>
 
                 <SummaryParagraphCard
                   name={displayName.split(/\s+/)[0]}
@@ -124,7 +164,9 @@ export function ResultsDashboard({
                   backendResult={formData?.backend?.result}
                 />
 
-                <ScoreTrajectorySection urlHash={results.urlHash} tier={tier} onRerun={onRecalculate} />
+                <div id="overview-history">
+                  <ScoreTrajectorySection urlHash={results.urlHash} tier={tier} onRerun={onRecalculate} />
+                </div>
                 <CohortMovementSection role={results.personalProfile?.title} userScore={score} />
 
                 {tier === 'free' && (
@@ -143,6 +185,11 @@ export function ResultsDashboard({
               <SectionView
                 section={activeSection}
                 results={results}
+                score={score}
+                riskBand={riskBand}
+                linkedinUrl={formData?.linkedinUrl || formData?.linkedin_url || ''}
+                surveyResponses={formData?.surveyResponses || formData?.survey || null}
+                userContext={formData?.userContext || formData?.user_context || null}
                 onBack={() => setActiveSection('overview')}
               />
             )}
@@ -160,8 +207,17 @@ export function ResultsDashboard({
 // ── Premium section view ────────────────────────────────────────────────
 
 function SectionView({
-  section, results, onBack,
-}: { section: DashboardSection; results: MockResults; onBack: () => void }) {
+  section, results, score, riskBand, linkedinUrl, surveyResponses, userContext, onBack,
+}: {
+  section: DashboardSection
+  results: MockResults
+  score: number
+  riskBand: string
+  linkedinUrl?: string
+  surveyResponses?: Record<string, unknown> | null
+  userContext?: Record<string, unknown> | null
+  onBack: () => void
+}) {
   return (
     <div className="space-y-6">
       <button
@@ -175,7 +231,121 @@ function SectionView({
         {section === 'actions' && <ActionTrackerSection urlHash={results.urlHash ?? ''} />}
         {section === 'skills' && <SkillGapMatrixSection skills={results.skillGapMatrix} />}
         {section === 'learning' && <LearningResourcesSection skills={results.skillGapMatrix} />}
+        {section === 'pathways' && (
+          <CareerPathwaysSection pathways={results.careerPathways} currentRole={results.personalProfile?.title} />
+        )}
+        {section === 'whatif' && (
+          <WhatIfSimulatorSection
+            currentScore={score}
+            riskBand={riskBand}
+            currentRole={results.personalProfile?.title}
+            linkedinUrl={linkedinUrl}
+            surveyResponses={surveyResponses}
+            userContext={userContext}
+          />
+        )}
+        {section === 'news' && (
+          <AINewsFeedSection
+            role={results.personalProfile?.title}
+            industry={results.industryContext?.name}
+            topSkillGaps={(results.skillGapMatrix || []).slice(0, 5).map((s) => s.name)}
+          />
+        )}
       </div>
+    </div>
+  )
+}
+
+// ── Overview sub-sections (light, premium-gated via PremiumTeaser) ───────
+
+function StrengthsCard({ strengths }: { strengths: { title: string; detail: string }[] }) {
+  if (!strengths.length) return null
+  return (
+    <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7">
+      <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+        <CheckCircle2 className="w-5 h-5 text-emerald-600" /> Personal Strength Analysis
+      </h2>
+      <p className="text-sm text-gray-500 mt-1">What anchors your AI resilience today.</p>
+      <ul className="mt-5 space-y-4">
+        {strengths.map((s, i) => (
+          <li key={i} className="border-l-2 border-emerald-500 pl-4">
+            <div className="font-semibold text-gray-900">{s.title}</div>
+            <div className="text-sm text-gray-600 mt-0.5 leading-relaxed">{s.detail}</div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function VulnerabilitiesCard({
+  vulnerabilities,
+}: { vulnerabilities: { title: string; detail: string; urgency: 'high' | 'medium' | 'low' }[] }) {
+  if (!vulnerabilities.length) return null
+  const urgencyStyle: Record<string, string> = {
+    high: 'text-red-700 bg-red-50',
+    medium: 'text-amber-700 bg-amber-50',
+    low: 'text-emerald-700 bg-emerald-50',
+  }
+  return (
+    <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7">
+      <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+        <AlertTriangle className="w-5 h-5 text-red-600" /> Critical Vulnerabilities
+      </h2>
+      <p className="text-sm text-gray-500 mt-1">Where you're most exposed to AI disruption.</p>
+      <ul className="mt-5 space-y-4">
+        {vulnerabilities.map((v, i) => (
+          <li key={i} className="border-l-2 border-red-400 pl-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-semibold text-gray-900">{v.title}</div>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${urgencyStyle[v.urgency] || urgencyStyle.medium}`}>
+                {v.urgency} urgency
+              </span>
+            </div>
+            <div className="text-sm text-gray-600 mt-0.5 leading-relaxed">{v.detail}</div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function IndustryContextCard({ industry }: { industry?: MockResults['industryContext'] }) {
+  if (!industry) return null
+  return (
+    <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7">
+      <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+        <Building2 className="w-5 h-5 text-linkedin" /> Industry Context: {industry.name}
+      </h2>
+      <div className="mt-5 grid md:grid-cols-3 gap-6">
+        <div className="text-center bg-surface-off rounded-xl p-4">
+          <div className="text-3xl font-bold text-linkedin tabular-nums">{industry.aiAdoptionRate}%</div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">Sector AI Adoption</div>
+        </div>
+        <div className="md:col-span-2 space-y-3">
+          {industry.topThreat && (
+            <div className="flex gap-3">
+              <div className="w-1 rounded-full bg-red-400 flex-shrink-0" />
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">Top Threat</div>
+                <p className="text-sm text-gray-800">{industry.topThreat}</p>
+              </div>
+            </div>
+          )}
+          {industry.topOpportunity && (
+            <div className="flex gap-3">
+              <div className="w-1 rounded-full bg-emerald-400 flex-shrink-0" />
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-600">Top Opportunity</div>
+                <p className="text-sm text-gray-800">{industry.topOpportunity}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      {industry.regulatoryNote && (
+        <p className="text-xs text-gray-500 mt-4 border-t border-surface-border pt-3">{industry.regulatoryNote}</p>
+      )}
     </div>
   )
 }
@@ -220,11 +390,12 @@ function DashboardHeader({
 // ── Sidebar ─────────────────────────────────────────────────────────────
 
 export function Sidebar({
-  tier, activeSection, onSelect, onOpenCareerMentor, onUpsell,
+  tier, activeSection, onSelect, onAnchor, onOpenCareerMentor, onUpsell,
 }: {
   tier: 'free' | 'premium'
   activeSection: DashboardSection
   onSelect: (section: DashboardSection) => void
+  onAnchor: (id: string) => void
   onOpenCareerMentor?: () => void
   onUpsell: () => void
 }) {
@@ -246,9 +417,12 @@ export function Sidebar({
 
   const services: { icon: React.ReactNode; label: string; section?: DashboardSection; mentor?: boolean }[] = [
     { icon: <Target className="w-4 h-4" />, label: 'Personal roadmap', section: 'roadmap' },
+    { icon: <TrendingUp className="w-4 h-4" />, label: 'Career pathways', section: 'pathways' },
+    { icon: <Sparkles className="w-4 h-4" />, label: 'What-if simulator', section: 'whatif' },
     { icon: <ListChecks className="w-4 h-4" />, label: 'Action tracker', section: 'actions' },
     { icon: <LayoutGrid className="w-4 h-4" />, label: 'Skill gap matrix', section: 'skills' },
     { icon: <BookOpen className="w-4 h-4" />, label: 'Learning library', section: 'learning' },
+    { icon: <Newspaper className="w-4 h-4" />, label: 'AI news feed', section: 'news' },
     { icon: <MessageSquare className="w-4 h-4" />, label: 'Career mentor', mentor: true },
   ]
 
@@ -256,8 +430,8 @@ export function Sidebar({
     <aside className="hidden lg:block">
       <nav className="space-y-1">
         {item(activeSection === 'overview', false, <LayoutGrid className="w-4 h-4" />, 'Overview', () => onSelect('overview'))}
-        {item(false, false, <User className="w-4 h-4" />, 'Your score', () => onSelect('overview'))}
-        {item(false, false, <BarChart3 className="w-4 h-4" />, 'Dim breakdown', () => onSelect('overview'))}
+        {item(false, false, <User className="w-4 h-4" />, 'Your score', () => onAnchor('overview-score'))}
+        {item(false, false, <BarChart3 className="w-4 h-4" />, 'Dim breakdown', () => onAnchor('overview-dimensions'))}
 
         <div className="my-3 border-t border-surface-border" />
         {tier === 'free' && (
@@ -280,8 +454,7 @@ export function Sidebar({
         })}
 
         <div className="my-3 border-t border-surface-border" />
-        {item(false, false, <History className="w-4 h-4" />, 'History')}
-        {item(false, false, <Share2 className="w-4 h-4" />, 'Share')}
+        {item(false, false, <History className="w-4 h-4" />, 'History', () => onAnchor('overview-history'))}
       </nav>
     </aside>
   )
