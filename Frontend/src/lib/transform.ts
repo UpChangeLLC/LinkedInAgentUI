@@ -106,17 +106,15 @@ export function toMockResults(backend: any): MockResults {
                     .map((e: any) => ({ text: String(e), source: source as any }))
             }
 
-            const byList = (Array.isArray(r.score_breakdown_list) ? r.score_breakdown_list : []).map((x: any) => ({
-                name: asString(x?.name, ''),
-                weight: asString(x?.weight || x?.importance || '', ''),
-                value: asNumber(x?.value ?? x?.score, 0),
-                explanation: asString(x?.why || x?.explanation, ''),
-                personalContext: asString(x?.personal_context || x?.context || '', ''),
-                confidence: (asString(x?.confidence, '') as any) || undefined,
-                evidence: mapEvidence(x?.evidence, r.data_source?.includes('resume') ? 'resume' : 'linkedin'),
-                narrative: asString(x?.narrative, '') || undefined,
-            }))
-            // All 8 dimensions from dimension_scores (1-5 scale → 0-100).
+            // The LLM's score_breakdown_list, indexed by name — used ONLY for the
+            // richer rationale text. The bar VALUE comes from dimension_scores
+            // (the ML scores that actually drive resilience), so the dashboard
+            // dimensions are consistent with the headline score rather than the
+            // LLM's inflated self-assessment.
+            const llmByName = new Map<string, any>()
+            for (const x of (Array.isArray(r.score_breakdown_list) ? r.score_breakdown_list : [])) {
+                llmByName.set(asString(x?.name, '').trim().toLowerCase(), x)
+            }
             const dimWeightMap: Record<string, string> = {
                 ai_fluency: 'High', technical_proximity: 'High',
                 governance_awareness: 'Med', learning_velocity: 'Med',
@@ -131,29 +129,38 @@ export function toMockResults(backend: any): MockResults {
             }
             const dims = r.dimension_scores && typeof r.dimension_scores === 'object' ? r.dimension_scores : {}
             const dataSource = asString(r.data_source, 'linkedin')
+            // dimension_scores are 0-10 under v1 (ML) and 1-5 under the v0 rubric.
+            // Normalize to 0-100 for the shared scoreFactors scale.
+            const dimVals = Object.values(dims).map((v: any) => asNumber(v?.score, 0))
+            const is0to10 = asString(r.scoring_version, '') === 'v1' || (dimVals.length > 0 && Math.max(...dimVals) > 5)
+            const to100 = (raw: number) => Math.round(Math.max(0, Math.min(10, is0to10 ? raw : raw * 2)) * 10)
             const fromDims = Object.keys(dims).map((k) => {
                 const v = (dims as any)[k] || {}
                 const raw = asNumber(v.score, 0)
+                const llm = llmByName.get((dimNameMap[k] || k).trim().toLowerCase())
                 return {
                     name: dimNameMap[k] || asString(k, ''),
-                    weight: dimWeightMap[k] || 'Med',
-                    value: Math.round(raw * 20),
-                    explanation: asString(v.rationale, ''),
-                    personalContext: asString(v.rationale, ''),
+                    weight: asString(llm?.weight || llm?.importance || dimWeightMap[k] || 'Med', ''),
+                    value: to100(raw),
+                    explanation: asString(llm?.why || llm?.explanation || v.rationale, ''),
+                    personalContext: asString(llm?.personal_context || llm?.context || v.rationale, ''),
                     confidence: (asString(v.confidence, '') as any) || undefined,
-                    evidence: mapEvidence(v.evidence, dataSource.includes('resume') ? 'resume' : 'linkedin'),
-                    narrative: asString(v.narrative, '') || undefined,
+                    evidence: mapEvidence(llm?.evidence || v.evidence, dataSource.includes('resume') ? 'resume' : 'linkedin'),
+                    narrative: asString(llm?.narrative || v.narrative, '') || undefined,
                 }
             })
-            // No curated LLM breakdown → use the full dimension set.
-            if (!byList.length) return fromDims
-            // The LLM's score_breakdown_list usually covers only ~6 dimensions.
-            // Keep its richer entries, but append any canonical dimension it
-            // omitted (e.g. Automation Exposure, Network Relevance) so the
-            // dashboard shows all 8 real scores instead of 0 for the gaps.
-            const present = new Set(byList.map((f: any) => String(f.name).trim().toLowerCase()))
-            const missing = fromDims.filter((f) => f.name && !present.has(f.name.trim().toLowerCase()))
-            return [...byList, ...missing]
+            if (fromDims.length) return fromDims
+            // No dimension_scores at all → fall back to the LLM breakdown as-is.
+            return (Array.isArray(r.score_breakdown_list) ? r.score_breakdown_list : []).map((x: any) => ({
+                name: asString(x?.name, ''),
+                weight: asString(x?.weight || x?.importance || '', ''),
+                value: asNumber(x?.value ?? x?.score, 0),
+                explanation: asString(x?.why || x?.explanation, ''),
+                personalContext: asString(x?.personal_context || x?.context || '', ''),
+                confidence: (asString(x?.confidence, '') as any) || undefined,
+                evidence: mapEvidence(x?.evidence, r.data_source?.includes('resume') ? 'resume' : 'linkedin'),
+                narrative: asString(x?.narrative, '') || undefined,
+            }))
         })(),
         workflowItems: (Array.isArray(r.workflow_items) ? r.workflow_items : []).map((x: any) => ({
             name: asString(x?.name, ''),

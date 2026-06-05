@@ -62,9 +62,9 @@ function pickDim(factors: MockResults['scoreFactors'] | undefined, name: string)
     || (factors || []).find((x) => x.name.toLowerCase().includes(target))
   if (!f) return 0
   const v = typeof f.value === 'number' ? f.value : 0
-  // Normalize any input scale (0–5, 0–10, or 0–100) into a 0–10 display value.
-  const tenScale = v > 10 ? v / 10 : v
-  return Math.max(0, Math.min(10, tenScale))
+  // scoreFactors.value is always on a 0–100 scale (transform normalizes it);
+  // divide by 10 for the 0–10 display. (Deterministic — no scale guessing.)
+  return Math.max(0, Math.min(10, v / 10))
 }
 
 /** Mock-aligned free-tier dashboard (Career-AI/onboarding-flow-mock.html §7). */

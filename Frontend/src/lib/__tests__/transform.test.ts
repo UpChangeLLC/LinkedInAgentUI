@@ -98,12 +98,36 @@ describe('toMockResults', () => {
     expect(names).toContain('Automation Exposure');
     expect(names).toContain('Network Relevance');
 
-    // Omitted dims are filled from dimension_scores (1–5 → ×20), not left at 0.
+    // Bar values come from dimension_scores (1–5 → ×20), never left at 0.
     expect(result.scoreFactors.find((f) => f.name === 'Automation Exposure')!.value).toBe(40); // 2*20
     expect(result.scoreFactors.find((f) => f.name === 'Network Relevance')!.value).toBe(60); // 3*20
 
-    // The richer LLM entries are preserved (not overwritten by dimension_scores).
-    expect(result.scoreFactors.find((f) => f.name === 'AI Fluency')!.value).toBe(90);
+    // Bar value comes from dimension_scores (ML), NOT the LLM breakdown value (90).
+    expect(result.scoreFactors.find((f) => f.name === 'AI Fluency')!.value).toBe(100); // dims 5 (1-5) -> 100
+  });
+
+  it('bar values reflect ML dimension_scores (0-10, v1), not the inflated LLM breakdown', () => {
+    const backend = {
+      scoring_version: 'v1',
+      score_breakdown_list: [
+        { name: 'AI Fluency', weight: 'High', value: 100, explanation: 'LLM rationale' },
+        { name: 'Execution Credibility', weight: 'Med', value: 100 },
+      ],
+      dimension_scores: {
+        ai_fluency: { score: 5.2 }, technical_proximity: { score: 6 },
+        governance_awareness: { score: 1 }, learning_velocity: { score: 3 },
+        leadership_readiness: { score: 3 }, network_relevance: { score: 1.2 },
+        automation_exposure: { score: 4 }, execution_credibility: { score: 1 },
+      },
+    };
+    const r = toMockResults(backend);
+    const ai = r.scoreFactors.find((f) => f.name === 'AI Fluency')!;
+    // ML 5.2/10 -> 52 (not the LLM's 100), and the LLM rationale is preserved.
+    expect(ai.value).toBe(52);
+    expect(ai.explanation).toBe('LLM rationale');
+    // A low ML dim renders correctly (1.0/10 -> 10 on the 0-100 scale, shows 1.0).
+    expect(r.scoreFactors.find((f) => f.name === 'Execution Credibility')!.value).toBe(10);
+    expect(r.scoreFactors.find((f) => f.name === 'Technical Proximity')!.value).toBe(60);
   });
 
   it('maps skill_gap_matrix correctly', () => {
