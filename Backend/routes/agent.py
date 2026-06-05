@@ -249,6 +249,8 @@ async def _store_assessment_history(
     risk_band: str,
     pipeline_run_id=None,
     profile_id=None,
+    resilience_score: Optional[int] = None,
+    readiness_score: Optional[int] = None,
 ) -> None:
     """Insert a new assessment history entry. Fire-and-forget."""
     from db import db_available, _session_factory
@@ -265,6 +267,8 @@ async def _store_assessment_history(
             risk_band=risk_band,
             pipeline_run_id=pipeline_run_id,
             profile_id=profile_id,
+            resilience_score=resilience_score,
+            readiness_score=readiness_score,
         )
         async with _session_factory() as session:
             session.add(entry)
@@ -493,8 +497,10 @@ async def _run_agent(
         if url_hash:
             result["_url_hash"] = url_hash
 
-        # F22: Compute score delta from previous assessment
-        current_score = int(result.get("profile_score", 0))
+        # F22: Compute score delta from previous assessment.
+        # Canonical displayed score = resilience (v1); for v0, resilience == profile_score.
+        current_score = int(result.get("resilience_score") or result.get("profile_score") or 0)
+        current_readiness = int(result.get("readiness_score") or current_score)
         current_dims = result.get("dimension_scores", {}) or {}
         delta_data = await _compute_score_delta(url_hash, current_score, current_dims)
         if delta_data:
@@ -551,6 +557,8 @@ async def _run_agent(
                 risk_band=risk_band,
                 pipeline_run_id=run_id,
                 profile_id=profile_id,
+                resilience_score=current_score,
+                readiness_score=current_readiness,
             )
 
         # F24: Store action items if present in result
@@ -746,7 +754,9 @@ async def mcp_run_stream(
                 )
 
             if url_hash and final_result and not error_info:
-                current_score = int(final_result.get("profile_score", 0))
+                # Canonical score = resilience (v1); v0 has resilience == profile_score.
+                current_score = int(final_result.get("resilience_score") or final_result.get("profile_score") or 0)
+                current_readiness = int(final_result.get("readiness_score") or current_score)
                 current_dims = final_result.get("dimension_scores", {}) or {}
                 overall = final_result.get("overall_assessment", {}) or {}
                 risk_band = overall.get("ai_readiness", "")
@@ -757,6 +767,8 @@ async def mcp_run_stream(
                     risk_band=risk_band,
                     pipeline_run_id=run_id,
                     profile_id=profile_id,
+                    resilience_score=current_score,
+                    readiness_score=current_readiness,
                 )
 
                 action_items_data = final_result.get("action_items", [])
