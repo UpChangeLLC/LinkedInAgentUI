@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from services.payments.base import PLAN_CATALOG, PaymentProvider
 from services.payments.mock_provider import MockPaymentProvider
 from services.payments.razorpay_provider import RazorpayPaymentProvider
+from services.payments.stripe_provider import StripePaymentProvider
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/payments", tags=["payments"])
@@ -38,6 +39,7 @@ def _session_payload(row: Any, access_token: Optional[str] = None) -> Dict[str, 
         "full_name": row.full_name,
         "access_token": access_token,
         "subscription_status": row.subscription_status,
+        "subscription_tier": getattr(row, "subscription_tier", "free"),
         "subscription_active": _is_active(row.subscription_status, expires),
         "subscription_expires_at": expires.isoformat() if expires else None,
         "latest_assessment_result": row.assessment_snapshot if isinstance(row.assessment_snapshot, dict) else None,
@@ -55,6 +57,8 @@ def _payment_provider() -> PaymentProvider:
         return MockPaymentProvider()
     if provider == "razorpay":
         return RazorpayPaymentProvider()
+    if provider == "stripe":
+        return StripePaymentProvider()
     raise RuntimeError(f"Payment provider '{provider}' is not implemented.")
 
 
@@ -124,7 +128,16 @@ async def create_checkout(body: CheckoutRequest) -> JSONResponse:
             if not row:
                 return JSONResponse({"status": "error", "detail": "Session not found."}, status_code=404)
 
-            checkout = await provider.create_checkout_session(user_id=str(row.id), plan=plan)
+            checkout = await provider.create_checkout_session(
+                user_id=str(row.id),
+                plan=plan,
+                customer_id=getattr(row, "stripe_customer_id", None),
+                customer_email=row.email,
+            )
+            # Persist the Stripe customer id the first time we see it.
+            checkout_customer = checkout.get("customer_id")
+            if checkout_customer and not getattr(row, "stripe_customer_id", None):
+                row.stripe_customer_id = checkout_customer
             payment_session = PaymentSession(
                 user_signup_id=row.id,
                 provider=provider.provider_name,
@@ -225,8 +238,12 @@ async def confirm_payment(body: ConfirmPaymentRequest) -> JSONResponse:
             now = datetime.now(timezone.utc)
             base_date = user.subscription_expires_at if _is_active(user.subscription_status, user.subscription_expires_at) else now
             user.subscription_status = "active"
+            user.subscription_tier = "pro"
             user.subscription_expires_at = base_date + timedelta(days=30 * payment_session.months)
             user.last_login_at = now
+            stripe_sub = payment.get("stripe_subscription_id")
+            if stripe_sub:
+                payment_session.stripe_subscription_id = stripe_sub
             payment_session.status = "succeeded"
             payment_session.confirmed_at = now
             payment_session.event_metadata = {**(payment_session.event_metadata or {}), "payment": payment}

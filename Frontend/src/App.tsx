@@ -211,6 +211,7 @@ export function App() {
               subscriptionActive={subscriptionActive}
               submitting={signupSubmitting}
               accountName={accountName}
+              accessToken={signupSession?.accessToken}
               errorMessage={signupError}
               isAuthenticated={Boolean(signupSession?.accessToken)}
               onDashboard={dashboardAvailable ? goToResults : undefined}

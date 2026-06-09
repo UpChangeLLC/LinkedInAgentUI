@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Logo } from '../components/ui/Logo'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { QuestionCard } from '../components/survey/QuestionCard'
@@ -111,10 +112,7 @@ export function SurveyPage({ onSubmit, onBack, draftKey, scrapeStatus }: SurveyP
       <header className="bg-white border-b border-surface-border">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-linkedin flex items-center justify-center">
-              <span className="text-white font-bold text-sm">u</span>
-            </div>
-            <span className="font-semibold text-[15px] text-gray-900">Upchange</span>
+            <Logo variant="compact" size="md" className="text-gray-900" />
           </div>
           <button onClick={goBack} className="text-sm text-gray-500 hover:text-gray-900">← Back</button>
         </div>

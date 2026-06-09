@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Bell, CreditCard, LayoutDashboard, LogOut, MessageCircle, RefreshCw, UserCircle } from 'lucide-react';
 import { LiveCounter } from './LiveCounter';
 import { ThemeToggle } from './ThemeToggle';
-import upchangeLogo from '../../assets/upchange-logo.png';
+import { Logo } from './Logo';
 
 export interface LinkedInNavProps {
   /** Shown left of the logo (e.g. back button on sub-pages). */
@@ -51,7 +51,7 @@ export function LinkedInNav({
     <nav className="sticky top-0 z-50 w-full bg-dark-bg border-b border-dark-border h-14 px-4 md:px-6 lg:px-8 grid grid-cols-3 items-center">
       <div className="flex items-center min-w-0">
         {leadingSlot}
-        <img src={upchangeLogo} alt="UpChange" className="h-7 w-auto logo-themed shrink-0" />
+        <Logo variant="compact" size="md" className="text-dark-textPri" />
       </div>
 
       <div className="flex items-center justify-center gap-3">
@@ -87,6 +87,9 @@ export function LinkedInNav({
           <button
             type="button"
             onClick={() => displayName ? setAccountOpen((v) => !v) : onLogin?.()}
+            aria-label={displayName ? 'Account menu' : 'Log in'}
+            aria-haspopup={displayName ? 'menu' : undefined}
+            aria-expanded={displayName ? accountOpen : undefined}
             className="flex flex-col items-center opacity-70 hover:opacity-100 transition-opacity"
           >
             <UserCircle className="w-6 h-6 text-dark-textSec" />

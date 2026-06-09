@@ -47,15 +47,15 @@ def _normalize_error_message(error_text: str) -> str:
     if "invalid linkedin url" in lower:
         return "LinkedIn URL looks invalid. Please use a profile URL like linkedin.com/in/username."
     if "apify_api_token is not set" in lower:
-        return "LinkedIn fetch is not configured. Set APIFY_API_TOKEN in config.env."
+        return "LinkedIn fetch is not configured. Set APIFY_API_TOKEN in .env."
     if "openai_api_key is not set" in lower:
-        return "OPENAI_API_KEY is missing. Update config.env and try again."
+        return "OPENAI_API_KEY is missing. Update .env and try again."
     if "groq_api_key is not set" in lower:
-        return "GROQ_API_KEY is missing. Update config.env and try again."
+        return "GROQ_API_KEY is missing. Update .env and try again."
     if "anthropic_api_key is not set" in lower:
-        return "ANTHROPIC_API_KEY is missing. Update config.env and try again."
+        return "ANTHROPIC_API_KEY is missing. Update .env and try again."
     if "azure_openai_api_key is not set" in lower or "azure_openai_endpoint is not set" in lower:
-        return "Azure OpenAI settings are incomplete. Check AZURE_OPENAI_* values in config.env."
+        return "Azure OpenAI settings are incomplete. Check AZURE_OPENAI_* values in .env."
     if "pipeline completed without result" in lower:
         return "The analysis pipeline finished without usable output. Please retry."
     return msg or "Something went wrong while processing your request."

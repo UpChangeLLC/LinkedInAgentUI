@@ -7,6 +7,8 @@ import type { CareerPathway } from '../../data/mockResults';
 interface CareerPathwaysSectionProps {
   pathways: CareerPathway[];
   currentRole?: string;
+  /** Navigate to a related section (e.g. skill gaps) to act on this path. */
+  onExplorePath?: () => void;
 }
 
 const DIFFICULTY_CONFIG = {
@@ -15,7 +17,7 @@ const DIFFICULTY_CONFIG = {
   challenging: { label: 'Challenging', color: 'text-dark-red bg-dark-red/10' },
 };
 
-export function CareerPathwaysSection({ pathways, currentRole }: CareerPathwaysSectionProps) {
+export function CareerPathwaysSection({ pathways, currentRole, onExplorePath }: CareerPathwaysSectionProps) {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   if (!pathways.length) return null;
@@ -143,8 +145,11 @@ export function CareerPathwaysSection({ pathways, currentRole }: CareerPathwaysS
                         )}
 
                         {/* CTA */}
-                        <button className="w-full py-2.5 rounded-lg bg-dark-accent text-dark-bg text-sm font-semibold hover:bg-teal-400 transition-colors">
-                          Explore This Path
+                        <button
+                          onClick={onExplorePath}
+                          className="w-full py-2.5 rounded-lg bg-dark-accent text-dark-bg text-sm font-semibold hover:bg-teal-400 transition-colors"
+                        >
+                          See the skills to get there
                         </button>
                       </div>
                     </motion.div>

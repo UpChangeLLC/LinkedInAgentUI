@@ -4,6 +4,7 @@ import {
   ArrowRight, ChevronDown, Github, Globe, HelpCircle, Info, Link as LinkIcon,
 } from 'lucide-react'
 import { ResumeUpload } from '../components/ui/ResumeUpload'
+import { Logo } from '../components/ui/Logo'
 import { normalizeLinkedInUrl } from '../lib/urlNormalize'
 
 interface IntakeFormPageProps {
@@ -125,10 +126,7 @@ export function IntakeFormPage({ onSubmit, onBack, submitting }: IntakeFormPageP
       <header className="bg-white border-b border-surface-border">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-linkedin flex items-center justify-center">
-              <span className="text-white font-bold text-sm">u</span>
-            </div>
-            <span className="font-semibold text-[15px] text-gray-900">Upchange</span>
+            <Logo variant="compact" size="md" className="text-gray-900" />
           </div>
           <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-900">← Back</button>
         </div>

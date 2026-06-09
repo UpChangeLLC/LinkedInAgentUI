@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Logo } from '../ui/Logo'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { MockResults } from '../../data/mockResults'
@@ -15,7 +16,9 @@ interface ScoreRevealProps {
  * breakdown' CTA that closes the overlay onto the dashboard. */
 export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
   const [displayScore, setDisplayScore] = useState(0)
-  const target = Math.max(0, Math.min(100, results.score ?? 0))
+  // Show the canonical v1 AI Resilience score (matches the dashboard headline).
+  // Falls back to the legacy profile_score only when the v1 score is absent.
+  const target = Math.max(0, Math.min(100, results.resilienceScore ?? results.score ?? 0))
 
   useEffect(() => {
     try { trackEvent('score_revealed', { score: target, riskBand: results.riskBand }) } catch { /* ignore */ }
@@ -56,10 +59,7 @@ export function ScoreReveal({ results, onComplete }: ScoreRevealProps) {
         <header className="bg-white border-b border-surface-border">
           <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-md bg-linkedin flex items-center justify-center">
-                <span className="text-white font-bold text-sm">u</span>
-              </div>
-              <span className="font-semibold text-[15px] text-gray-900">Upchange</span>
+              <Logo variant="full" size="lg" className="text-gray-900" />
             </div>
           </div>
         </header>

@@ -330,6 +330,23 @@ export async function createPaymentCheckout(accessToken: string, planId: string)
     return json.checkout
 }
 
+export async function createBillingPortalSession(accessToken: string): Promise<string> {
+    const res = await fetch(`${baseUrl()}/api/payments/stripe/portal`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...mcpAuthHeaders(),
+        },
+        body: JSON.stringify({ access_token: accessToken }),
+        signal: timeoutSignal(30_000),
+    })
+    const json = (await res.json().catch(() => ({}))) as { status?: string; url?: string; detail?: string }
+    if (!res.ok || json.status === 'error' || !json.url) {
+        throw new Error(json.detail || `Could not open billing portal (HTTP ${res.status})`)
+    }
+    return json.url
+}
+
 export async function confirmPaymentCheckout(args: {
     accessToken: string
     sessionId: string

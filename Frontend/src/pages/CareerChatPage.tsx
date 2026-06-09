@@ -3,14 +3,21 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Bot, MessageCircle, RotateCcw, Send, Sparkles, X } from 'lucide-react'
 import { LinkedInNav } from '../components/ui/LinkedInNav'
 import { Button } from '../components/ui/Button'
-import type { CareerChatTurn } from '../lib/careerChat'
+import type { CareerChatTurn, CareerChatSessionSummary } from '../lib/careerChat'
 import {
+    createCareerChatSession,
+    deleteCareerChatSession,
     fetchCareerChatHistory,
     getOrCreateCareerChatSessionId,
+    listCareerChatSessions,
     postCareerChatMessage,
+    renameCareerChatSession,
     resetCareerChatSession,
     rotateCareerChatSessionId,
+    setLastActiveSessionId,
 } from '../lib/careerChat'
+import { ChatSessionSidebar } from '../components/chat/ChatSessionSidebar'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 const SUGGESTED_PROMPTS = [
     'What should I improve first based on my score?',
@@ -40,6 +47,8 @@ export interface CareerChatPageProps {
 
 export function CareerChatPage({ seedAssessmentContext, onBack, embedded = false, onClose }: CareerChatPageProps) {
     const [sessionId, setSessionId] = useState(() => getOrCreateCareerChatSessionId())
+    const [sessions, setSessions] = useState<CareerChatSessionSummary[]>([])
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
     const [messages, setMessages] = useState<CareerChatTurn[]>([])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
@@ -150,6 +159,74 @@ export function CareerChatPage({ seedAssessmentContext, onBack, embedded = false
         setLoading(false)
     }, [sessionId])
 
+    // Saved threads (Pro). Free/anonymous users get an empty list and keep the
+    // single-session experience; the rail only renders when threads exist.
+    const refreshSessions = useCallback(async () => {
+        try {
+            setSessions(await listCareerChatSessions())
+        } catch {
+            setSessions([])
+        }
+    }, [])
+
+    useEffect(() => {
+        void refreshSessions()
+    }, [refreshSessions])
+
+    const onSelectSession = useCallback((sid: string) => {
+        seedSentRef.current = true // don't re-seed assessment context on an existing thread
+        setLastActiveSessionId(sid)
+        setSessionId(sid)
+    }, [])
+
+    const onNewChatSession = useCallback(async () => {
+        try {
+            const created = await createCareerChatSession()
+            setLastActiveSessionId(created.session_id)
+            seedSentRef.current = false
+            setSessionId(created.session_id)
+            setMessages([])
+            await refreshSessions()
+        } catch {
+            // Free tier (402) or sessions disabled — fall back to the single-thread reset.
+            await onReset()
+        }
+    }, [onReset, refreshSessions])
+
+    const onRenameSession = useCallback(async (sid: string, title: string) => {
+        const clean = title.trim()
+        if (!clean) return
+        try {
+            await renameCareerChatSession(sid, clean)
+            await refreshSessions()
+        } catch {
+            /* ignore */
+        }
+    }, [refreshSessions])
+
+    // Delete is confirmed through an on-brand ConfirmDialog (no native confirm()).
+    const onDeleteSession = useCallback((sid: string) => {
+        setPendingDeleteId(sid)
+    }, [])
+
+    const confirmDeleteSession = useCallback(async () => {
+        const sid = pendingDeleteId
+        setPendingDeleteId(null)
+        if (!sid) return
+        try {
+            await deleteCareerChatSession(sid)
+            if (sid === sessionId) {
+                const next = rotateCareerChatSessionId()
+                seedSentRef.current = false
+                setSessionId(next)
+                setMessages([])
+            }
+            await refreshSessions()
+        } catch {
+            /* ignore */
+        }
+    }, [pendingDeleteId, sessionId, refreshSessions])
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -170,7 +247,18 @@ export function CareerChatPage({ seedAssessmentContext, onBack, embedded = false
                 }
             />}
 
-            <div className={`${embedded ? 'h-full px-3 pb-3 pt-3' : 'flex-1 max-w-3xl mx-auto px-4 pb-28 pt-4'} flex flex-col w-full min-h-0`}>
+            <div className="flex-1 flex min-h-0 w-full">
+            {sessions.length > 0 && (
+                <ChatSessionSidebar
+                    sessions={sessions}
+                    activeSessionId={sessionId}
+                    onSelect={onSelectSession}
+                    onNewChat={onNewChatSession}
+                    onRename={onRenameSession}
+                    onDelete={onDeleteSession}
+                />
+            )}
+            <div className={`${embedded ? 'h-full px-3 pb-3 pt-3' : (sessions.length > 0 ? 'flex-1 px-4 pb-28 pt-4' : 'flex-1 max-w-3xl mx-auto px-4 pb-28 pt-4')} flex flex-col min-w-0 min-h-0`}>
                 <div className="flex items-center justify-between gap-3 border-b border-dark-border pb-3">
                     <div className="min-w-0">
                         <div className="flex items-center gap-2 text-dark-accent mb-0.5">
@@ -208,7 +296,7 @@ export function CareerChatPage({ seedAssessmentContext, onBack, embedded = false
                     </div>
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto px-1 py-4 space-y-4">
+                <div role="log" aria-live="polite" aria-label="Conversation with your career mentor" className="flex-1 min-h-0 overflow-y-auto px-1 py-4 space-y-4">
                     {hydrating && (
                         <div className="text-center py-10">
                             <div className="mx-auto mb-3 h-8 w-8 rounded-full border-2 border-dark-accent border-t-transparent animate-spin" />
@@ -298,13 +386,25 @@ export function CareerChatPage({ seedAssessmentContext, onBack, embedded = false
                     <Button
                         type="button"
                         onClick={() => void onSend()}
-                        disabled={loading || hydrating || !input.trim()}
+                        loading={loading}
+                        disabled={hydrating || !input.trim()}
+                        aria-label="Send message"
                         className="bg-linkedin hover:bg-linkedin/90 shrink-0 h-[44px] px-4"
                     >
-                        <Send className="w-4 h-4" />
+                        {!loading && <Send className="w-4 h-4" />}
                     </Button>
                 </div>
             </div>
+            </div>
+            <ConfirmDialog
+                open={pendingDeleteId !== null}
+                title="Delete this chat?"
+                message="This conversation and its messages will be permanently removed."
+                confirmLabel="Delete"
+                destructive
+                onConfirm={() => void confirmDeleteSession()}
+                onCancel={() => setPendingDeleteId(null)}
+            />
         </motion.div>
     )
 }

@@ -3,14 +3,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # VITE_* are baked into the frontend bundle at build time (from the single .env).
+        VITE_MCP_BASE_URL: "${VITE_MCP_BASE_URL:-}"
+        VITE_MCP_API_KEY: "${VITE_MCP_API_KEY:-}"
+        VITE_COMMUNITY_URL: "${VITE_COMMUNITY_URL:-}"
     ports:
       - "8001:8001"
+    # Single source of env for both frontend (build args above) and backend (runtime).
     env_file:
-      - ./Backend/config.env
-    environment:
-      FRONTEND_DIST: /app/dist
-      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@db:5432/linkedin_agent"
-      REDIS_URL: "redis://redis:6379/0"
+      - ./.env
     depends_on:
       db:
         condition: service_healthy

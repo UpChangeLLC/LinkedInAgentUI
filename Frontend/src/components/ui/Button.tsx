@@ -9,12 +9,16 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
+  /** Shows an inline spinner, disables the button, and sets aria-busy. */
+  loading?: boolean;
 }
 export function Button({
   className,
   variant = 'primary',
   size = 'md',
   fullWidth = false,
+  loading = false,
+  disabled,
   children,
   ...props
 }: ButtonProps) {
@@ -32,13 +36,14 @@ export function Button({
     md: 'h-11 px-6 text-base',
     lg: 'h-14 px-8 text-lg'
   };
+  const isDisabled = disabled || loading;
   return (
     <motion.button
       whileHover={{
-        scale: props.disabled ? 1 : 1.02
+        scale: isDisabled ? 1 : 1.02
       }}
       whileTap={{
-        scale: props.disabled ? 1 : 0.98
+        scale: isDisabled ? 1 : 0.98
       }}
       className={cn(
         baseStyles,
@@ -47,8 +52,16 @@ export function Button({
         fullWidth && 'w-full',
         className
       )}
+      disabled={isDisabled}
+      aria-busy={loading || undefined}
       {...props}>
-      
+
+      {loading && (
+        <span
+          className="mr-2 inline-block h-4 w-4 shrink-0 rounded-full border-2 border-current border-t-transparent animate-spin"
+          aria-hidden="true"
+        />
+      )}
       {children}
     </motion.button>);
 

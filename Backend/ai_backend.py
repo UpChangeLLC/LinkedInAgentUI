@@ -40,7 +40,6 @@ from prompts import (
 )
 
 load_dotenv()
-load_dotenv("config.env", override=False)
 
 os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
 os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
@@ -214,7 +213,7 @@ def get_selected_ai_client() -> Tuple[str, Optional[Union[AsyncOpenAI, AsyncAzur
 
 
 def get_selected_model(ai_client: str) -> str:
-    """Return model name for the selected provider (set in config.env)."""
+    """Return model name for the selected provider (set in .env)."""
     env_map = {
         "openai": "OPENAI_MODEL",
         "groq": "GROQ_MODEL",
@@ -226,7 +225,7 @@ def get_selected_model(ai_client: str) -> str:
         raise RuntimeError(f"Invalid AI_CLIENT='{ai_client}'")
     model = os.getenv(env_key, "").strip()
     if not model:
-        raise RuntimeError(f"{env_key} is not set in config.env")
+        raise RuntimeError(f"{env_key} is not set in .env")
     return model
 
 

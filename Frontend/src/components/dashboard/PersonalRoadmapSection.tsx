@@ -12,9 +12,12 @@ import {
 import { Badge } from '../ui/Badge';
 interface PersonalRoadmapSectionProps {
   results: MockResults;
+  /** Navigate to the Learning library to act on this roadmap. */
+  onViewResources?: () => void;
 }
 export function PersonalRoadmapSection({
-  results
+  results,
+  onViewResources
 }: PersonalRoadmapSectionProps) {
   const { careerRecommendations } = results.personalRisk;
   return (
@@ -63,7 +66,10 @@ export function PersonalRoadmapSection({
                 {rec.detail}
               </p>
 
-              <button className="text-dark-accent font-bold text-sm flex items-center hover:underline uppercase tracking-wide">
+              <button
+                onClick={onViewResources}
+                className="text-dark-accent font-bold text-sm flex items-center hover:underline uppercase tracking-wide"
+              >
                 View Resources & Action Plan{' '}
                 <ArrowRight className="w-4 h-4 ml-1" />
               </button>

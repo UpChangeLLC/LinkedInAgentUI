@@ -20,6 +20,7 @@ const TOGGLES: Array<{ key: keyof NotificationPreferences; label: string; help: 
 export function SettingsNotificationsPage({ onBack }: SettingsNotificationsPageProps) {
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     fetchNotificationPreferences().then(setPrefs)
@@ -27,11 +28,17 @@ export function SettingsNotificationsPage({ onBack }: SettingsNotificationsPageP
 
   const toggle = async (key: keyof NotificationPreferences) => {
     if (!prefs) return
+    const prev = prefs
     const next = { ...prefs, [key]: !prefs[key] }
     setPrefs(next)
     setSaving(true)
-    await updateNotificationPreferences({ [key]: next[key] })
+    setError('')
+    const ok = await updateNotificationPreferences({ [key]: next[key] })
     setSaving(false)
+    if (!ok) {
+      setPrefs(prev) // revert optimistic change
+      setError("Couldn't save that change. Please try again.")
+    }
   }
 
   return (
@@ -79,6 +86,9 @@ export function SettingsNotificationsPage({ onBack }: SettingsNotificationsPageP
               Account &amp; billing emails are always sent and can't be turned off.
             </div>
             {saving && <p className="text-xs text-dark-textMuted">Saving…</p>}
+            {error && (
+              <p role="alert" className="text-xs text-dark-red">{error}</p>
+            )}
           </div>
         )}
       </div>

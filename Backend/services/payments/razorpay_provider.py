@@ -27,7 +27,14 @@ class RazorpayPaymentProvider:
         if not self.key_id or not self.key_secret:
             raise RuntimeError("Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.")
 
-    async def create_checkout_session(self, *, user_id: str, plan: Plan) -> Dict[str, Any]:
+    async def create_checkout_session(
+        self,
+        *,
+        user_id: str,
+        plan: Plan,
+        customer_id: "str | None" = None,
+        customer_email: "str | None" = None,
+    ) -> Dict[str, Any]:
         receipt = f"airs_{user_id.replace('-', '')[:18]}_{plan.id}"[:40]
         payload = {
             "amount": plan.amount_cents,

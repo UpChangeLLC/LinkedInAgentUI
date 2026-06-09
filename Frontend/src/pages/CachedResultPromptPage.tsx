@@ -31,7 +31,8 @@ export function CachedResultPromptPage({
   accountName,
   onSubscriptions,
 }: CachedResultPromptPageProps) {
-  const score = result?.profile_score ?? result?.score;
+  // Canonical v1 AI Resilience score (matches the dashboard); legacy fields are fallbacks.
+  const score = result?.resilience_score ?? result?.profile_score ?? result?.score;
   const title =
     result?.personalProfile?.title ||
     result?.personal_profile?.title ||
