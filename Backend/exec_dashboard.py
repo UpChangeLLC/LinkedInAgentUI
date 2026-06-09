@@ -21,7 +21,6 @@ from ai_backend import (
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
-load_dotenv("config.env", override=False)
 
 app = FastAPI(title="AI Resilience Exec Dashboard")
 

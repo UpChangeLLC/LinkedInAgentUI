@@ -20,6 +20,9 @@ ENV VITE_MCP_BASE_URL=${VITE_MCP_BASE_URL}
 # Optional: must match MCP_API_KEY at runtime — set as Docker build arg on Render if API is key-protected
 ARG VITE_MCP_API_KEY=
 ENV VITE_MCP_API_KEY=${VITE_MCP_API_KEY}
+# Optional: community forum URL — the dashboard "Community" link is hidden when empty
+ARG VITE_COMMUNITY_URL=
+ENV VITE_COMMUNITY_URL=${VITE_COMMUNITY_URL}
 RUN npm run build
 
 # Use rolling patch tag so rebuilds pick up Debian/Python security updates.

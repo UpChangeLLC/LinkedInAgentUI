@@ -41,13 +41,14 @@ export function PremiumTeaser({
         <h3 className="text-sm font-semibold text-dark-textPri">{title}</h3>
       </div>
 
-      {/* Blurred, non-interactive preview of the real section */}
-      <div aria-hidden="true" className="pointer-events-none select-none blur-sm opacity-60 px-5 py-4">
+      {/* Lightly blurred, non-interactive preview of the real section — enough
+          to hint at content while keeping it legible behind a brand-tinted fade. */}
+      <div aria-hidden="true" className="pointer-events-none select-none blur-[2px] opacity-70 px-5 py-4">
         {children}
       </div>
 
       {/* Upgrade overlay */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-transparent to-black/40 px-6 text-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-dark-card/10 via-dark-card/45 to-dark-card/85 px-6 text-center">
         <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-dark-textSec">
           <Lock className="h-3.5 w-3.5" /> Premium
         </span>

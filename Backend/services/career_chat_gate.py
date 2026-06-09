@@ -11,14 +11,11 @@ from typing import Any, Optional
 
 from fastapi import HTTPException
 
-from services.auth_service import is_subscription_active
+from services.entitlements import has_pro
 
 
 def _is_premium(user: Any) -> bool:
-    return is_subscription_active(
-        getattr(user, "subscription_status", ""),
-        getattr(user, "subscription_expires_at", None),
-    )
+    return has_pro(user)
 
 
 def enforce_career_chat_gate(user: Optional[Any]) -> None:

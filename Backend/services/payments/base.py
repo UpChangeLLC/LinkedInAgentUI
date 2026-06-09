@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Protocol
+from typing import Any, Dict, Optional, Protocol
 
 
 @dataclass(frozen=True)
@@ -25,8 +25,19 @@ PLAN_CATALOG: Dict[str, Plan] = {
 class PaymentProvider(Protocol):
     provider_name: str
 
-    async def create_checkout_session(self, *, user_id: str, plan: Plan) -> Dict[str, Any]:
-        """Create a provider checkout session."""
+    async def create_checkout_session(
+        self,
+        *,
+        user_id: str,
+        plan: Plan,
+        customer_id: Optional[str] = None,
+        customer_email: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create a provider checkout session.
+
+        ``customer_id``/``customer_email`` let providers that model customers
+        (e.g. Stripe) reuse or create one; others may ignore them.
+        """
 
     async def confirm_payment(self, *, session_id: str, payment_method: Dict[str, Any]) -> Dict[str, Any]:
         """Confirm provider payment and return normalized status."""

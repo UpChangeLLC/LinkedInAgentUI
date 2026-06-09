@@ -11,8 +11,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from dotenv import load_dotenv
 
-load_dotenv()
-load_dotenv("config.env", override=False)
+load_dotenv()  # single repo-root .env (walks up locally; Docker injects via compose env_file)
 
 # Import all models so Alembic can detect them
 from db_models import Base  # noqa: F401

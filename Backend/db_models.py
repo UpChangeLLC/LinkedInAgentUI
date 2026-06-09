@@ -134,6 +134,10 @@ class UserSignup(Base):
     oauth_subject = Column(String(200), nullable=True, index=True)
     subscription_status = Column(String(30), nullable=False, default="trial")
     subscription_expires_at = Column(DateTime(timezone=True), nullable=True)
+    # Free/Pro tier — single source of truth lives in services.entitlements.
+    subscription_tier = Column(String(20), nullable=False, default="free")
+    # Stripe billing linkage.
+    stripe_customer_id = Column(String(120), nullable=True, index=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
 
     # Retention: number of free Career Mentor messages used (first message free).
@@ -166,6 +170,7 @@ class PaymentSession(Base):
     )
     provider = Column(String(50), nullable=False, default="mock")
     provider_session_id = Column(String(120), nullable=False, unique=True, index=True)
+    stripe_subscription_id = Column(String(120), nullable=True, index=True)
     plan_id = Column(String(50), nullable=False)
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), nullable=False, default="USD")
@@ -201,6 +206,8 @@ class PaymentEvent(Base):
     provider = Column(String(50), nullable=False, default="mock")
     event_type = Column(String(100), nullable=False, index=True)
     provider_session_id = Column(String(120), nullable=True, index=True)
+    # Stripe event id — unique so webhook processing is idempotent on replay.
+    stripe_event_id = Column(String(120), nullable=True, unique=True, index=True)
     payload = Column(JSONB, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
@@ -211,6 +218,42 @@ class PaymentEvent(Base):
 
     __table_args__ = (
         Index("idx_payment_events_user_created", "user_signup_id", "created_at"),
+    )
+
+
+class CareerChatSession(Base):
+    """Per-user index of Career Mentor threads.
+
+    Messages live in Redis (``career_chat:hist:v1:{sid}``); this table is the
+    listable, account-tied index that powers the session rail and enforces
+    ownership on history/rename/delete.
+    """
+
+    __tablename__ = "career_chat_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_signup_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_signups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # The opaque Redis session id this row indexes.
+    session_id = Column(String(128), nullable=False, unique=True, index=True)
+    title = Column(String(120), nullable=False, default="New chat")
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    last_message_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("idx_career_chat_sessions_user_last", "user_signup_id", "last_message_at"),
     )
 
 

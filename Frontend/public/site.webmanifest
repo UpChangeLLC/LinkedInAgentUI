@@ -1,0 +1,13 @@
+{
+  "name": "Upchange — AI Resilience Score",
+  "short_name": "Upchange",
+  "description": "Measure and improve your AI career resilience.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1120",
+  "theme_color": "#14B8A6",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/maskable-icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" }
+  ]
+}

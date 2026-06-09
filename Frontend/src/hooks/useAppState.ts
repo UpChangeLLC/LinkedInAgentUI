@@ -352,6 +352,22 @@ export function useAppState() {
     }
   }, []);
 
+  // Returning from Stripe hosted Checkout (?checkout=success): the webhook
+  // activates the subscription server-side; re-fetch entitlements and clean the
+  // query param. Focus-refresh below also covers this, but this is immediate.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    if (!checkout) return;
+    if (checkout === 'success') {
+      void refreshSubscription();
+    }
+    params.delete('checkout');
+    const qs = params.toString();
+    window.history.replaceState(null, document.title, window.location.pathname + (qs ? `?${qs}` : ''));
+  }, [refreshSubscription]);
+
   const lastSubRefreshRef = useRef(0);
   useEffect(() => {
     const maybeRefresh = () => {
@@ -864,6 +880,14 @@ export function useAppState() {
     (async () => {
       try {
         const checkout = await createPaymentCheckout(token, planId);
+        // Stripe (and any redirect-based provider) returns a hosted checkout URL.
+        // Navigate there; activation happens via webhook + the ?checkout=success
+        // return URL re-fetching entitlements. The synchronous confirm path below
+        // is only for non-redirect providers (mock/Razorpay) where checkout_url is null.
+        if (checkout.checkout_url) {
+          window.location.assign(checkout.checkout_url);
+          return;
+        }
         const resp = await confirmPaymentCheckout({
           accessToken: token,
           sessionId: checkout.session_id,

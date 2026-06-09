@@ -2,10 +2,11 @@ import React, { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
   AlertTriangle, ArrowLeft, ArrowRight, BarChart3, BookOpen, Building2, CheckCircle2, Clock,
-  History, LayoutGrid, ListChecks, Lock, MessageSquare, Newspaper, Sparkles, Target,
-  TrendingUp, User, X,
+  ExternalLink, History, LayoutGrid, ListChecks, Lock, MessageSquare, Newspaper, Sparkles, Target,
+  TrendingUp, User, Users, X,
 } from 'lucide-react'
 import { MockResults } from '../data/mockResults'
+import { Logo } from '../components/ui/Logo'
 import { rerunNote } from '../lib/dashboardCopy'
 import { ScoreReveal } from '../components/dashboard/ScoreReveal'
 import { ScoreTrajectorySection } from '../components/dashboard/ScoreTrajectorySection'
@@ -191,6 +192,7 @@ export function ResultsDashboard({
                 surveyResponses={formData?.surveyResponses || formData?.survey || null}
                 userContext={formData?.userContext || formData?.user_context || null}
                 onBack={() => setActiveSection('overview')}
+                onNavigate={setActiveSection}
               />
             )}
           </main>
@@ -207,7 +209,7 @@ export function ResultsDashboard({
 // ── Premium section view ────────────────────────────────────────────────
 
 function SectionView({
-  section, results, score, riskBand, linkedinUrl, surveyResponses, userContext, onBack,
+  section, results, score, riskBand, linkedinUrl, surveyResponses, userContext, onBack, onNavigate,
 }: {
   section: DashboardSection
   results: MockResults
@@ -217,6 +219,7 @@ function SectionView({
   surveyResponses?: Record<string, unknown> | null
   userContext?: Record<string, unknown> | null
   onBack: () => void
+  onNavigate: (section: DashboardSection) => void
 }) {
   return (
     <div className="space-y-6">
@@ -227,12 +230,16 @@ function SectionView({
         <ArrowLeft className="w-4 h-4" /> Back to overview
       </button>
       <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-7">
-        {section === 'roadmap' && <PersonalRoadmapSection results={results} />}
+        {section === 'roadmap' && <PersonalRoadmapSection results={results} onViewResources={() => onNavigate('learning')} />}
         {section === 'actions' && <ActionTrackerSection urlHash={results.urlHash ?? ''} />}
         {section === 'skills' && <SkillGapMatrixSection skills={results.skillGapMatrix} />}
         {section === 'learning' && <LearningResourcesSection skills={results.skillGapMatrix} />}
         {section === 'pathways' && (
-          <CareerPathwaysSection pathways={results.careerPathways} currentRole={results.personalProfile?.title} />
+          <CareerPathwaysSection
+            pathways={results.careerPathways}
+            currentRole={results.personalProfile?.title}
+            onExplorePath={() => onNavigate('skills')}
+          />
         )}
         {section === 'whatif' && (
           <WhatIfSimulatorSection
@@ -359,10 +366,7 @@ function DashboardHeader({
     <header className="bg-white border-b border-surface-border">
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-linkedin flex items-center justify-center">
-            <span className="text-white font-bold text-sm">u</span>
-          </div>
-          <span className="font-semibold text-[15px] text-gray-900">Upchange</span>
+          <Logo variant="compact" size="md" className="text-gray-900" />
           <span className="text-gray-500 text-xs ml-2">Dashboard</span>
         </div>
         <div className="flex items-center gap-4 text-sm">
@@ -399,6 +403,7 @@ export function Sidebar({
   onOpenCareerMentor?: () => void
   onUpsell: () => void
 }) {
+  const communityUrl: string = (import.meta.env?.VITE_COMMUNITY_URL as string) || ''
   const item = (active: boolean, locked: boolean, icon: React.ReactNode, label: string, onClick?: () => void) => (
     <button
       key={label}
@@ -455,6 +460,18 @@ export function Sidebar({
 
         <div className="my-3 border-t border-surface-border" />
         {item(false, false, <History className="w-4 h-4" />, 'History', () => onAnchor('overview-history'))}
+
+        {communityUrl && (
+          <a
+            href={communityUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-left text-sm text-gray-700 hover:bg-surface-off transition"
+          >
+            <Users className="w-4 h-4" /> Community
+            <ExternalLink className="w-3.5 h-3.5 ml-auto text-gray-400" />
+          </a>
+        )}
       </nav>
     </aside>
   )

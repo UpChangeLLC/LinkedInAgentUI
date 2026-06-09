@@ -1,10 +1,27 @@
 /** Career Analyst / Mentor chat API client (same auth as MCP). */
 
+import { getStoredSignupSession } from './signup'
+
 function mcpAuthHeaders(): Record<string, string> {
     const env = (import.meta as any).env || {}
     const key = (env.VITE_MCP_API_KEY as string | undefined)?.trim()
     if (!key) return {}
     return { Authorization: `Bearer ${key}` }
+}
+
+/** Per-user session token so the backend can bind chat sessions to the account
+ *  (auth_deps.optional_session reads the X-Session-Token header). */
+function sessionAuthHeaders(): Record<string, string> {
+    try {
+        const token = getStoredSignupSession()?.accessToken?.trim()
+        return token ? { 'X-Session-Token': token } : {}
+    } catch {
+        return {}
+    }
+}
+
+function authHeaders(): Record<string, string> {
+    return { ...mcpAuthHeaders(), ...sessionAuthHeaders() }
 }
 
 function baseUrl(): string {
@@ -13,7 +30,7 @@ function baseUrl(): string {
 }
 
 function jsonHeaders(): Record<string, string> {
-    return { 'Content-Type': 'application/json', ...mcpAuthHeaders() }
+    return { 'Content-Type': 'application/json', ...authHeaders() }
 }
 
 function timeoutSignal(ms: number): AbortSignal {
@@ -71,7 +88,7 @@ export async function fetchCareerChatHistory(sessionId: string): Promise<CareerC
     const u = `${baseUrl()}/api/career-chat/history?session_id=${encodeURIComponent(sessionId)}`
     const res = await fetch(u, {
         method: 'GET',
-        headers: { ...mcpAuthHeaders() },
+        headers: { ...authHeaders() },
         signal: timeoutSignal(CHAT_TIMEOUT_MS),
     })
     if (!res.ok) {
@@ -109,6 +126,83 @@ export async function resetCareerChatSession(sessionId: string): Promise<void> {
         method: 'POST',
         headers: jsonHeaders(),
         body: JSON.stringify({ session_id: sessionId }),
+        signal: timeoutSignal(30_000),
+    })
+    if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(text || `HTTP ${res.status}`)
+    }
+}
+
+// ── Per-user saved sessions (Pro) ───────────────────────────────────────────
+
+export type CareerChatSessionSummary = {
+    session_id: string
+    title: string
+    last_message_at?: string | null
+}
+
+const LAST_ACTIVE_KEY = 'airs_career_chat_last_active_sid'
+
+export function getLastActiveSessionId(): string | null {
+    try {
+        return localStorage.getItem(LAST_ACTIVE_KEY)?.trim() || null
+    } catch {
+        return null
+    }
+}
+
+export function setLastActiveSessionId(sid: string): void {
+    try {
+        localStorage.setItem(LAST_ACTIVE_KEY, sid)
+    } catch {
+        /* ignore */
+    }
+}
+
+export async function listCareerChatSessions(): Promise<CareerChatSessionSummary[]> {
+    const res = await fetch(`${baseUrl()}/api/career-chat/sessions`, {
+        method: 'GET',
+        headers: { ...authHeaders() },
+        signal: timeoutSignal(30_000),
+    })
+    if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(text || `HTTP ${res.status}`)
+    }
+    return (await res.json()) as CareerChatSessionSummary[]
+}
+
+export async function createCareerChatSession(): Promise<{ session_id: string; title: string }> {
+    const res = await fetch(`${baseUrl()}/api/career-chat/sessions`, {
+        method: 'POST',
+        headers: jsonHeaders(),
+        signal: timeoutSignal(30_000),
+    })
+    if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(text || `HTTP ${res.status}`)
+    }
+    return (await res.json()) as { session_id: string; title: string }
+}
+
+export async function renameCareerChatSession(sid: string, title: string): Promise<void> {
+    const res = await fetch(`${baseUrl()}/api/career-chat/sessions/${encodeURIComponent(sid)}`, {
+        method: 'PATCH',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ title }),
+        signal: timeoutSignal(30_000),
+    })
+    if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(text || `HTTP ${res.status}`)
+    }
+}
+
+export async function deleteCareerChatSession(sid: string): Promise<void> {
+    const res = await fetch(`${baseUrl()}/api/career-chat/sessions/${encodeURIComponent(sid)}`, {
+        method: 'DELETE',
+        headers: { ...authHeaders() },
         signal: timeoutSignal(30_000),
     })
     if (!res.ok) {

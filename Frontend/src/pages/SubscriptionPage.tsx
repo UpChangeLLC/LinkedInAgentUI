@@ -1,10 +1,22 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, CheckCircle, CreditCard, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Check, CheckCircle, CreditCard, ExternalLink, Minus, ShieldCheck } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { LinkedInNav } from '../components/ui/LinkedInNav'
+import { createBillingPortalSession } from '../lib/signup'
+
+/** What each tier unlocks — mirrors services/entitlements.py (Pro = active sub). */
+const TIER_FEATURES: { label: string; free: boolean; pro: boolean }[] = [
+  { label: 'AI Resilience score & overview', free: true, pro: true },
+  { label: 'One free Career Mentor message', free: true, pro: true },
+  { label: 'Unlimited Career Mentor messages', free: false, pro: true },
+  { label: 'Saved mentor chat sessions', free: false, pro: true },
+  { label: 'Full dashboard (skill gaps, pathways, simulator)', free: false, pro: true },
+  { label: 'Reassessment / recalculation', free: false, pro: true },
+  { label: 'Saved assessment history', free: false, pro: true },
+]
 
 const PLANS = [
   {
@@ -42,6 +54,7 @@ interface SubscriptionPageProps {
   subscriptionActive?: boolean
   submitting?: boolean
   accountName?: string
+  accessToken?: string
   errorMessage?: string
   onDashboard?: () => void
   onRecalculate?: () => void
@@ -55,6 +68,7 @@ export function SubscriptionPage({
   subscriptionActive = false,
   submitting = false,
   accountName,
+  accessToken,
   errorMessage,
   onDashboard,
   onRecalculate,
@@ -65,6 +79,21 @@ export function SubscriptionPage({
 }: SubscriptionPageProps) {
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('quarterly')
   const selected = PLANS.find((plan) => plan.id === selectedPlan) || PLANS[1]
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [portalError, setPortalError] = useState('')
+
+  const handleManageBilling = async () => {
+    if (!accessToken) return
+    setPortalError('')
+    setPortalLoading(true)
+    try {
+      const url = await createBillingPortalSession(accessToken)
+      window.location.assign(url)
+    } catch (e: any) {
+      setPortalError(e?.message || 'Could not open the billing portal.')
+      setPortalLoading(false)
+    }
+  }
 
   const submitPayment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -114,7 +143,7 @@ export function SubscriptionPage({
             {subscriptionActive && (
               <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm text-green-300">
                 <CheckCircle className="w-4 h-4" />
-                Your subscription is active
+                You’re on Pro — subscription active
               </div>
             )}
           </div>
@@ -125,6 +154,72 @@ export function SubscriptionPage({
             </div>
           )}
 
+          {/* Free vs Pro comparison */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div className="rounded-2xl border border-dark-border bg-dark-card p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-lg font-semibold text-dark-textPri">Free</h2>
+                {!subscriptionActive && (
+                  <span className="rounded-full bg-dark-elevated px-2.5 py-0.5 text-[11px] text-dark-textSec">Current</span>
+                )}
+              </div>
+              <p className="text-sm text-dark-textMuted mb-4">Your score and a taste of the mentor.</p>
+              <ul className="space-y-2.5">
+                {TIER_FEATURES.map((f) => (
+                  <li key={f.label} className="flex items-start gap-2 text-sm">
+                    {f.free ? (
+                      <Check className="w-4 h-4 text-dark-accent shrink-0 mt-0.5" />
+                    ) : (
+                      <Minus className="w-4 h-4 text-dark-textMuted shrink-0 mt-0.5" />
+                    )}
+                    <span className={f.free ? 'text-dark-textSec' : 'text-dark-textMuted line-through'}>{f.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-dark-accent/50 bg-dark-accentDim/30 p-6 ring-1 ring-dark-accent/30">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-lg font-semibold text-dark-textPri">Pro</h2>
+                {subscriptionActive && (
+                  <span className="rounded-full bg-dark-accent/20 px-2.5 py-0.5 text-[11px] text-dark-accent">Current</span>
+                )}
+              </div>
+              <p className="text-sm text-dark-textMuted mb-4">Everything, unlocked — the full dashboard and unlimited mentor.</p>
+              <ul className="space-y-2.5">
+                {TIER_FEATURES.map((f) => (
+                  <li key={f.label} className="flex items-start gap-2 text-sm">
+                    <Check className="w-4 h-4 text-dark-accent shrink-0 mt-0.5" />
+                    <span className="text-dark-textPri">{f.label}</span>
+                  </li>
+                ))}
+              </ul>
+              {subscriptionActive && accessToken && (
+                <div className="mt-5">
+                  <Button
+                    type="button"
+                    fullWidth
+                    variant="secondary"
+                    loading={portalLoading}
+                    onClick={() => void handleManageBilling()}
+                  >
+                    {!portalLoading && <ExternalLink className="w-4 h-4 mr-1.5 inline" />}
+                    {portalLoading ? 'Opening…' : 'Manage billing'}
+                  </Button>
+                  {portalError && <p className="mt-2 text-xs text-red-300 text-center">{portalError}</p>}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {subscriptionActive && (
+            <p className="text-center text-sm text-dark-textMuted mb-8">
+              Update your payment method or cancel anytime from the billing portal.
+            </p>
+          )}
+
+          {!subscriptionActive && (
+          <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {PLANS.map((plan) => {
               const active = selectedPlan === plan.id
@@ -204,8 +299,8 @@ export function SubscriptionPage({
                   <p className="flex gap-2"><ShieldCheck className="w-4 h-4 text-dark-accent shrink-0" /> Career Mentor</p>
                   <p className="flex gap-2"><ShieldCheck className="w-4 h-4 text-dark-accent shrink-0" /> Saved assessment history</p>
                 </div>
-                <Button type="submit" fullWidth disabled={submitting} className="bg-linkedin hover:bg-linkedin/90">
-                  {submitting ? 'Processing...' : `Pay ${selected.price} and activate`}
+                <Button type="submit" fullWidth loading={submitting} className="bg-linkedin hover:bg-linkedin/90">
+                  {submitting ? 'Processing…' : `Pay ${selected.price} and activate`}
                 </Button>
                 <p className="text-xs text-dark-textMuted text-center mt-3">
                   Secure checkout. You can cancel anytime.
@@ -214,6 +309,8 @@ export function SubscriptionPage({
             </form>
             )}
           </Card>
+          </>
+          )}
         </div>
       </motion.div>
     </div>

@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Read the single shared .env at the repo root (one level up from Frontend/).
+  // In Docker the frontend build stage has no root .env, so VITE_* come from the
+  // build-arg ENV instead — Vite picks those up automatically.
+  envDir: '..',
   build: {
     rollupOptions: {
       output: {

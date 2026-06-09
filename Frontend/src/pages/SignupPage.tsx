@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Logo } from '../components/ui/Logo'
 import { motion } from 'framer-motion'
 import { CheckCircle, Linkedin } from 'lucide-react'
 import type { OAuthProvider } from '../lib/signup'
@@ -79,10 +80,7 @@ export function SignupPage({
       <header className="bg-white border-b border-surface-border">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-linkedin flex items-center justify-center">
-              <span className="text-white font-bold text-sm">u</span>
-            </div>
-            <span className="font-semibold text-[15px] text-gray-900">Upchange</span>
+            <Logo variant="compact" size="md" className="text-gray-900" />
           </div>
           <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-900">← Back</button>
         </div>
@@ -141,17 +139,17 @@ export function SignupPage({
           {mode === 'signup' ? (
             <form onSubmit={handleSignup} className="space-y-3">
               <input
-                type="email" placeholder="you@example.com" autoComplete="email"
+                type="email" placeholder="you@example.com" autoComplete="email" aria-label="Email address"
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 className="w-full border border-surface-border rounded-lg px-4 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition"
               />
               <input
-                type="password" placeholder="Password (8+ chars, letter + digit)" autoComplete="new-password"
+                type="password" placeholder="Password (8+ chars, letter + digit)" autoComplete="new-password" aria-label="Password"
                 value={password} onChange={(e) => setPassword(e.target.value)}
                 className="w-full border border-surface-border rounded-lg px-4 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition"
               />
               <input
-                type="text" placeholder="Full name" autoComplete="name"
+                type="text" placeholder="Full name" autoComplete="name" aria-label="Full name"
                 value={fullName} onChange={(e) => setFullName(e.target.value)}
                 className="w-full border border-surface-border rounded-lg px-4 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition"
               />
@@ -176,12 +174,12 @@ export function SignupPage({
           ) : (
             <form onSubmit={handleLogin} className="space-y-3">
               <input
-                type="email" placeholder="you@example.com" autoComplete="email"
+                type="email" placeholder="you@example.com" autoComplete="email" aria-label="Email address"
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 className="w-full border border-surface-border rounded-lg px-4 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition"
               />
               <input
-                type="password" placeholder="Your password" autoComplete="current-password"
+                type="password" placeholder="Your password" autoComplete="current-password" aria-label="Password"
                 value={password} onChange={(e) => setPassword(e.target.value)}
                 className="w-full border border-surface-border rounded-lg px-4 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-linkedin focus:ring-2 focus:ring-linkedin/10 transition"
               />

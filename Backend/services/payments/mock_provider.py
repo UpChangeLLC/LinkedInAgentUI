@@ -12,7 +12,14 @@ from services.payments.base import Plan
 class MockPaymentProvider:
     provider_name = "mock"
 
-    async def create_checkout_session(self, *, user_id: str, plan: Plan) -> Dict[str, Any]:
+    async def create_checkout_session(
+        self,
+        *,
+        user_id: str,
+        plan: Plan,
+        customer_id: "str | None" = None,
+        customer_email: "str | None" = None,
+    ) -> Dict[str, Any]:
         session_id = f"mock_cs_{secrets.token_urlsafe(18)}"
         return {
             "provider": self.provider_name,

@@ -83,18 +83,16 @@ cd Frontend && npx vite build
 
 ## Environment Variables
 
-Backend reads from `Backend/config.env` (gitignored). Key vars:
-- `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` - LLM provider keys
-- `DATABASE_URL` - PostgreSQL connection (auto-converts `postgres://` to `postgresql+asyncpg://`)
-- `REDIS_URL` - Redis connection
-- `APIFY_API_TOKEN` - LinkedIn profile scraping
-- `FRONTEND_ORIGIN` - CORS origin (controls `allow_credentials`)
-- `SENTRY_DSN` - Optional error monitoring (conditional init)
-- `MCP_API_KEY` - Server-side API key for rate-limited endpoints
+**Single source of truth: the gitignored root `.env`** (`LinkedInAgentUI/.env`). It holds both backend runtime config and frontend build vars. How it's consumed:
+- **Docker:** `docker-compose.yml` loads it as the backend `env_file` (runtime `os.getenv`) and passes the `VITE_*` keys as build args → the Dockerfile exports them as ENV so Vite bakes them into the bundle.
+- **Local backend:** `load_dotenv()` walks up from `Backend/` to find the root `.env`.
+- **Local frontend (`npm run dev`/build):** `vite.config.ts` sets `envDir: '..'` to read the root `.env`.
 
-Frontend uses `VITE_` prefixed vars in `.env.local`:
-- `VITE_MCP_BASE_URL` - Backend API URL (empty = same origin)
-- `VITE_SENTRY_DSN` - Optional frontend error monitoring
+`VITE_*` vars are exposed to the browser; everything else is server-side only (never bundled). DB/Redis URLs in `.env` use the Docker service hostnames (`db:5432`, `redis:6379`); override for non-Docker local runs.
+
+Backend keys: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` (LLM), `DATABASE_URL`, `REDIS_URL`, `APIFY_API_TOKEN`, `FRONTEND_ORIGIN` (CORS), `SENTRY_DSN`, `MCP_API_KEY` (must match `VITE_MCP_API_KEY`), `FEATURE_CHAT_SESSIONS`, `PAYMENT_PROVIDER` (`mock`|`razorpay`|`stripe`), Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`, optional `STRIPE_SUCCESS_URL`/`STRIPE_CANCEL_URL`).
+
+Frontend (`VITE_`) keys: `VITE_MCP_BASE_URL` (empty = same origin), `VITE_MCP_API_KEY`, `VITE_COMMUNITY_URL` (Discourse forum; dashboard "Community" nav link, hidden when unset), `VITE_SENTRY_DSN` (optional).
 
 ## Code Conventions
 

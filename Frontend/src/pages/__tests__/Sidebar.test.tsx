@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from '../ResultsDashboard';
 
@@ -58,5 +58,33 @@ describe('Sidebar navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: /Skill gap matrix/i }));
     expect(props.onUpsell).toHaveBeenCalledTimes(1);
     expect(props.onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe('Sidebar community link (Workstream D)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('renders a Community link to VITE_COMMUNITY_URL opening safely in a new tab', () => {
+    vi.stubEnv('VITE_COMMUNITY_URL', 'https://community.upchange.ai');
+    renderSidebar('premium');
+    const link = screen.getByRole('link', { name: /community/i });
+    expect(link).toHaveAttribute('href', 'https://community.upchange.ai');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noreferrer'));
+  });
+
+  it('shows the Community link for free-tier users too (external, not gated)', () => {
+    vi.stubEnv('VITE_COMMUNITY_URL', 'https://community.upchange.ai');
+    renderSidebar('free');
+    expect(screen.getByRole('link', { name: /community/i })).toBeInTheDocument();
+  });
+
+  it('hides the Community link when VITE_COMMUNITY_URL is unset (no dead link)', () => {
+    vi.stubEnv('VITE_COMMUNITY_URL', '');
+    renderSidebar('premium');
+    expect(screen.queryByRole('link', { name: /community/i })).not.toBeInTheDocument();
   });
 });
