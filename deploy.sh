@@ -63,11 +63,11 @@ fi
 
 # --- 5. Environment Config ---
 echo "[5/7] Checking config..."
-if [ ! -f "./Backend/config.env" ]; then
+if [ ! -f "./.env" ]; then
     echo ""
     echo "============================================"
-    echo "  IMPORTANT: config.env not found!"
-    echo "  Copy your config.env to $APP_DIR/Backend/config.env"
+    echo "  IMPORTANT: .env not found!"
+    echo "  Copy your .env to $APP_DIR/.env"
     echo "  Make sure to set:"
     echo "    FRONTEND_ORIGIN=https://$DOMAIN"
     echo "    OPENAI_API_KEY=your-key"
@@ -75,14 +75,14 @@ if [ ! -f "./Backend/config.env" ]; then
     echo "    MCP_API_KEY=a-strong-random-key"
     echo "============================================"
     echo ""
-    echo "After creating config.env, run this script again."
+    echo "After creating .env, run this script again."
     exit 1
 fi
 
 # Ensure FRONTEND_ORIGIN is set
-if ! grep -q "FRONTEND_ORIGIN=https://$DOMAIN" ./Backend/config.env; then
-    echo "Setting FRONTEND_ORIGIN in config.env..."
-    sed -i "s|^FRONTEND_ORIGIN=.*|FRONTEND_ORIGIN=https://$DOMAIN|" ./Backend/config.env
+if ! grep -q "FRONTEND_ORIGIN=https://$DOMAIN" ./.env; then
+    echo "Setting FRONTEND_ORIGIN in .env..."
+    sed -i "s|^FRONTEND_ORIGIN=.*|FRONTEND_ORIGIN=https://$DOMAIN|" ./.env
 fi
 
 # --- 6. SSL Certificate ---
