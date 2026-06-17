@@ -1,69 +1,61 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-const recentAssessments = [
-{
-  name: 'Sarah C.',
-  role: 'COO',
-  company: 'Series C Startup',
-  score: 71
-},
-{
-  name: 'Michael R.',
-  role: 'CFO',
-  company: 'Fortune 500',
-  score: 58
-},
-{
-  name: 'Priya K.',
-  role: 'CTO',
-  company: 'Enterprise SaaS',
-  score: 84
-},
-{
-  name: 'James W.',
-  role: 'CEO',
-  company: 'FinTech Scale-up',
-  score: 45
-},
-{
-  name: 'Lisa T.',
-  role: 'CHRO',
-  company: 'Healthcare Corp',
-  score: 62
-},
-{
-  name: 'David M.',
-  role: 'CIO',
-  company: 'Retail Giant',
-  score: 77
-},
-{
-  name: 'Ana S.',
-  role: 'COO',
-  company: 'AI Startup',
-  score: 91
-},
-{
-  name: 'Robert H.',
-  role: 'CRO',
-  company: 'B2B Platform',
-  score: 53
-}];
+import { getScoreColor } from '../../lib/scoreUtils';
+
+interface Assessment {
+  role_category: string;
+  score: number | null;
+  created_at: string | null;
+}
+
+const env = (import.meta as any).env || {};
+const baseUrl = ((env.VITE_MCP_BASE_URL as string) ?? '').replace(/\/+$/, '');
 
 export function RecentlyAssessedTicker() {
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+
   useEffect(() => {
+    let cancelled = false;
+    const fetchRecent = async () => {
+      try {
+        const res = await fetch(`${baseUrl}/api/stats`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && Array.isArray(data.recent_assessments) && data.recent_assessments.length > 0) {
+            setAssessments(data.recent_assessments);
+          }
+        }
+      } catch { /* ignore */ }
+    };
+    fetchRecent();
+    const poll = setInterval(fetchRecent, 30_000);
+    return () => { cancelled = true; clearInterval(poll); };
+  }, []);
+
+  useEffect(() => {
+    if (assessments.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % recentAssessments.length);
+      setCurrentIndex((prev) => (prev + 1) % assessments.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
-  const current = recentAssessments[currentIndex];
-  const getScoreColor = (score: number) => {
-    if (score >= 75) return 'text-green-600 bg-green-50';
-    if (score >= 50) return 'text-amber-600 bg-amber-50';
-    return 'text-red-600 bg-red-50';
-  };
+  }, [assessments.length]);
+
+  if (assessments.length === 0) {
+    return (
+      <div className="py-4 bg-white border-b border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <span className="text-sm text-gray-500">
+            Be the first to get your AI Resilience Score
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const current = assessments[currentIndex];
+  const score = current?.score ?? 0;
+
   return (
     <div className="py-4 bg-white border-b border-gray-100">
       <div className="max-w-4xl mx-auto px-4 flex items-center justify-center gap-3">
@@ -78,42 +70,27 @@ export function RecentlyAssessedTicker() {
           <AnimatePresence mode="wait">
             <motion.div
               key={currentIndex}
-              initial={{
-                y: 20,
-                opacity: 0
-              }}
-              animate={{
-                y: 0,
-                opacity: 1
-              }}
-              exit={{
-                y: -20,
-                opacity: 0
-              }}
-              transition={{
-                duration: 0.3
-              }}
-              className="flex items-center justify-center gap-2 h-8">
-              
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-center gap-2 h-8"
+            >
               <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                {current.name.charAt(0)}
+                {(current.role_category || '?').charAt(0)}
               </div>
               <span className="text-sm text-gray-700">
-                <span className="font-semibold">{current.name}</span>
-                <span className="text-gray-400 mx-1">·</span>
-                <span>
-                  {current.role} at {current.company}
-                </span>
+                <span className="font-semibold">{current.role_category || 'Executive'}</span>
+                <span className="text-gray-400 mx-1">&middot;</span>
+                <span>scored {score}/100</span>
               </span>
-              <span
-                className={`text-xs font-bold px-2 py-0.5 rounded-full ${getScoreColor(current.score)}`}>
-                
-                {current.score}
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getScoreColor(score)}`}>
+                {score}
               </span>
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
-    </div>);
-
+    </div>
+  );
 }

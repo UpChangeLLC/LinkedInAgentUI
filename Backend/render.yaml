@@ -2,7 +2,7 @@ services:
   - type: web
     name: ai-resilience-dashboard
     env: docker
-    plan: free
+    plan: starter
     autoDeploy: true
     healthCheckPath: /mcp/health
     envVars:
@@ -13,15 +13,33 @@ services:
       - key: AI_CLIENT
         value: openai
       - key: OPENAI_MODEL
-        value: gpt-4o-mini
+        value: gpt-4.1-mini
       - key: APIFY_ACTOR_ID
         value: supreme_coder/linkedin-profile-scraper
-      - key: APIFY_DATASET_CACHE_FILE
-        value: apify_dataset_cache.json
       - key: AI_CLIENT_TIMEOUT_SEC
         value: "60"
       - key: AI_CLIENT_MAX_RETRIES
         value: "2"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: linkedin-agent-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: linkedin-agent-redis
+          type: redis
+          property: connectionString
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: production
       # Set these in Render dashboard as secrets before production use:
       # OPENAI_API_KEY / GROQ_API_KEY / AZURE_OPENAI_API_KEY / ANTHROPIC_API_KEY
       # APIFY_API_TOKEN
+      # SENTRY_DSN (from sentry.io)
+
+databases:
+  - name: linkedin-agent-db
+    plan: starter
+    databaseName: linkedin_agent
+    user: postgres

@@ -4,9 +4,27 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          sentry: ['@sentry/react'],
+          vendor: ['react', 'react-dom', 'framer-motion'],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/mcp': {
+        target: 'http://127.0.0.1:8001',
+        changeOrigin: true,
+      },
+      '/api': {
+        target: 'http://127.0.0.1:8001',
+        changeOrigin: true,
+      },
+      '/auth': {
         target: 'http://127.0.0.1:8001',
         changeOrigin: true,
       },

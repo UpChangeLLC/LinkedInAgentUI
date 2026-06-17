@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '../ui/Button';
 import { ExternalLink } from 'lucide-react';
+import { EXTERNAL_LINKS } from '../../lib/config';
 interface CTASectionProps {
   onGetStarted: () => void;
 }
@@ -29,7 +30,7 @@ export function CTASection({ onGetStarted }: CTASectionProps) {
         <p className="mt-8 text-blue-300 text-sm">
           Looking for hands-on guidance? Explore the{' '}
           <a
-            href="https://hyperaccelerator.com/"
+            href={EXTERNAL_LINKS.hyperaccelerator}
             target="_blank"
             rel="noopener noreferrer"
             className="text-white font-semibold underline underline-offset-2 hover:text-blue-100 transition-colors">

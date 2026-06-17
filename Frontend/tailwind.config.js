@@ -7,7 +7,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['DM Sans', 'Inter', 'sans-serif'],
+        serif: ['Cormorant', 'Georgia', 'serif'],
       },
       colors: {
         navy: {
@@ -40,17 +41,44 @@ export default {
           off: '#F3F2EF', // LinkedIn BG
           muted: '#EBEBEB',
           border: '#E0E0E0',
+        },
+        // Dark premium theme tokens — powered by CSS variables for light/dark toggle
+        dark: {
+          bg: 'rgb(var(--bg))',
+          card: 'rgb(var(--bg-card))',
+          elevated: 'rgb(var(--bg-elevated))',
+          sidebar: 'rgb(var(--sidebar))',
+          accent: 'rgb(var(--accent))',
+          accentDim: 'rgb(var(--accent-dim) / 0.12)',
+          textPri: 'rgb(var(--text-pri))',
+          textSec: 'rgb(var(--text-sec))',
+          textMuted: 'rgb(var(--text-muted))',
+          border: 'rgb(var(--border) / 0.08)',
+          borderHov: 'rgb(var(--border-hov) / 0.15)',
+          green: 'rgb(var(--green))',
+          amber: 'rgb(var(--amber))',
+          red: 'rgb(var(--red))',
         }
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'stream': 'stream 2s linear infinite',
+        'fade-up': 'fadeUp 0.5s ease-out forwards',
+        'bar-grow': 'barGrow 0.8s ease-out forwards',
       },
       keyframes: {
         stream: {
           '0%': { transform: 'translateY(0)' },
           '100%': { transform: 'translateY(-50%)' },
-        }
+        },
+        fadeUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        barGrow: {
+          '0%': { width: '0%' },
+          '100%': { width: 'var(--bar-width, 100%)' },
+        },
       }
     },
   },

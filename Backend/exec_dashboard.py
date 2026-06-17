@@ -1072,6 +1072,8 @@ async def agent_run_form(
         resume_text = ""
         if resume and (resume.filename or "").strip():
             file_bytes = await resume.read()
+            if len(file_bytes) > 10 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="File too large. Maximum 10MB.")
             # Ignore empty file selections gracefully.
             if file_bytes:
                 resume_text = await extract_text_from_resume(resume.filename or "", file_bytes)

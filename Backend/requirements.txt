@@ -16,4 +16,30 @@ requests==2.32.4
 # Resume parsing
 pdfplumber==0.11.4
 python-docx==1.1.2
- 
+
+# Database
+asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.36
+alembic==1.14.1
+pgvector==0.3.6
+
+# Cache
+redis[hiredis]==5.2.1
+
+# SSE
+sse-starlette==2.2.1
+
+# Logging
+structlog==24.4.0
+
+# Error monitoring
+sentry-sdk[fastapi]==2.22.0
+
+# PDF / Image generation (F29, F26)
+reportlab==4.4.0
+Pillow==11.2.1
+
+# Testing
+pytest==8.3.5
+pytest-asyncio==0.25.3
+pytest-cov==6.1.1

@@ -1,26 +1,35 @@
 """Prompt templates for the AI career analysis backend."""
 
 PROFILE_EXTRACTION_SYSTEM_PROMPT = (
-    "You are an expert resume and career parser. "
+    "You are an expert resume and career parser with deep intelligence extraction capabilities. "
     "Return ONLY valid JSON with this exact structure: "
     "{"
     "  name, title, location, summary, "
     "  experiences: [{title, company, start, end, description}], "
     "  education: [{school, degree, field, start, end}], "
     "  skills: [string], "
-    "  certifications: [string], "
-    "  projects: [string], "
+    "  certifications: [{name, issuer, date, expiry}], "
+    "  projects: [{name, description, technologies: [string], outcome}], "
+    "  achievements: [{description, metric, metric_value, context}], "
+    "  quantified_metrics: [{metric_text, value, unit, context}], "
     "  last_updated_hint"
     "}. "
+    "IMPORTANT extraction rules: "
+    "1. For achievements, extract ALL quantified accomplishments (e.g. 'increased revenue by 35%' -> {description: 'Increased revenue', metric: 'revenue increase', metric_value: '35%', context: 'at Company X'}). "
+    "2. For certifications, extract the issuing organization and any dates mentioned. "
+    "3. For projects, identify specific technologies and tools used, and any measurable outcomes. "
+    "4. For quantified_metrics, pull out every number-backed claim (dollar amounts, percentages, team sizes, time saved, etc.). "
     "If any field is unknown use empty string or empty array. "
     "Infer the most recent information where possible."
 )
 
 PROFILE_MERGE_SYSTEM_PROMPT = (
-    "You merge two candidate profiles (LinkedIn and resume). "
+    "You merge candidate profiles from multiple sources (LinkedIn, resume, GitHub, website). "
     "Return ONLY JSON with keys: {merged_profile, merge_notes}. "
     "Resolve conflicts by picking the more recent or more specific data. "
-    "Prefer latest end dates and more detailed experience entries."
+    "Prefer latest end dates and more detailed experience entries. "
+    "If GitHub data is present, incorporate technical skills, languages, and open-source contributions. "
+    "If website data is present, incorporate relevant professional information and expertise signals."
 )
 
 ANALYSIS_SYSTEM_PROMPT = """You are an expert career analyst and talent advisor.
@@ -342,15 +351,17 @@ Return ONLY valid JSON with this exact structure and types. No markdown, no comm
     "best_fit_benchmark_role": "Role title based on profile"
   },
 
+  "score_narrative": "2-3 sentences explaining the composite profile_score in plain language. Reference the person's role and industry. Example: Your score of 63 reflects strong operational leadership but limited hands-on AI experience.",
+
   "dimension_scores": {
-    "ai_fluency":            {"score": 1, "rationale": "1 sentence tied to evidence"},
-    "technical_proximity":   {"score": 1, "rationale": "1 sentence tied to evidence"},
-    "governance_awareness":  {"score": 1, "rationale": "1 sentence tied to evidence"},
-    "learning_velocity":     {"score": 1, "rationale": "1 sentence tied to evidence"},
-    "leadership_readiness":  {"score": 1, "rationale": "1 sentence tied to evidence"},
-    "network_relevance":     {"score": 1, "rationale": "1 sentence tied to evidence"},
-    "automation_exposure":   {"score": 1, "rationale": "1 sentence tied to evidence"},
-    "execution_credibility": {"score": 1, "rationale": "1 sentence tied to evidence"}
+    "ai_fluency":            {"score": 1, "rationale": "1 sentence tied to evidence", "confidence": "high | medium | low", "evidence": ["Specific profile fact 1", "Specific profile fact 2"], "narrative": "Plain-language 1-2 sentence explanation for this person"},
+    "technical_proximity":   {"score": 1, "rationale": "1 sentence", "confidence": "high | medium | low", "evidence": ["fact 1", "fact 2"], "narrative": "explanation"},
+    "governance_awareness":  {"score": 1, "rationale": "1 sentence", "confidence": "high | medium | low", "evidence": ["fact 1", "fact 2"], "narrative": "explanation"},
+    "learning_velocity":     {"score": 1, "rationale": "1 sentence", "confidence": "high | medium | low", "evidence": ["fact 1", "fact 2"], "narrative": "explanation"},
+    "leadership_readiness":  {"score": 1, "rationale": "1 sentence", "confidence": "high | medium | low", "evidence": ["fact 1", "fact 2"], "narrative": "explanation"},
+    "network_relevance":     {"score": 1, "rationale": "1 sentence", "confidence": "high | medium | low", "evidence": ["fact 1", "fact 2"], "narrative": "explanation"},
+    "automation_exposure":   {"score": 1, "rationale": "1 sentence", "confidence": "high | medium | low", "evidence": ["fact 1", "fact 2"], "narrative": "explanation"},
+    "execution_credibility": {"score": 1, "rationale": "1 sentence", "confidence": "high | medium | low", "evidence": ["fact 1", "fact 2"], "narrative": "explanation"}
   },
 
   "top_strengths": [
@@ -392,7 +403,82 @@ Return ONLY valid JSON with this exact structure and types. No markdown, no comm
     "day_0_30":  ["Action A", "Action B", "Action C"],
     "day_31_60": ["Action D", "Action E", "Action F"],
     "day_61_90": ["Action G", "Action H", "Action I"]
-  }
+  },
+
+  "personal_narrative": "3-5 sentences addressed directly to the person by first name, summarizing their position and most important next move",
+  "company_analysis": "3-5 sentences about the company's AI posture; avoid invented internal metrics unless visible in the profile",
+
+  "industry_ai_adoption_rate": 0,
+  "top_industry_threat": "Single sentence: the biggest AI-driven threat to this person's industry or role",
+  "top_industry_opportunity": "Single sentence: the biggest AI-driven opportunity for this person",
+  "regulatory_note": "Single sentence about relevant AI regulation, or empty string if none applies",
+
+  "competitor_intel": [
+    {"name": "Competitor 1", "initiative": "Their specific AI initiative or strategy", "impact": "How it threatens or affects this person's company/role"},
+    {"name": "Competitor 2", "initiative": "Their AI initiative", "impact": "Impact statement"},
+    {"name": "Competitor 3", "initiative": "Their AI initiative", "impact": "Impact statement"}
+  ],
+
+  "industry_benchmarks": [
+    {"metric": "Metric label", "industry_avg": 0, "user_value": 0, "insight": "One-line comparison insight"},
+    {"metric": "Metric label", "industry_avg": 0, "user_value": 0, "insight": "One-line insight"},
+    {"metric": "Metric label", "industry_avg": 0, "user_value": 0, "insight": "One-line insight"},
+    {"metric": "Metric label", "industry_avg": 0, "user_value": 0, "insight": "One-line insight"}
+  ],
+
+  "score_breakdown_list": [
+    {"name": "Factor name", "weight": "High", "value": 0, "explanation": "1-2 sentences", "personal_context": "1-2 sentences specific to this person"},
+    {"name": "Factor name", "weight": "High", "value": 0, "explanation": "", "personal_context": ""},
+    {"name": "Factor name", "weight": "Med",  "value": 0, "explanation": "", "personal_context": ""},
+    {"name": "Factor name", "weight": "Med",  "value": 0, "explanation": "", "personal_context": ""},
+    {"name": "Factor name", "weight": "Low",  "value": 0, "explanation": "", "personal_context": ""},
+    {"name": "Factor name", "weight": "High", "value": 0, "explanation": "", "personal_context": ""}
+  ],
+
+  "workflow_items": [
+    {"name": "Workflow name", "explanation": "Why this matters", "first_step": "Immediate next step", "estimated_savings": "$0k/yr", "current_pain_point": "Current problem", "automation_percentage": 0},
+    {"name": "", "explanation": "", "first_step": "", "estimated_savings": "", "current_pain_point": "", "automation_percentage": 0},
+    {"name": "", "explanation": "", "first_step": "", "estimated_savings": "", "current_pain_point": "", "automation_percentage": 0},
+    {"name": "", "explanation": "", "first_step": "", "estimated_savings": "", "current_pain_point": "", "automation_percentage": 0},
+    {"name": "", "explanation": "", "first_step": "", "estimated_savings": "", "current_pain_point": "", "automation_percentage": 0}
+  ],
+
+  "leverage_items": [
+    {"title": "Leverage opportunity", "why_it_matters": "Business impact", "example_use_case": "Concrete example", "time_to_implement": "30 Days", "estimated_roi": "3.0x", "company_specific_context": "How this applies to their company"},
+    {"title": "", "why_it_matters": "", "example_use_case": "", "time_to_implement": "", "estimated_roi": "", "company_specific_context": ""},
+    {"title": "", "why_it_matters": "", "example_use_case": "", "time_to_implement": "", "estimated_roi": "", "company_specific_context": ""}
+  ],
+
+  "governance_items": [
+    {"control": "Policy name", "why_it_matters": "Risk it mitigates", "policy_suggestion": "Specific action", "current_status": "missing", "risk_level": "critical", "industry_context": "Industry relevance"},
+    {"control": "", "why_it_matters": "", "policy_suggestion": "", "current_status": "missing", "risk_level": "high", "industry_context": ""},
+    {"control": "", "why_it_matters": "", "policy_suggestion": "", "current_status": "partial", "risk_level": "medium", "industry_context": ""},
+    {"control": "", "why_it_matters": "", "policy_suggestion": "", "current_status": "implemented", "risk_level": "low", "industry_context": ""}
+  ],
+
+  "skill_gap_matrix": [
+    {"name": "Skill name", "proficiency": 3, "market_demand": 4, "category": "ai-core | ai-adjacent | foundational", "justification": "Why this proficiency level", "learning_resource": "Specific course or action to improve"},
+    {"name": "", "proficiency": 1, "market_demand": 5, "category": "ai-core", "justification": "", "learning_resource": ""}
+  ],
+
+  "disruption_timeline": [
+    {"task": "Specific role task that could be automated", "year": 2026, "automation_probability": 75, "impact": "high | medium | low", "mitigation": "What to do about it"},
+    {"task": "", "year": 2028, "automation_probability": 50, "impact": "medium", "mitigation": ""}
+  ],
+
+  "career_pathways": [
+    {"name": "Stay & Upskill", "description": "Deepen AI skills in current role", "required_skills": ["skill1", "skill2", "skill3"], "timeline_months": 6, "difficulty": "moderate", "salary_impact": "+10-15%", "recommended": true},
+    {"name": "Pivot to AI Leadership", "description": "Transition to AI strategy role", "required_skills": ["skill1", "skill2"], "timeline_months": 12, "difficulty": "challenging", "salary_impact": "+20-30%", "recommended": false},
+    {"name": "Specialize", "description": "Deep specialization in specific AI domain", "required_skills": ["skill1", "skill2"], "timeline_months": 9, "difficulty": "moderate", "salary_impact": "+15-25%", "recommended": false}
+  ],
+
+  "action_items": [
+    {"title": "Actionable task title", "description": "What to do and why", "category": "learning", "priority": "high", "estimated_hours": 10, "resource_url": "https://...", "resource_title": "Course or resource name"},
+    {"title": "", "description": "", "category": "networking", "priority": "medium", "estimated_hours": 5, "resource_url": "", "resource_title": ""},
+    {"title": "", "description": "", "category": "projects", "priority": "high", "estimated_hours": 20, "resource_url": "", "resource_title": ""},
+    {"title": "", "description": "", "category": "governance", "priority": "medium", "estimated_hours": 8, "resource_url": "", "resource_title": ""},
+    {"title": "", "description": "", "category": "learning", "priority": "low", "estimated_hours": 15, "resource_url": "", "resource_title": ""}
+  ]
 }
 
 ---
@@ -440,6 +526,24 @@ ARRAY COMPLETENESS (must not be empty):
 - job_recommendations: provide at least 3; each includes role, reason, and fit_score (0–100 integer).
 - upskilling_plan: provide at least 3; each includes skill, priority (High|Medium|Low), and why.
 - action_timeline_30_60_90: provide at least 3 actionable items in each of day_0_30, day_31_60, day_61_90.
+- competitor_intel: exactly 3 entries. Infer competitors from the person's company and industry. If company is unknown, use industry-level competitors.
+- industry_benchmarks: exactly 4 entries. industry_avg and user_value are integers 0-100 representing a normalized comparison scale. Never return strings or percentages with "%" signs.
+- score_breakdown_list: exactly 6 entries representing key scoring dimensions. value is an integer 0-100 (NOT the 1-5 rubric scale). weight must be exactly "High", "Med", or "Low". personal_context should be 1-2 sentences specific to this person.
+- workflow_items: exactly 5 entries based on inferred role responsibilities. automation_percentage is an integer 0-100.
+- leverage_items: exactly 3 entries.
+- governance_items: exactly 4 entries. current_status must be exactly "missing" | "partial" | "implemented". risk_level must be exactly "critical" | "high" | "medium" | "low".
+- skill_gap_matrix: at least 10 entries covering a mix of ai-core, ai-adjacent, and foundational skills. proficiency and market_demand are integers 1-5. Include skills the person HAS (from profile) and skills they NEED (from market analysis).
+- disruption_timeline: at least 5 entries representing specific tasks from the person's role. year is a 4-digit integer (current year to +10 years). automation_probability is integer 0-100. Tasks should be specific to the person's actual role, not generic.
+- career_pathways: exactly 3 entries. Each pathway is tailored to the person's current role and industry. Exactly one must have recommended=true (the best fit). difficulty must be "easy" | "moderate" | "challenging". required_skills should list 2-4 specific skills they'd need.
+- action_items: at least 5 entries. Each is a concrete, trackable action the person should take. category must be exactly "learning" | "networking" | "projects" | "governance". priority must be "high" | "medium" | "low". estimated_hours is a realistic integer. resource_url should be a real, valid URL to a course, tool, or article when possible (empty string if unknown). Actions must be specific to this person's role and gaps.
+
+ADDITIONAL FIELD RULES:
+- personal_narrative: addressed directly to the person by first name, 3-5 sentences.
+- company_analysis: 3-5 sentences about the company's AI posture. Do not invent internal metrics unless visible in the profile.
+- industry_ai_adoption_rate: integer 0-100 representing estimated AI adoption percentage for this industry.
+- top_industry_threat / top_industry_opportunity: single sentence each.
+- regulatory_note: single sentence about relevant AI regulation or empty string if none applies.
+- estimated_savings and estimated_roi are strings (e.g., "$45k/yr", "3.0x", "Unknown").
 """
 
 AI_READINESS_SYSTEM_PROMPT_v3 = """
@@ -558,4 +662,64 @@ CONTENT GUIDANCE (keep concise):
 - personalNarrative: 3–5 sentences, directly to the person.
 - companyAnalysis: 3–5 sentences, avoid invented internal metrics; keep general if unknown.
 - Use estimatedSavings / estimatedROI as strings (e.g., "$45k/yr", "3.0x", "Unknown").
+"""
+
+
+# ── Context injection for user-provided intake answers ─────────────────
+
+CONCERN_LABELS = {
+    "career_pivot": "career pivoting — weight transition readiness, adjacent-role analysis, and transferable skills higher",
+    "upskilling": "upskilling — weight learning velocity, skill gaps, and recommended certifications higher",
+    "team_readiness": "team readiness — weight leadership readiness, governance awareness, and team AI adoption higher",
+    "curiosity": "general curiosity — provide a balanced overview across all dimensions",
+}
+
+AI_INVOLVEMENT_LABELS = {
+    1: "They report minimal AI involvement (1/5).",
+    2: "They report low AI involvement (2/5) — basic awareness only.",
+    3: "They report moderate AI involvement (3/5) — some practical usage.",
+    4: "They report high AI involvement (4/5) — regular AI usage in workflow.",
+    5: "They report very high AI involvement (5/5) — AI is central to their work.",
+}
+
+
+def build_user_context_block(user_context) -> str:
+    """Build a prompt injection block from user-provided context.
+
+    Returns empty string if no context is provided, so it's safe to always call.
+    """
+    if user_context is None:
+        return ""
+
+    parts = []
+
+    concern = getattr(user_context, "concern", "") or ""
+    if concern and concern in CONCERN_LABELS:
+        parts.append(f"The user's primary concern is {CONCERN_LABELS[concern]}.")
+
+    ai_level = getattr(user_context, "ai_involvement", 0) or 0
+    if ai_level and ai_level in AI_INVOLVEMENT_LABELS:
+        parts.append(AI_INVOLVEMENT_LABELS[ai_level])
+
+    industry = getattr(user_context, "industry", "") or ""
+    if industry:
+        parts.append(f"They self-identify their industry as: {industry}. Cross-reference this with what their profile shows.")
+
+    years = getattr(user_context, "years_in_role", 0) or 0
+    if years > 0:
+        parts.append(f"They have been in their current role for approximately {years} years.")
+
+    if not parts:
+        return ""
+
+    context_block = "\n".join(parts)
+    return f"""
+
+ADDITIONAL USER CONTEXT (provided by the user — use to tailor your analysis):
+<user_context>
+{context_block}
+</user_context>
+Incorporate this context into your executive_summary and recommended_next_moves_90_days.
+If their concern is career pivoting, emphasize transition-ready roles in job_recommendations.
+If their concern is upskilling, emphasize specific courses and certifications in recommended_next_moves_90_days.
 """
