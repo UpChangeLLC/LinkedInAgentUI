@@ -87,6 +87,7 @@ export function App() {
     restoreSignupByEmail,
     continueWithOAuth,
     activateSubscription,
+    redeemPromo,
     markDashboardRevealSeen,
     goBackFromCareerChat,
     goToCareerChat,
@@ -212,12 +213,15 @@ export function App() {
               submitting={signupSubmitting}
               accountName={accountName}
               accessToken={signupSession?.accessToken}
+              signupId={signupSession?.signupId ?? undefined}
+              email={signupSession?.email}
               errorMessage={signupError}
               isAuthenticated={Boolean(signupSession?.accessToken)}
               onDashboard={dashboardAvailable ? goToResults : undefined}
               onRecalculate={goToIntake}
               onLogout={accountName ? logout : undefined}
               onActivate={activateSubscription}
+              onRedeemPromo={redeemPromo}
               onBack={goBack}
             />
           )}

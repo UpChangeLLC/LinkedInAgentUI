@@ -14,6 +14,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase
@@ -218,6 +219,43 @@ class PaymentEvent(Base):
 
     __table_args__ = (
         Index("idx_payment_events_user_created", "user_signup_id", "created_at"),
+    )
+
+
+class PromoRedemption(Base):
+    """A redeemed promotional code (the per-code 25-slot cap is a row count).
+
+    Free-month codes (EARLYBIRD, FIFA) are recorded here with status
+    ``granted`` when the subscription is activated. The unique (code, user)
+    constraint enforces one redemption per user; counting rows for a code
+    enforces the limited-slot cap. Percentage-discount codes that run through
+    Stripe (e.g. FIFA50) are NOT recorded here — Stripe's promotion-code limit
+    is the source of truth for those.
+    """
+
+    __tablename__ = "promo_redemptions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    code = Column(String(40), nullable=False, index=True)
+    user_signup_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_signups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kind = Column(String(20), nullable=False)
+    months = Column(Integer, nullable=False, default=0)
+    status = Column(String(20), nullable=False, default="granted")
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("code", "user_signup_id", name="uq_promo_redemptions_code_user"),
+        Index("idx_promo_redemptions_code", "code"),
     )
 
 
