@@ -23,6 +23,21 @@ ENV VITE_MCP_API_KEY=${VITE_MCP_API_KEY}
 # Optional: community forum URL — the dashboard "Community" link is hidden when empty
 ARG VITE_COMMUNITY_URL=
 ENV VITE_COMMUNITY_URL=${VITE_COMMUNITY_URL}
+# Stripe Buy Button (publishable key + button id) — baked into the bundle so the
+# <stripe-buy-button> renders. Safe to expose (publishable key is public).
+ARG VITE_STRIPE_PUBLISHABLE_KEY=
+ENV VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
+ARG VITE_STRIPE_BUY_BUTTON_ID=
+ENV VITE_STRIPE_BUY_BUTTON_ID=${VITE_STRIPE_BUY_BUTTON_ID}
+# Displayed plan prices (numbers only; backend reads the same vars at runtime).
+ARG VITE_PRICE_CURRENCY=
+ENV VITE_PRICE_CURRENCY=${VITE_PRICE_CURRENCY}
+ARG VITE_PRICE_MONTHLY=
+ENV VITE_PRICE_MONTHLY=${VITE_PRICE_MONTHLY}
+ARG VITE_PRICE_QUARTERLY=
+ENV VITE_PRICE_QUARTERLY=${VITE_PRICE_QUARTERLY}
+ARG VITE_PRICE_ANNUAL=
+ENV VITE_PRICE_ANNUAL=${VITE_PRICE_ANNUAL}
 RUN npm run build
 
 # Use rolling patch tag so rebuilds pick up Debian/Python security updates.

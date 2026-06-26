@@ -16,6 +16,7 @@ import {
   createPaymentCheckout,
   getStoredSignupSession,
   isAuthRestoreError,
+  redeemPromoCode,
   refreshSignupSession,
   requestPasswordReset,
   resendVerification,
@@ -939,6 +940,62 @@ export function useAppState() {
     })();
   }, [signupSession]);
 
+  const redeemPromo = useCallback(
+    async (rawCode: string): Promise<{ redeemed: boolean; applyAtCheckout: boolean; message: string }> => {
+      const token = signupSession?.accessToken;
+      if (!token) {
+        setAuthEntryPoint('landing');
+        setSignupInitialMode('signup');
+        setContinueToSubscriptionsAfterAuth(true);
+        setSignupError('Please create an account or log in before redeeming a code.');
+        setCurrentPage('signup');
+        throw new Error('Please create an account or log in first.');
+      }
+
+      const resp = await redeemPromoCode(token, rawCode);
+
+      // Discount codes (e.g. FIFA50) are applied on the Stripe checkout page.
+      if (resp.apply_at_checkout) {
+        return {
+          redeemed: false,
+          applyAtCheckout: true,
+          message: resp.detail || 'Enter this code at checkout to apply your discount.',
+        };
+      }
+
+      // Free-month codes grant Pro immediately; persist the updated session.
+      const session = saveSignupSession({
+        ...resp,
+        access_token: token,
+        email: resp.email || signupSession.email,
+        full_name: resp.full_name || signupSession.fullName,
+        signup_id: resp.signup_id || signupSession.signupId,
+      });
+      if (session) {
+        setSignupSession(session);
+        setSubscriptionActive(session.subscriptionActive);
+        if (session.subscriptionActive) {
+          setPaywallLocked(false);
+          setPaywallDeadlineMs(null);
+        }
+      } else {
+        setSubscriptionActive(Boolean(resp.subscription_active));
+        if (resp.subscription_active) {
+          setPaywallLocked(false);
+          setPaywallDeadlineMs(null);
+        }
+      }
+      return {
+        redeemed: true,
+        applyAtCheckout: false,
+        message: resp.already_redeemed
+          ? 'This code is already applied to your account.'
+          : 'Code applied — your Pro access is active. Enjoy!',
+      };
+    },
+    [signupSession],
+  );
+
   const retrySubmit = useCallback(() => {
     if (formData?.linkedinUrl || formData?.linkedin_url) {
       submitForm(formData);
@@ -990,6 +1047,7 @@ export function useAppState() {
     completeSignup,
     restoreSignupByEmail,
     activateSubscription,
+    redeemPromo,
     // Email verification (soft nag) + password reset.
     authNotice,
     dismissAuthNotice: () => setAuthNotice(null),

@@ -309,6 +309,46 @@ export async function activateDummySubscription(accessToken: string, months = 1)
     return json
 }
 
+export interface PromoInfo {
+    code: string
+    kind: 'free_months' | 'percent_off' | string
+    label: string
+    months: number
+    percent_off: number
+    apply_at_checkout: boolean
+    remaining: number | null
+}
+
+export interface PromoRedeemResponse extends SignupResponse {
+    redeemed?: boolean
+    already_redeemed?: boolean
+    apply_at_checkout?: boolean
+    promo?: PromoInfo
+}
+
+/**
+ * Redeem a promo code. Free-month codes (EARLYBIRD, FIFA) activate Pro and
+ * return the updated session; discount codes (FIFA50) are not granted here —
+ * the response carries `apply_at_checkout: true` and a message telling the user
+ * to enter the code on the Stripe checkout page.
+ */
+export async function redeemPromoCode(accessToken: string, code: string): Promise<PromoRedeemResponse> {
+    const res = await fetch(`${baseUrl()}/api/promos/redeem`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...mcpAuthHeaders(),
+        },
+        body: JSON.stringify({ access_token: accessToken, code }),
+        signal: timeoutSignal(30_000),
+    })
+    const json = (await res.json().catch(() => ({}))) as PromoRedeemResponse
+    if (!res.ok || json.status === 'error') {
+        throw new Error(json.detail || `Could not redeem code (HTTP ${res.status})`)
+    }
+    return json
+}
+
 export async function createPaymentCheckout(accessToken: string, planId: string): Promise<PaymentCheckoutSession> {
     const res = await fetch(`${baseUrl()}/api/payments/checkout`, {
         method: 'POST',

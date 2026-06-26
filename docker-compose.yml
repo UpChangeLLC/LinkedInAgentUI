@@ -8,6 +8,12 @@ services:
         VITE_MCP_BASE_URL: "${VITE_MCP_BASE_URL:-}"
         VITE_MCP_API_KEY: "${VITE_MCP_API_KEY:-}"
         VITE_COMMUNITY_URL: "${VITE_COMMUNITY_URL:-}"
+        VITE_STRIPE_PUBLISHABLE_KEY: "${VITE_STRIPE_PUBLISHABLE_KEY:-}"
+        VITE_STRIPE_BUY_BUTTON_ID: "${VITE_STRIPE_BUY_BUTTON_ID:-}"
+        VITE_PRICE_CURRENCY: "${VITE_PRICE_CURRENCY:-}"
+        VITE_PRICE_MONTHLY: "${VITE_PRICE_MONTHLY:-}"
+        VITE_PRICE_QUARTERLY: "${VITE_PRICE_QUARTERLY:-}"
+        VITE_PRICE_ANNUAL: "${VITE_PRICE_ANNUAL:-}"
     ports:
       - "8001:8001"
     # Single source of env for both frontend (build args above) and backend (runtime).
