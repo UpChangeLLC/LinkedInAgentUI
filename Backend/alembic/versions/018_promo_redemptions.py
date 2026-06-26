@@ -1,7 +1,7 @@
 """Promo code redemptions: track limited-slot launch promo grants.
 
-Revision ID: 017
-Revises: 016
+Revision ID: 018
+Revises: 017
 
 Records redemptions of free-month promo codes (EARLYBIRD, FIFA) so the
 per-code 25-slot cap (a row count) and the one-per-user rule (a unique index)
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
 
-revision = "017"
-down_revision = "016"
+revision = "018"
+down_revision = "017"
 
 
 def upgrade() -> None:
