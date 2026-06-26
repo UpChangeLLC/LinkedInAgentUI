@@ -3,23 +3,19 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import os
 import re
-import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
-from urllib.parse import urlencode
 
-from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/signup", tags=["signup"])
-_oauth_state_memory: Dict[str, Dict[str, Any]] = {}
 
 
 def _hash_url(url: str) -> Optional[str]:
@@ -53,6 +49,53 @@ def _valid_password(password: str) -> bool:
     return has_alpha and has_digit
 
 
+def _first_name(full_name: Optional[str]) -> str:
+    return (full_name or "").strip().split(" ")[0] if (full_name or "").strip() else ""
+
+
+def _issue_email_verification(row: Any) -> str:
+    """Set a fresh 24h verification token on `row`; return the raw token to email."""
+    from services.email_auth import make_token, token_expiry
+
+    token = make_token()
+    row.email_verified = False
+    row.email_verification_token_hash = _hash_token(token)
+    row.email_verification_token_expires_at = token_expiry(hours=24)
+    return token
+
+
+async def _enqueue_auth_email(user_id: Any, full_name: Optional[str], template: str, model_extra: Dict[str, Any]) -> None:
+    """Queue a transactional auth email (verification / reset). Never raises.
+
+    Also logs the action URL at INFO so the flow is testable while
+    EMAIL_PROVIDER=none (no real send happens until a provider is configured).
+    """
+    from db import _session_factory, db_available
+
+    if user_id is None or not db_available() or not _session_factory:
+        return
+    try:
+        from db_models import EmailQueue
+
+        model = {"first_name": _first_name(full_name), **model_extra}
+        async with _session_factory() as session:
+            session.add(
+                EmailQueue(
+                    user_signup_id=user_id,
+                    template=template,
+                    message_stream="transactional",
+                    model=model,
+                    scheduled_for=datetime.now(timezone.utc),
+                    status="queued",
+                )
+            )
+            await session.commit()
+        action_url = model_extra.get("verify_url") or model_extra.get("reset_url") or ""
+        logger.info("queued %s email (url=%s)", template, action_url)
+    except Exception:
+        logger.warning("failed to enqueue %s email", template, exc_info=True)
+
+
 def _session_payload(row: Any, access_token: Optional[str] = None) -> Dict[str, Any]:
     expires = row.subscription_expires_at
     active = _is_active(row.subscription_status, expires)
@@ -70,6 +113,7 @@ def _session_payload(row: Any, access_token: Optional[str] = None) -> Dict[str, 
         "subscription_status": row.subscription_status,
         "subscription_active": active,
         "subscription_expires_at": expires.isoformat() if expires else None,
+        "email_verified": bool(getattr(row, "email_verified", False)),
         "latest_assessment_result": latest_result if latest_result else None,
         "latest_assessment_created_at": latest_created_at,
     }
@@ -146,15 +190,21 @@ class DummySubscribeRequest(BaseModel):
     months: int = Field(default=1, ge=1, le=12)
 
 
-class OAuthCompleteRequest(BaseModel):
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(..., min_length=16, max_length=256)
+
+
+class ResendVerificationRequest(BaseModel):
     access_token: str = Field(..., min_length=16, max_length=256)
-    linkedin_url: Optional[str] = Field(default=None, max_length=500)
-    resume_provided: bool = False
-    resume_text_length: int = 0
-    github_url: Optional[str] = Field(default=None, max_length=500)
-    website_url: Optional[str] = Field(default=None, max_length=500)
-    user_context: Dict[str, Any] = Field(default_factory=dict)
-    assessment_snapshot: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RequestPasswordResetRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=320)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=16, max_length=256)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 
 class SaveAssessmentRequest(BaseModel):
@@ -171,190 +221,6 @@ class SaveAssessmentRequest(BaseModel):
 def _frontend_origin() -> str:
     return (os.getenv("FRONTEND_ORIGIN") or os.getenv("PUBLIC_FRONTEND_URL") or "/").strip().rstrip("/")
 
-
-def _backend_public_url(request: Request) -> str:
-    configured = (os.getenv("BACKEND_PUBLIC_URL") or os.getenv("PUBLIC_BACKEND_URL") or "").strip().rstrip("/")
-    if configured:
-        return configured
-    return str(request.base_url).rstrip("/")
-
-
-def _oauth_redirect_uri(request: Request, provider: str) -> str:
-    return f"{_backend_public_url(request)}/api/signup/oauth/callback/{provider}"
-
-
-async def _store_oauth_state(state: str, payload: Dict[str, Any]) -> None:
-    try:
-        from cache import cache_set_json, redis_available
-
-        if redis_available():
-            await cache_set_json(f"oauth_state:{state}", payload, ttl_seconds=600)
-            return
-    except Exception:
-        pass
-    _oauth_state_memory[state] = payload
-
-
-async def _pop_oauth_state(state: str) -> Optional[Dict[str, Any]]:
-    try:
-        from cache import cache_delete, cache_get_json, redis_available
-
-        if redis_available():
-            payload = await cache_get_json(f"oauth_state:{state}")
-            await cache_delete(f"oauth_state:{state}")
-            return payload if isinstance(payload, dict) else None
-    except Exception:
-        pass
-    return _oauth_state_memory.pop(state, None)
-
-
-def _oauth_config(provider: str) -> Dict[str, str]:
-    if provider == "google":
-        return {
-            "client_id": os.getenv("GOOGLE_CLIENT_ID", "").strip(),
-            "client_secret": os.getenv("GOOGLE_CLIENT_SECRET", "").strip(),
-            "auth_url": "https://accounts.google.com/o/oauth2/v2/auth",
-            "token_url": "https://oauth2.googleapis.com/token",
-            "userinfo_url": "https://openidconnect.googleapis.com/v1/userinfo",
-            "scope": "openid email profile",
-        }
-    if provider == "linkedin":
-        return {
-            "client_id": os.getenv("LINKEDIN_CLIENT_ID", "").strip(),
-            "client_secret": os.getenv("LINKEDIN_CLIENT_SECRET", "").strip(),
-            "auth_url": "https://www.linkedin.com/oauth/v2/authorization",
-            "token_url": "https://www.linkedin.com/oauth/v2/accessToken",
-            "userinfo_url": "https://api.linkedin.com/v2/userinfo",
-            "scope": "openid profile email",
-        }
-    raise ValueError("Unsupported OAuth provider")
-
-
-def _encode_auth_payload(payload: Dict[str, Any]) -> str:
-    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    import base64
-
-    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
-
-
-@router.get("/oauth/start/{provider}")
-async def start_oauth(provider: str, request: Request) -> JSONResponse:
-    """Return provider authorization URL for Google/LinkedIn signup/login."""
-    provider = provider.strip().lower()
-    try:
-        cfg = _oauth_config(provider)
-    except ValueError:
-        return JSONResponse({"status": "error", "detail": "Unsupported OAuth provider."}, status_code=400)
-    if not cfg["client_id"] or not cfg["client_secret"]:
-        return JSONResponse({"status": "error", "detail": f"{provider.title()} OAuth is not configured."}, status_code=503)
-
-    state = secrets.token_urlsafe(24)
-    await _store_oauth_state(state, {"provider": provider, "created_at": datetime.now(timezone.utc).isoformat()})
-    params = {
-        "client_id": cfg["client_id"],
-        "redirect_uri": _oauth_redirect_uri(request, provider),
-        "response_type": "code",
-        "scope": cfg["scope"],
-        "state": state,
-    }
-    return JSONResponse({"status": "ok", "auth_url": f"{cfg['auth_url']}?{urlencode(params)}"})
-
-
-@router.get("/oauth/callback/{provider}")
-async def oauth_callback(provider: str, request: Request, code: str = "", state: str = ""):
-    """OAuth callback. Creates/restores a user and redirects token payload to the SPA."""
-    provider = provider.strip().lower()
-    state_payload = await _pop_oauth_state(state)
-    frontend = _frontend_origin()
-    if not code or not state_payload or state_payload.get("provider") != provider:
-        return RedirectResponse(f"{frontend}/#auth_error=oauth_state")
-
-    try:
-        cfg = _oauth_config(provider)
-        import httpx
-
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            token_resp = await client.post(
-                cfg["token_url"],
-                data={
-                    "grant_type": "authorization_code",
-                    "code": code,
-                    "redirect_uri": _oauth_redirect_uri(request, provider),
-                    "client_id": cfg["client_id"],
-                    "client_secret": cfg["client_secret"],
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-            token_resp.raise_for_status()
-            token_payload = token_resp.json()
-            access = token_payload.get("access_token", "")
-            user_resp = await client.get(cfg["userinfo_url"], headers={"Authorization": f"Bearer {access}"})
-            user_resp.raise_for_status()
-            userinfo = user_resp.json()
-    except Exception:
-        logger.warning("OAuth callback failed for provider=%s", provider, exc_info=True)
-        return RedirectResponse(f"{frontend}/#auth_error=oauth_failed")
-
-    email = (userinfo.get("email") or "").strip().lower()
-    subject = str(userinfo.get("sub") or userinfo.get("id") or "").strip()
-    full_name = (
-        userinfo.get("name")
-        or " ".join(x for x in [userinfo.get("given_name"), userinfo.get("family_name")] if x)
-        or email
-        or "OAuth User"
-    )
-    if not subject:
-        return RedirectResponse(f"{frontend}/#auth_error=missing_identity")
-
-    try:
-        from sqlalchemy import select
-        from db import _session_factory, db_available
-        from db_models import UserSignup
-
-        if not db_available() or not _session_factory:
-            raise RuntimeError("Database is not configured")
-
-        async with _session_factory() as session:
-            stmt = select(UserSignup).where(
-                UserSignup.oauth_provider == provider,
-                UserSignup.oauth_subject == subject,
-            )
-            row = (await session.execute(stmt)).scalars().first()
-            if row is None and email:
-                row = (
-                    await session.execute(
-                        select(UserSignup).where(UserSignup.email == email).order_by(UserSignup.created_at.desc()).limit(1)
-                    )
-                ).scalars().first()
-            if row is None:
-                row = UserSignup(
-                    full_name=full_name,
-                    email=email or f"{provider}-{subject}@oauth.local",
-                    oauth_provider=provider,
-                    oauth_subject=subject,
-                    subscription_status="trial",
-                    created_at=datetime.now(timezone.utc),
-                )
-                session.add(row)
-            else:
-                row.oauth_provider = row.oauth_provider or provider
-                row.oauth_subject = row.oauth_subject or subject
-                row.full_name = row.full_name or full_name
-                if email:
-                    row.email = row.email or email
-            access_token = _new_access_token()
-            row.access_token_hash = _hash_token(access_token)
-            row.last_login_at = datetime.now(timezone.utc)
-            await session.commit()
-            await session.refresh(row)
-    except Exception:
-        logger.warning("OAuth user persistence failed", exc_info=True)
-        return RedirectResponse(f"{frontend}/#auth_error=persistence_failed")
-
-    async with _session_factory() as session:
-        payload = await _session_payload_with_latest_result(session, row, access_token=access_token)
-    payload["oauth_provider"] = provider
-    return RedirectResponse(f"{frontend}/#auth={_encode_auth_payload(payload)}")
 
 
 @router.post("")
@@ -418,6 +284,7 @@ async def create_signup(body: SignupRequest) -> JSONResponse:
         row.access_token_hash = _hash_token(access_token)
         row.password_hash = _hash_password(body.password)
         row.subscription_status = "trial"
+        verify_token = _issue_email_verification(row)
 
         async with _session_factory() as session:
             existing = (
@@ -437,6 +304,12 @@ async def create_signup(body: SignupRequest) -> JSONResponse:
             await session.commit()
             await session.refresh(row)
 
+        await _enqueue_auth_email(
+            row.id,
+            row.full_name,
+            "email_verification",
+            {"verify_url": f"{_frontend_origin()}/?verify={verify_token}"},
+        )
         return JSONResponse(_session_payload(row, access_token=access_token))
     except Exception:
         logger.warning("Failed to persist signup", exc_info=True)
@@ -516,10 +389,17 @@ async def create_onboarding_signup(body: OnboardingSignupRequest) -> JSONRespons
             access_token = _new_access_token()
             row.access_token_hash = _hash_token(access_token)
             row.password_hash = _hash_password(body.password)
+            verify_token = _issue_email_verification(row)
             session.add(row)
             await session.commit()
             await session.refresh(row)
 
+        await _enqueue_auth_email(
+            row.id,
+            row.full_name,
+            "email_verification",
+            {"verify_url": f"{_frontend_origin()}/?verify={verify_token}"},
+        )
         payload = _session_payload(row, access_token=access_token)
         payload["is_returning_user"] = False
         return JSONResponse(payload)
@@ -582,9 +462,48 @@ async def restore_signup_session(body: SignupSessionRequest) -> JSONResponse:
         return JSONResponse({"status": "error", "detail": "Could not restore session."}, status_code=500)
 
 
-@router.post("/oauth/complete")
-async def complete_oauth_signup(body: OAuthCompleteRequest) -> JSONResponse:
-    """Attach current assessment/intake metadata to an OAuth-created session."""
+@router.post("/verify-email")
+async def verify_email(body: VerifyEmailRequest) -> JSONResponse:
+    """Confirm an email-verification token; marks the account verified."""
+    from db import _session_factory, db_available
+
+    if not db_available() or not _session_factory:
+        return JSONResponse({"status": "error", "detail": "Database is not configured."}, status_code=503)
+
+    try:
+        from sqlalchemy import select
+        from db_models import UserSignup
+        from services.email_auth import verify_token
+
+        token_hash = _hash_token(body.token)
+        async with _session_factory() as session:
+            row = (
+                await session.execute(
+                    select(UserSignup).where(UserSignup.email_verification_token_hash == token_hash)
+                )
+            ).scalars().first()
+            if not row or not verify_token(
+                body.token,
+                row.email_verification_token_hash,
+                row.email_verification_token_expires_at,
+            ):
+                return JSONResponse(
+                    {"status": "error", "detail": "This verification link is invalid or has expired."},
+                    status_code=400,
+                )
+            row.email_verified = True
+            row.email_verification_token_hash = None
+            row.email_verification_token_expires_at = None
+            await session.commit()
+        return JSONResponse({"status": "ok", "email_verified": True})
+    except Exception:
+        logger.warning("Failed to verify email", exc_info=True)
+        return JSONResponse({"status": "error", "detail": "Could not verify email."}, status_code=500)
+
+
+@router.post("/resend-verification")
+async def resend_verification(body: ResendVerificationRequest) -> JSONResponse:
+    """Re-issue and re-send the verification email for the current session."""
     from db import _session_factory, db_available
 
     if not db_available() or not _session_factory:
@@ -594,11 +513,6 @@ async def complete_oauth_signup(body: OAuthCompleteRequest) -> JSONResponse:
         from sqlalchemy import select
         from db_models import UserSignup
 
-        snapshot = dict(body.assessment_snapshot or {})
-        if snapshot:
-            snapshot.setdefault("resume_text_length", body.resume_text_length)
-            snapshot.setdefault("_saved_at", datetime.now(timezone.utc).isoformat())
-
         async with _session_factory() as session:
             row = (
                 await session.execute(
@@ -607,21 +521,125 @@ async def complete_oauth_signup(body: OAuthCompleteRequest) -> JSONResponse:
             ).scalars().first()
             if not row:
                 return JSONResponse({"status": "error", "detail": "Session not found."}, status_code=404)
-            row.linkedin_url = (body.linkedin_url or "").strip() or row.linkedin_url
-            row.url_hash = _hash_url(body.linkedin_url or "") or row.url_hash
-            row.resume_provided = body.resume_provided
-            row.github_url = (body.github_url or "").strip() or row.github_url
-            row.website_url = (body.website_url or "").strip() or row.website_url
-            row.user_context = body.user_context or row.user_context
-            if snapshot:
-                row.assessment_snapshot = snapshot
+            if row.email_verified:
+                return JSONResponse({"status": "ok", "email_verified": True})
+            verify_token = _issue_email_verification(row)
+            await session.commit()
+
+        await _enqueue_auth_email(
+            row.id,
+            row.full_name,
+            "email_verification",
+            {"verify_url": f"{_frontend_origin()}/?verify={verify_token}"},
+        )
+        return JSONResponse({"status": "ok", "email_verified": False})
+    except Exception:
+        logger.warning("Failed to resend verification email", exc_info=True)
+        return JSONResponse({"status": "error", "detail": "Could not resend verification email."}, status_code=500)
+
+
+@router.post("/request-password-reset")
+async def request_password_reset(body: RequestPasswordResetRequest) -> JSONResponse:
+    """Email a one-time password-reset link. Always returns ok (no enumeration)."""
+    ok_response = JSONResponse(
+        {"status": "ok", "detail": "If that email has an account, a reset link is on its way."}
+    )
+    email = body.email.strip().lower()
+    if not _valid_email(email):
+        return JSONResponse({"status": "error", "detail": "Invalid email address."}, status_code=400)
+
+    from db import _session_factory, db_available
+
+    if not db_available() or not _session_factory:
+        return ok_response
+
+    try:
+        from sqlalchemy import select
+        from db_models import UserSignup
+        from services.email_auth import make_token, token_expiry
+
+        async with _session_factory() as session:
+            row = (
+                await session.execute(
+                    select(UserSignup)
+                    .where(UserSignup.email == email)
+                    .order_by(UserSignup.created_at.desc())
+                    .limit(1)
+                )
+            ).scalars().first()
+            if not row or not row.password_hash:
+                # No (password) account — stay silent to avoid account enumeration.
+                return ok_response
+            token = make_token()
+            row.password_reset_token_hash = _hash_token(token)
+            row.password_reset_token_expires_at = token_expiry(hours=1)
+            await session.commit()
+            user_id, full_name = row.id, row.full_name
+
+        await _enqueue_auth_email(
+            user_id,
+            full_name,
+            "password_reset",
+            {"reset_url": f"{_frontend_origin()}/?reset={token}"},
+        )
+        return ok_response
+    except Exception:
+        logger.warning("Failed to request password reset", exc_info=True)
+        return ok_response
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetPasswordRequest) -> JSONResponse:
+    """Set a new password from a reset token; rotates the session token."""
+    if not _valid_password(body.new_password):
+        return JSONResponse(
+            {
+                "status": "error",
+                "detail": "Password must be 8-128 characters and include at least one letter and one number.",
+            },
+            status_code=400,
+        )
+
+    from db import _session_factory, db_available
+
+    if not db_available() or not _session_factory:
+        return JSONResponse({"status": "error", "detail": "Database is not configured."}, status_code=503)
+
+    try:
+        from sqlalchemy import select
+        from db_models import UserSignup
+        from services.email_auth import verify_token
+
+        token_hash = _hash_token(body.token)
+        async with _session_factory() as session:
+            row = (
+                await session.execute(
+                    select(UserSignup).where(UserSignup.password_reset_token_hash == token_hash)
+                )
+            ).scalars().first()
+            if not row or not verify_token(
+                body.token,
+                row.password_reset_token_hash,
+                row.password_reset_token_expires_at,
+            ):
+                return JSONResponse(
+                    {"status": "error", "detail": "This reset link is invalid or has expired."},
+                    status_code=400,
+                )
+            row.password_hash = _hash_password(body.new_password)
+            row.password_reset_token_hash = None
+            row.password_reset_token_expires_at = None
+            # Rotate the access token so any existing sessions are invalidated.
+            access_token = _new_access_token()
+            row.access_token_hash = _hash_token(access_token)
+            row.last_login_at = datetime.now(timezone.utc)
             await session.commit()
             await session.refresh(row)
-            payload = await _session_payload_with_latest_result(session, row, access_token=body.access_token)
+            payload = await _session_payload_with_latest_result(session, row, access_token=access_token)
         return JSONResponse(payload)
     except Exception:
-        logger.warning("Failed to complete OAuth signup", exc_info=True)
-        return JSONResponse({"status": "error", "detail": "Could not complete OAuth signup."}, status_code=500)
+        logger.warning("Failed to reset password", exc_info=True)
+        return JSONResponse({"status": "error", "detail": "Could not reset password."}, status_code=500)
 
 
 @router.post("/assessment")

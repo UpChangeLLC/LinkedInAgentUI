@@ -120,6 +120,33 @@ def _premium_upsell(model: Dict[str, Any]) -> Tuple[str, str]:
     return subject, body
 
 
+def _email_verification(model: Dict[str, Any]) -> Tuple[str, str]:
+    subject = "Verify your email for Upchange"
+    url = (model.get("verify_url") or "").strip()
+    body = (
+        f"{_hi(model)}\n\n"
+        "Confirm this email address to secure your Upchange account:\n\n"
+        f"→ {url}\n\n"
+        "This link expires in 24 hours. If you didn't create an account, you can\n"
+        "ignore this email.\n"
+    )
+    return subject, body
+
+
+def _password_reset(model: Dict[str, Any]) -> Tuple[str, str]:
+    subject = "Reset your Upchange password"
+    url = (model.get("reset_url") or "").strip()
+    body = (
+        f"{_hi(model)}\n\n"
+        "We received a request to reset your Upchange password. Set a new one here:\n\n"
+        f"→ {url}\n\n"
+        "This link expires in 1 hour and signs out your other sessions when used.\n"
+        "If you didn't request this, you can safely ignore this email — your\n"
+        "password won't change.\n"
+    )
+    return subject, body
+
+
 RENDERERS: Dict[str, Renderer] = {
     "welcome": _welcome,
     "score_explainer": _score_explainer,
@@ -128,6 +155,8 @@ RENDERERS: Dict[str, Renderer] = {
     "decay_nudge_45d": _decay(45),
     "rerun_available": _rerun_available,
     "premium_upsell": _premium_upsell,
+    "email_verification": _email_verification,
+    "password_reset": _password_reset,
 }
 
 
