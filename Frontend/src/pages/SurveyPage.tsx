@@ -24,7 +24,7 @@ interface SurveyPageProps {
   scrapeStatus: ScrapeStatus
 }
 
-const TOTAL = 10
+const TOTAL = 9
 
 /** One question per slide; Back / Next walk the user through, with submit
  * enabled only on the final slide when every required answer is set. */
@@ -261,22 +261,7 @@ function renderStep(
       )
     case 9:
       return (
-        <QuestionCard index={9} dim="D-RW" total={TOTAL} optional question="Do you manage or lead a team?" helpText="Helps us tailor recommendations. Optional.">
-          <SingleSelectPill
-            ariaLabel="Leadership"
-            value={r.q_rw_1}
-            onChange={(v) => update({ q_rw_1: v as SurveyResponse['q_rw_1'] })}
-            options={[
-              { value: 'yes', label: 'Yes' },
-              { value: 'no', label: 'No' },
-              { value: 'prefer_not_to_say', label: 'Prefer not to say' },
-            ]}
-          />
-        </QuestionCard>
-      )
-    case 10:
-      return (
-        <QuestionCard index={10} dim="D-RW" total={TOTAL} optional question="Are you currently exploring a role change?" helpText="Helps us tailor recommendations. Optional.">
+        <QuestionCard index={9} dim="D-RW" total={TOTAL} optional question="Are you currently exploring a role change?" helpText="Helps us tailor recommendations. Optional.">
           <SingleSelectPill
             ariaLabel="Exploring a role change"
             value={r.q_rw_2}

@@ -13,6 +13,7 @@ import { SignupPage } from './pages/SignupPage';
 import { SubscriptionPage } from './pages/SubscriptionPage';
 import { SettingsNotificationsPage } from './pages/SettingsNotificationsPage';
 import { RerunLockModal } from './components/dashboard/RerunLockModal';
+import { EmailVerificationBanner } from './components/auth/EmailVerificationBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { buildCareerAssessmentContext } from './lib/careerChat';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -85,7 +86,6 @@ export function App() {
     retrySubmit,
     completeSignup,
     restoreSignupByEmail,
-    continueWithOAuth,
     activateSubscription,
     redeemPromo,
     markDashboardRevealSeen,
@@ -93,6 +93,14 @@ export function App() {
     goToCareerChat,
     careerMentorSeedContext,
     resultsBackend,
+    authNotice,
+    dismissAuthNotice,
+    emailVerified,
+    resendVerificationEmail,
+    requestPasswordResetEmail,
+    passwordResetToken,
+    submitPasswordReset,
+    cancelPasswordReset,
   } = useAppState();
   const accountName = signupSession?.fullName || signupSession?.email || '';
   const dashboardAvailable = Boolean(resultsBackend || formData?.backend);
@@ -108,6 +116,29 @@ export function App() {
     <Sentry.ErrorBoundary fallback={<ErrorPage error="An unexpected error occurred." onRetry={() => window.location.reload()} />}>
     <ErrorBoundary>
       <div className="font-sans text-navy-900 antialiased selection:bg-accent/20 selection:text-accent-dark">
+        {authNotice && (
+          <div
+            role="status"
+            className={`flex items-center gap-3 px-4 py-2.5 text-sm border-b ${
+              authNotice.kind === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}
+          >
+            <p className="flex-1 leading-snug">{authNotice.message}</p>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={dismissAuthNotice}
+              className="rounded px-2 py-0.5 text-xs font-medium hover:bg-black/5"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+        {signupSession && !emailVerified && (
+          <EmailVerificationBanner email={signupSession.email} onResend={resendVerificationEmail} />
+        )}
         <AnimatePresence mode="wait">
           {currentPage === 'landing' && (
             <LandingPage
@@ -153,7 +184,7 @@ export function App() {
               initialMode="signup"
               onSubmit={completeSignup}
               onRestore={restoreSignupByEmail}
-              onOAuth={continueWithOAuth}
+              onForgotPassword={requestPasswordResetEmail}
               onBack={goBack}
             />
           )}
@@ -201,7 +232,10 @@ export function App() {
               initialMode={signupInitialMode}
               onSubmit={completeSignup}
               onRestore={restoreSignupByEmail}
-              onOAuth={continueWithOAuth}
+              onForgotPassword={requestPasswordResetEmail}
+              resetActive={Boolean(passwordResetToken)}
+              onResetPassword={submitPasswordReset}
+              onCancelReset={cancelPasswordReset}
               onBack={goBack}
             />
           )}

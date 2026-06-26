@@ -165,9 +165,9 @@ async def post_career_chat_message(
     ]
     await _save_history(sid, new_hist)
 
-    # Consume the one free message for non-premium users (fire-and-forget).
+    # Consume one free message for non-premium users (fire-and-forget).
     if should_mark_used(user):
-        await _mark_career_chat_used(user.id)
+        await _increment_career_chat_used(user.id)
 
     # Keep the per-user session index fresh (Pro saved threads).
     await _touch_session(user, sid, user_text)
@@ -178,8 +178,8 @@ async def post_career_chat_message(
     )
 
 
-async def _mark_career_chat_used(user_id) -> None:
-    """Set career_chat_free_used=True. Never raises."""
+async def _increment_career_chat_used(user_id) -> None:
+    """Increment career_chat_messages_used by 1. Never raises."""
     from db import db_available, _session_factory
     if not db_available() or not _session_factory:
         return
@@ -189,11 +189,15 @@ async def _mark_career_chat_used(user_id) -> None:
 
         async with _session_factory() as session:
             await session.execute(
-                update(UserSignup).where(UserSignup.id == user_id).values(career_chat_free_used=True)
+                update(UserSignup)
+                .where(UserSignup.id == user_id)
+                .values(
+                    career_chat_messages_used=UserSignup.career_chat_messages_used + 1
+                )
             )
             await session.commit()
     except Exception:
-        logger.warning("failed to mark career_chat_free_used", exc_info=True)
+        logger.warning("failed to increment career_chat_messages_used", exc_info=True)
 
 
 @router.get("/history", response_model=CareerChatMessageResponse)
@@ -348,20 +352,40 @@ async def list_career_chat_sessions(user=Depends(optional_session)) -> List[Sess
 
 @router.post("/sessions", response_model=CreateSessionResponse)
 async def create_career_chat_session(user=Depends(optional_session)) -> CreateSessionResponse:
-    """Create a new saved thread (Pro feature)."""
-    if not feature_allowed(user, "career_chat_sessions"):
+    """Create a new saved thread.
+
+    Pro: unlimited threads. Free (signed-in): exactly one saved thread, then a
+    402 upsell. Anonymous: blocked (no account to tie threads to).
+    """
+    if user is None:
         raise HTTPException(
             status_code=402,
             detail={"code": "premium_required", "feature": "career_chat_sessions"},
         )
+    is_pro = feature_allowed(user, "career_chat_sessions")
+
     from db import _session_factory, db_available
 
     if not db_available() or not _session_factory:
         raise HTTPException(status_code=503, detail="Sessions are unavailable.")
+    from sqlalchemy import func, select
     from db_models import CareerChatSession
 
     sid = uuid.uuid4().hex
     async with _session_factory() as session:
+        if not is_pro:
+            existing = (
+                await session.execute(
+                    select(func.count())
+                    .select_from(CareerChatSession)
+                    .where(CareerChatSession.user_signup_id == user.id)
+                )
+            ).scalar_one()
+            if existing >= 1:
+                raise HTTPException(
+                    status_code=402,
+                    detail={"code": "premium_required", "feature": "career_chat_sessions"},
+                )
         row = CareerChatSession(user_signup_id=user.id, session_id=sid, title="New chat")
         session.add(row)
         await session.commit()

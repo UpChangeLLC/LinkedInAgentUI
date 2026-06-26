@@ -46,20 +46,14 @@ export interface SignupResponse {
     subscription_status?: 'trial' | 'active' | 'expired' | string
     subscription_active?: boolean
     subscription_expires_at?: string | null
+    email_verified?: boolean
     latest_assessment_result?: Record<string, any> | null
     latest_assessment_created_at?: string | null
     detail?: string
 }
 
-export type OAuthProvider = 'google' | 'linkedin'
-
-export interface OAuthStartResponse {
-    status: 'ok' | 'error'
-    auth_url?: string
-    detail?: string
-}
-
-export type OAuthCompletePayload = Omit<
+/** Payload to attach the latest assessment to an existing session. */
+export type AssessmentPayload = Omit<
     SignupPayload,
     'full_name' | 'email' | 'password' | 'phone' | 'company' | 'role_title' | 'marketing_opt_in'
 > & {
@@ -74,6 +68,7 @@ export interface StoredSignupSession {
     subscriptionStatus: string
     subscriptionActive: boolean
     subscriptionExpiresAt: string | null
+    emailVerified: boolean
 }
 
 export interface PaymentMethodPayload {
@@ -101,7 +96,6 @@ export interface PaymentCheckoutResponse {
 }
 
 const SESSION_KEY = 'airs_signup_session'
-const OAUTH_PENDING_KEY = 'airs_oauth_pending_signup'
 export const PAYWALL_DEADLINE_KEY = 'airs_paywall_deadline_ms'
 
 export function saveSignupSession(response: SignupResponse): StoredSignupSession | null {
@@ -114,6 +108,7 @@ export function saveSignupSession(response: SignupResponse): StoredSignupSession
         subscriptionStatus: response.subscription_status || 'trial',
         subscriptionActive: Boolean(response.subscription_active),
         subscriptionExpiresAt: response.subscription_expires_at || null,
+        emailVerified: Boolean(response.email_verified),
     }
     try {
         localStorage.setItem(SESSION_KEY, JSON.stringify(session))
@@ -170,39 +165,73 @@ export async function submitSignup(payload: SignupPayload): Promise<SignupRespon
     return json
 }
 
-export async function startOAuth(provider: OAuthProvider): Promise<string> {
-    const res = await fetch(`${baseUrl()}/api/signup/oauth/start/${provider}`, {
-        method: 'GET',
-        headers: {
-            ...mcpAuthHeaders(),
-        },
-        signal: timeoutSignal(30_000),
-    })
-    const json = (await res.json().catch(() => ({}))) as OAuthStartResponse
-    if (!res.ok || json.status === 'error' || !json.auth_url) {
-        throw new Error(json.detail || `${provider} sign-in is not available.`)
-    }
-    return json.auth_url
+export interface VerifyEmailResponse {
+    status: 'ok' | 'error'
+    email_verified?: boolean
+    detail?: string
 }
 
-export async function completeOAuthSignup(payload: OAuthCompletePayload): Promise<SignupResponse> {
-    const res = await fetch(`${baseUrl()}/api/signup/oauth/complete`, {
+/** Confirm an email-verification token (from the ?verify=… link). */
+export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
+    const res = await fetch(`${baseUrl()}/api/signup/verify-email`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...mcpAuthHeaders(),
-        },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json', ...mcpAuthHeaders() },
+        body: JSON.stringify({ token }),
         signal: timeoutSignal(30_000),
     })
-    const json = (await res.json().catch(() => ({}))) as SignupResponse
+    const json = (await res.json().catch(() => ({}))) as VerifyEmailResponse
     if (!res.ok || json.status === 'error') {
-        throw new Error(json.detail || `OAuth signup completion failed (HTTP ${res.status})`)
+        throw new Error(json.detail || `Verification failed (HTTP ${res.status})`)
     }
     return json
 }
 
-export async function saveSignupAssessment(payload: OAuthCompletePayload): Promise<SignupResponse> {
+/** Re-send the verification email for the current session. */
+export async function resendVerification(accessToken: string): Promise<VerifyEmailResponse> {
+    const res = await fetch(`${baseUrl()}/api/signup/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...mcpAuthHeaders() },
+        body: JSON.stringify({ access_token: accessToken }),
+        signal: timeoutSignal(30_000),
+    })
+    const json = (await res.json().catch(() => ({}))) as VerifyEmailResponse
+    if (!res.ok || json.status === 'error') {
+        throw new Error(json.detail || `Could not resend verification email (HTTP ${res.status})`)
+    }
+    return json
+}
+
+/** Request a password-reset link. Always resolves ok (no account enumeration). */
+export async function requestPasswordReset(email: string): Promise<{ status: string; detail?: string }> {
+    const res = await fetch(`${baseUrl()}/api/signup/request-password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...mcpAuthHeaders() },
+        body: JSON.stringify({ email }),
+        signal: timeoutSignal(30_000),
+    })
+    const json = (await res.json().catch(() => ({}))) as { status?: string; detail?: string }
+    if (!res.ok || json.status === 'error') {
+        throw new Error(json.detail || `Could not send reset link (HTTP ${res.status})`)
+    }
+    return { status: json.status || 'ok', detail: json.detail }
+}
+
+/** Set a new password from a reset token; returns a fresh session. */
+export async function resetPassword(token: string, newPassword: string): Promise<SignupResponse> {
+    const res = await fetch(`${baseUrl()}/api/signup/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...mcpAuthHeaders() },
+        body: JSON.stringify({ token, new_password: newPassword }),
+        signal: timeoutSignal(30_000),
+    })
+    const json = (await res.json().catch(() => ({}))) as SignupResponse
+    if (!res.ok || json.status === 'error') {
+        throw new Error(json.detail || `Password reset failed (HTTP ${res.status})`)
+    }
+    return json
+}
+
+export async function saveSignupAssessment(payload: AssessmentPayload): Promise<SignupResponse> {
     const res = await fetch(`${baseUrl()}/api/signup/assessment`, {
         method: 'POST',
         headers: {
@@ -217,39 +246,6 @@ export async function saveSignupAssessment(payload: OAuthCompletePayload): Promi
         throw new Error(json.detail || `Assessment save failed (HTTP ${res.status})`)
     }
     return json
-}
-
-export function consumeOAuthRedirect(): SignupResponse | null {
-    const hash = window.location.hash || ''
-    const match = hash.match(/(?:^#|&)auth=([^&]+)/)
-    if (!match) return null
-    try {
-        const encoded = decodeURIComponent(match[1])
-        const padded = encoded.padEnd(encoded.length + ((4 - encoded.length % 4) % 4), '=')
-        const parsed = JSON.parse(atob(padded.replace(/-/g, '+').replace(/_/g, '/'))) as SignupResponse
-        window.history.replaceState(null, document.title, window.location.pathname + window.location.search)
-        return parsed?.access_token ? parsed : null
-    } catch {
-        return null
-    }
-}
-
-export function savePendingOAuthSignup(value: unknown): void {
-    try {
-        localStorage.setItem(OAUTH_PENDING_KEY, JSON.stringify(value))
-    } catch {
-        /* ignore */
-    }
-}
-
-export function consumePendingOAuthSignup<T>(): T | null {
-    try {
-        const raw = localStorage.getItem(OAUTH_PENDING_KEY)
-        localStorage.removeItem(OAUTH_PENDING_KEY)
-        return raw ? (JSON.parse(raw) as T) : null
-    } catch {
-        return null
-    }
 }
 
 export async function restoreSignupSession(args: {
@@ -459,17 +455,17 @@ export function buildSignupPayload(
     }
 }
 
-export function buildOAuthCompletePayload(
+export function buildAssessmentPayload(
     accessToken: string,
     formData: Record<string, any>,
     resultsBackend: Record<string, any> | null | undefined,
     results: Record<string, any>
-): OAuthCompletePayload {
+): AssessmentPayload {
     const payload = buildSignupPayload(
         {
-            fullName: 'OAuth User',
-            email: 'oauth@example.com',
-            password: 'OAuthPassword1',
+            fullName: 'Assessment',
+            email: 'assessment@local',
+            password: 'Placeholder1',
             marketingOptIn: false,
         },
         formData,

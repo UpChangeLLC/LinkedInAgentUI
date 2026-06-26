@@ -50,7 +50,7 @@ def _extract_key(headers: dict) -> str:
 
 # Public paths that never require auth
 _PUBLIC_PATHS = {"/mcp/health", "/health", "/ready", "/api/stats", "/api/events"}
-_PUBLIC_PREFIXES = ("/api/signup/oauth/callback/",)
+_PUBLIC_PREFIXES: tuple[str, ...] = ()
 
 
 async def api_key_guard(request: Request, call_next):

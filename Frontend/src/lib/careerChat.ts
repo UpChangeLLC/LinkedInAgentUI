@@ -46,6 +46,34 @@ function timeoutSignal(ms: number): AbortSignal {
 
 const CHAT_TIMEOUT_MS = 120_000
 
+/** Error carrying the HTTP status + backend `detail.code` so the UI can tell a
+ *  paywall (402 premium_required) apart from a generic failure. */
+export class ChatApiError extends Error {
+    status: number
+    code?: string
+    constructor(message: string, status: number, code?: string) {
+        super(message)
+        this.name = 'ChatApiError'
+        this.status = status
+        this.code = code
+    }
+    get premiumRequired(): boolean {
+        return this.status === 402 || this.code === 'premium_required'
+    }
+}
+
+async function raiseForStatus(res: Response): Promise<never> {
+    const text = await res.text().catch(() => '')
+    let code: string | undefined
+    try {
+        const parsed = JSON.parse(text)
+        code = parsed?.detail?.code ?? parsed?.code
+    } catch {
+        /* non-JSON body */
+    }
+    throw new ChatApiError(text || `HTTP ${res.status}`, res.status, code)
+}
+
 export type CareerChatTurn = { role: 'user' | 'assistant'; content: string }
 
 export type CareerChatMessageResponse = {
@@ -92,8 +120,7 @@ export async function fetchCareerChatHistory(sessionId: string): Promise<CareerC
         signal: timeoutSignal(CHAT_TIMEOUT_MS),
     })
     if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
+        await raiseForStatus(res)
     }
     const json = (await res.json()) as CareerChatMessageResponse
     return json.history || []
@@ -115,8 +142,7 @@ export async function postCareerChatMessage(
         signal: timeoutSignal(CHAT_TIMEOUT_MS),
     })
     if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
+        await raiseForStatus(res)
     }
     return (await res.json()) as CareerChatMessageResponse
 }
@@ -129,8 +155,7 @@ export async function resetCareerChatSession(sessionId: string): Promise<void> {
         signal: timeoutSignal(30_000),
     })
     if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
+        await raiseForStatus(res)
     }
 }
 
@@ -167,8 +192,7 @@ export async function listCareerChatSessions(): Promise<CareerChatSessionSummary
         signal: timeoutSignal(30_000),
     })
     if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
+        await raiseForStatus(res)
     }
     return (await res.json()) as CareerChatSessionSummary[]
 }
@@ -180,8 +204,7 @@ export async function createCareerChatSession(): Promise<{ session_id: string; t
         signal: timeoutSignal(30_000),
     })
     if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
+        await raiseForStatus(res)
     }
     return (await res.json()) as { session_id: string; title: string }
 }
@@ -194,8 +217,7 @@ export async function renameCareerChatSession(sid: string, title: string): Promi
         signal: timeoutSignal(30_000),
     })
     if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
+        await raiseForStatus(res)
     }
 }
 
@@ -206,8 +228,7 @@ export async function deleteCareerChatSession(sid: string): Promise<void> {
         signal: timeoutSignal(30_000),
     })
     if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
+        await raiseForStatus(res)
     }
 }
 
