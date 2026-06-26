@@ -13,7 +13,6 @@ import { SignupPage } from './pages/SignupPage';
 import { SubscriptionPage } from './pages/SubscriptionPage';
 import { SettingsNotificationsPage } from './pages/SettingsNotificationsPage';
 import { RerunLockModal } from './components/dashboard/RerunLockModal';
-import { EmailVerificationBanner } from './components/auth/EmailVerificationBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { buildCareerAssessmentContext } from './lib/careerChat';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -95,8 +94,6 @@ export function App() {
     resultsBackend,
     authNotice,
     dismissAuthNotice,
-    emailVerified,
-    resendVerificationEmail,
     requestPasswordResetEmail,
     passwordResetToken,
     submitPasswordReset,
@@ -135,9 +132,6 @@ export function App() {
               Dismiss
             </button>
           </div>
-        )}
-        {signupSession && !emailVerified && (
-          <EmailVerificationBanner email={signupSession.email} onResend={resendVerificationEmail} />
         )}
         <AnimatePresence mode="wait">
           {currentPage === 'landing' && (

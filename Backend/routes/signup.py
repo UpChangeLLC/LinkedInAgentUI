@@ -284,7 +284,8 @@ async def create_signup(body: SignupRequest) -> JSONResponse:
         row.access_token_hash = _hash_token(access_token)
         row.password_hash = _hash_password(body.password)
         row.subscription_status = "trial"
-        verify_token = _issue_email_verification(row)
+        # Email verification disabled for now — new accounts start verified.
+        row.email_verified = True
 
         async with _session_factory() as session:
             existing = (
@@ -304,12 +305,6 @@ async def create_signup(body: SignupRequest) -> JSONResponse:
             await session.commit()
             await session.refresh(row)
 
-        await _enqueue_auth_email(
-            row.id,
-            row.full_name,
-            "email_verification",
-            {"verify_url": f"{_frontend_origin()}/?verify={verify_token}"},
-        )
         return JSONResponse(_session_payload(row, access_token=access_token))
     except Exception:
         logger.warning("Failed to persist signup", exc_info=True)
@@ -389,17 +384,12 @@ async def create_onboarding_signup(body: OnboardingSignupRequest) -> JSONRespons
             access_token = _new_access_token()
             row.access_token_hash = _hash_token(access_token)
             row.password_hash = _hash_password(body.password)
-            verify_token = _issue_email_verification(row)
+            # Email verification disabled for now — new accounts start verified.
+            row.email_verified = True
             session.add(row)
             await session.commit()
             await session.refresh(row)
 
-        await _enqueue_auth_email(
-            row.id,
-            row.full_name,
-            "email_verification",
-            {"verify_url": f"{_frontend_origin()}/?verify={verify_token}"},
-        )
         payload = _session_payload(row, access_token=access_token)
         payload["is_returning_user"] = False
         return JSONResponse(payload)

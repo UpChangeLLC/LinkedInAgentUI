@@ -120,7 +120,7 @@ export function LandingPage({
           </div>
           <div className="mt-10 grid md:grid-cols-3 gap-5">
             <Step n={1} title="Drop your LinkedIn URL" body="We pull role, skills, and experience. No login required." />
-            <Step n={2} title="Answer 10 quick questions" body="90 seconds. Auto-saving. Profile parse runs in parallel." />
+            <Step n={2} title="Answer 9 quick questions" body="90 seconds. Auto-saving. Profile parse runs in parallel." />
             <Step n={3} title="See your score + breakdown" body="Free dashboard with the 8-dim radar, cohort percentile, and a personalized summary." />
           </div>
         </div>
@@ -130,7 +130,7 @@ export function LandingPage({
         <div className="max-w-3xl mx-auto text-center space-y-3">
           <p className="text-gray-500 text-sm">
             © 2024 AI Resilience Score™. A product of{' '}
-            <span className="font-semibold text-gray-700">UpChange PLC</span>.
+            <span className="font-semibold text-gray-700">UpChange LLC</span>.
           </p>
           <p className="text-gray-400 text-xs leading-relaxed max-w-xl mx-auto">
             AI Resilience Score™ is not affiliated with, endorsed by, or connected to LinkedIn Corporation.
