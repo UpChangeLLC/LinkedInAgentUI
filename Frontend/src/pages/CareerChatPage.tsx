@@ -4,6 +4,7 @@ import { ArrowLeft, Bot, MessageCircle, RotateCcw, Send, Sparkles, X } from 'luc
 import { LinkedInNav } from '../components/ui/LinkedInNav'
 import { Button } from '../components/ui/Button'
 import type { CareerChatTurn, CareerChatSessionSummary } from '../lib/careerChat'
+import { ChatApiError } from '../lib/careerChat'
 import {
     createCareerChatSession,
     deleteCareerChatSession,
@@ -17,6 +18,7 @@ import {
     setLastActiveSessionId,
 } from '../lib/careerChat'
 import { ChatSessionSidebar } from '../components/chat/ChatSessionSidebar'
+import { MarkdownMessage } from '../components/chat/MarkdownMessage'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 const SUGGESTED_PROMPTS = [
@@ -135,7 +137,12 @@ export function CareerChatPage({ seedAssessmentContext, onBack, embedded = false
                 setMessages(history)
             }
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : 'Request failed'
+            const premium = e instanceof ChatApiError && e.premiumRequired
+            const msg = premium
+                ? "You've used all your free mentor messages. Upgrade to Pro for unlimited coaching."
+                : e instanceof Error
+                  ? e.message
+                  : 'Request failed'
             setError(msg)
             updateInput(text)
             setMessages((prev) => prev.filter((m, idx) => !(idx === prev.length - 1 && m.role === 'user' && m.content === text)))
@@ -187,8 +194,13 @@ export function CareerChatPage({ seedAssessmentContext, onBack, embedded = false
             setSessionId(created.session_id)
             setMessages([])
             await refreshSessions()
-        } catch {
-            // Free tier (402) or sessions disabled — fall back to the single-thread reset.
+        } catch (e: unknown) {
+            // Free users get one saved thread; a second create returns 402.
+            if (e instanceof ChatApiError && e.premiumRequired) {
+                setError('Free includes one saved chat. Upgrade to Pro for unlimited saved chats.')
+                return
+            }
+            // Sessions disabled / other error — fall back to the single-thread reset.
             await onReset()
         }
     }, [onReset, refreshSessions])
@@ -338,13 +350,13 @@ export function CareerChatPage({ seedAssessmentContext, onBack, embedded = false
                             className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                             <div
-                                className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-line ${
+                                className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                                     m.role === 'user'
-                                        ? 'bg-linkedin text-white rounded-br-md'
+                                        ? 'bg-linkedin text-white rounded-br-md whitespace-pre-line'
                                         : 'bg-dark-card border border-dark-border text-dark-textPri rounded-bl-md'
                                 }`}
                             >
-                                {m.content}
+                                {m.role === 'assistant' ? <MarkdownMessage content={m.content} /> : m.content}
                             </div>
                         </div>
                     ))}

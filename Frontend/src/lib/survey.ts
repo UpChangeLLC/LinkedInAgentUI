@@ -23,7 +23,6 @@ export const surveyResponseSchema = z.object({
   q_ae_1: z.number().int().min(0).max(100),
 
   // Runway items (recommendations only, privacy-sensitive, skippable)
-  q_rw_1: z.enum(['yes', 'no', 'prefer_not_to_say']).optional(),
   q_rw_2: z.enum(['yes', 'no', 'prefer_not_to_say']).optional(),
 })
 
@@ -37,7 +36,7 @@ export const REQUIRED_QUESTION_IDS = [
 /** All question ids in display order. */
 export const QUESTION_IDS = [
   'q_ai_1', 'q_ai_2', 'q_ga_1', 'q_lv_1', 'q_lv_2',
-  'q_nr_1', 'q_nr_2', 'q_ae_1', 'q_rw_1', 'q_rw_2',
+  'q_nr_1', 'q_nr_2', 'q_ae_1', 'q_rw_2',
 ] as const
 
 /** True when every required question has a non-empty answer. */

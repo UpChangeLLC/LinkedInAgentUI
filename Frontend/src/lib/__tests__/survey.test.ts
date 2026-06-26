@@ -15,7 +15,6 @@ const valid: SurveyResponse = {
   q_nr_1: 3,
   q_nr_2: 'occasionally',
   q_ae_1: 35,
-  q_rw_1: 'yes',
   q_rw_2: 'no',
 };
 
@@ -25,7 +24,7 @@ describe('surveyResponseSchema', () => {
   });
 
   it('accepts when optional fields are omitted', () => {
-    const { q_ai_2, q_rw_1, q_rw_2, ...rest } = valid;
+    const { q_ai_2, q_rw_2, ...rest } = valid;
     expect(surveyResponseSchema.safeParse(rest).success).toBe(true);
   });
 
@@ -60,7 +59,6 @@ describe('isSurveyComplete', () => {
   it('true even when only optional fields are missing', () => {
     const partial = { ...valid };
     delete (partial as any).q_ai_2;
-    delete (partial as any).q_rw_1;
     delete (partial as any).q_rw_2;
     expect(isSurveyComplete(partial)).toBe(true);
   });

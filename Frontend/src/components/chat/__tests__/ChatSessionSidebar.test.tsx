@@ -55,9 +55,19 @@ describe('ChatSessionSidebar', () => {
     expect(screen.getByText(/no saved chats/i)).toBeInTheDocument();
   });
 
-  it('inline-renames: clicking rename reveals a textbox; Enter commits onRename(sid, title)', () => {
+  it('actions live behind a kebab menu (not overlapping the title)', () => {
+    setup();
+    // Rename/Delete are not visible until the ⋯ menu is opened.
+    expect(screen.queryByRole('menuitem', { name: /rename/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /chat options for 30-day action plan/i }));
+    expect(screen.getByRole('menuitem', { name: /rename/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /delete/i })).toBeInTheDocument();
+  });
+
+  it('inline-renames via the menu: Rename reveals a textbox; Enter commits onRename(sid, title)', () => {
     const props = setup();
-    fireEvent.click(screen.getByRole('button', { name: /rename 30-day action plan/i }));
+    fireEvent.click(screen.getByRole('button', { name: /chat options for 30-day action plan/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /rename/i }));
     const input = screen.getByRole('textbox', { name: /rename chat/i });
     expect(input).toHaveValue('30-day action plan');
     fireEvent.change(input, { target: { value: 'My renamed plan' } });
@@ -67,11 +77,19 @@ describe('ChatSessionSidebar', () => {
 
   it('inline-rename cancels on Escape without calling onRename', () => {
     const props = setup();
-    fireEvent.click(screen.getByRole('button', { name: /rename 30-day action plan/i }));
+    fireEvent.click(screen.getByRole('button', { name: /chat options for 30-day action plan/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /rename/i }));
     const input = screen.getByRole('textbox', { name: /rename chat/i });
     fireEvent.change(input, { target: { value: 'Nope' } });
     fireEvent.keyDown(input, { key: 'Escape' });
     expect(props.onRename).not.toHaveBeenCalled();
     expect(screen.queryByRole('textbox', { name: /rename chat/i })).not.toBeInTheDocument();
+  });
+
+  it('Delete menu item calls onDelete with the session id', () => {
+    const props = setup();
+    fireEvent.click(screen.getByRole('button', { name: /chat options for pivot to ai pm/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /delete/i }));
+    expect(props.onDelete).toHaveBeenCalledWith('b2');
   });
 });

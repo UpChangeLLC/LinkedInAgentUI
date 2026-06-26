@@ -140,8 +140,18 @@ class UserSignup(Base):
     stripe_customer_id = Column(String(120), nullable=True, index=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Retention: number of free Career Mentor messages used (first message free).
+    # Retention: legacy first-message-free flag (superseded by the counter below).
     career_chat_free_used = Column(Boolean, default=False)
+    # Free Career Mentor messages consumed (gated by FREE_CHAT_MESSAGE_LIMIT).
+    career_chat_messages_used = Column(Integer, nullable=False, default=0)
+
+    # Email verification (soft-nag): unverified users can still use the app.
+    email_verified = Column(Boolean, nullable=False, default=False)
+    email_verification_token_hash = Column(String(64), nullable=True, index=True)
+    email_verification_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    # Password reset via emailed one-time token.
+    password_reset_token_hash = Column(String(64), nullable=True, index=True)
+    password_reset_token_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(
         DateTime(timezone=True),

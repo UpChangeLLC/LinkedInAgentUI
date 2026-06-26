@@ -9,25 +9,23 @@ import { trackEvent } from '../lib/analytics';
 import type { SurveyResponse } from '../lib/survey';
 import type { ScrapeStatus } from '../components/survey/SurveyProgressBar';
 import {
-  buildOAuthCompletePayload,
+  buildAssessmentPayload,
   buildSignupPayload,
   clearStoredSignupSession,
   confirmPaymentCheckout,
   createPaymentCheckout,
-  completeOAuthSignup,
-  consumeOAuthRedirect,
-  consumePendingOAuthSignup,
   getStoredSignupSession,
   isAuthRestoreError,
   refreshSignupSession,
+  requestPasswordReset,
+  resendVerification,
   restoreSignupSession,
+  resetPassword,
   saveSignupSession,
   saveSignupAssessment,
-  savePendingOAuthSignup,
-  startOAuth,
   submitSignup,
+  verifyEmail,
   PAYWALL_DEADLINE_KEY,
-  type OAuthProvider,
   type SignupResponse,
   type StoredSignupSession,
 } from '../lib/signup';
@@ -75,11 +73,9 @@ const INITIAL_PROGRESS: PipelineProgress = {
 
 const FREE_PREVIEW_MS = 60_000;
 
-interface PendingOAuthSignup {
-  formData: any;
-  resultsBackend: any;
-  resultsComputed: MockResults;
-  authEntryPoint?: 'landing' | 'intake';
+export interface AuthNotice {
+  kind: 'success' | 'error';
+  message: string;
 }
 
 export function useAppState() {
@@ -113,6 +109,9 @@ export function useAppState() {
   const [continueToSubscriptionsAfterAuth, setContinueToSubscriptionsAfterAuth] = useState(false);
   const [authRestoring, setAuthRestoring] = useState(true);
   const [signupInitialMode, setSignupInitialMode] = useState<'login' | 'signup'>('login');
+  // Email verification (soft nag) + password-reset deep-link state.
+  const [authNotice, setAuthNotice] = useState<AuthNotice | null>(null);
+  const [passwordResetToken, setPasswordResetToken] = useState<string | null>(null);
 
   // ---- Onboarding funnel instrumentation (G4 gate: survey completion >85%,
   // signup conversion >35%). Emit one event per stage so the backend can
@@ -209,59 +208,37 @@ export function useAppState() {
     if (restoreAttemptedRef.current) return;
     restoreAttemptedRef.current = true;
 
-    const oauthResponse = consumeOAuthRedirect();
-    if (oauthResponse?.access_token) {
-      const session = saveSignupSession(oauthResponse);
-      const pending = consumePendingOAuthSignup<PendingOAuthSignup>();
-      if (pending) {
-        setFormData(pending.formData || {});
-        setResultsBackend(pending.resultsBackend || null);
-        setResultsComputed(pending.resultsComputed || mockResults);
-      }
-      if (session) {
-        setSignupSession(session);
-        setSignupCompleted(true);
-        setSignupId(session.signupId);
-        setSubscriptionActive(session.subscriptionActive);
-        if (oauthResponse.latest_assessment_result) {
-          showSavedResult(
-            oauthResponse.latest_assessment_result,
-            oauthResponse.latest_assessment_created_at || null,
-            false,
-            oauthResponse.subscription_active
-          );
-        } else if (pending?.formData && (pending.formData?.linkedinUrl || pending.formData?.linkedin_url)) {
-          startFullAnalysis(pending.formData, true, session.accessToken);
-        } else {
-          setCurrentPage('intake');
-        }
-      }
-      const hasMeaningfulPendingMetadata = Boolean(
-        pending?.resultsBackend?.result ||
-        pending?.formData?.linkedinUrl ||
-        pending?.formData?.linkedin_url ||
-        pending?.formData?.resumeText ||
-        pending?.formData?.resume_text
-      );
-      if (session?.accessToken && pending && hasMeaningfulPendingMetadata) {
+    // Email-verification / password-reset deep links (?verify=… / ?reset=…).
+    try {
+      const url = new URL(window.location.href);
+      const verifyToken = url.searchParams.get('verify');
+      const resetToken = url.searchParams.get('reset');
+      if (verifyToken) {
+        url.searchParams.delete('verify');
+        window.history.replaceState(null, document.title, url.pathname + url.search + url.hash);
         (async () => {
           try {
-            const resp = await completeOAuthSignup(
-              buildOAuthCompletePayload(
-                session.accessToken,
-                pending.formData || {},
-                pending.resultsBackend || null,
-                pending.resultsComputed as unknown as Record<string, any>
-              )
-            );
-            saveSignupSession({ ...resp, access_token: session.accessToken });
-          } catch {
-            // The user is authenticated; metadata sync can be retried on next signup flow.
+            await verifyEmail(verifyToken);
+            setAuthNotice({ kind: 'success', message: 'Your email is verified — thank you!' });
+            const refreshed = await refreshSignupSession();
+            if (refreshed) setSignupSession(refreshed);
+          } catch (e: any) {
+            setAuthNotice({
+              kind: 'error',
+              message: e?.message || 'This verification link is invalid or has expired.',
+            });
           }
         })();
       }
-      setAuthRestoring(false);
-      return;
+      if (resetToken) {
+        url.searchParams.delete('reset');
+        window.history.replaceState(null, document.title, url.pathname + url.search + url.hash);
+        setPasswordResetToken(resetToken);
+        setSignupInitialMode('login');
+        setCurrentPage('signup');
+      }
+    } catch {
+      /* ignore malformed URLs */
     }
 
     const stored = getStoredSignupSession();
@@ -564,7 +541,7 @@ export function useAppState() {
           const assessmentAccessToken = accessTokenOverride || signupSession?.accessToken;
           if (assessmentAccessToken) {
             void saveSignupAssessment(
-              buildOAuthCompletePayload(
+              buildAssessmentPayload(
                 assessmentAccessToken,
                 data,
                 resp,
@@ -843,26 +820,66 @@ export function useAppState() {
     })();
   }, [continueAfterAuth, formData]);
 
-  const continueWithOAuth = useCallback((provider: OAuthProvider) => {
+  // Re-send the verification email for the current (soft-nagged) session.
+  const resendVerificationEmail = useCallback(async (): Promise<boolean> => {
+    const token = signupSession?.accessToken;
+    if (!token) return false;
+    try {
+      await resendVerification(token);
+      setAuthNotice({ kind: 'success', message: 'Verification email sent — check your inbox.' });
+      return true;
+    } catch (e: any) {
+      setAuthNotice({ kind: 'error', message: e?.message || 'Could not resend verification email.' });
+      return false;
+    }
+  }, [signupSession]);
+
+  // Request a password-reset link (login "Forgot password?"). Always succeeds.
+  const requestPasswordResetEmail = useCallback(async (email: string): Promise<boolean> => {
+    setSignupError('');
+    try {
+      await requestPasswordReset(email);
+      return true;
+    } catch (e: any) {
+      setSignupError(e?.message || 'Could not send reset link.');
+      return false;
+    }
+  }, []);
+
+  // Set a new password from the ?reset=… deep-link token, then log in.
+  const submitPasswordReset = useCallback(async (newPassword: string): Promise<boolean> => {
+    if (!passwordResetToken) return false;
     setSignupSubmitting(true);
     setSignupError('');
-    savePendingOAuthSignup({
-      formData,
-      resultsBackend,
-      resultsComputed,
-      authEntryPoint,
-    } satisfies PendingOAuthSignup);
-
-    (async () => {
-      try {
-        const authUrl = await startOAuth(provider);
-        window.location.assign(authUrl);
-      } catch (e: any) {
-        setSignupError(e?.message || `Could not start ${provider} sign-in.`);
-        setSignupSubmitting(false);
+    try {
+      const resp = await resetPassword(passwordResetToken, newPassword);
+      const session = saveSignupSession(resp);
+      if (session) {
+        setSignupSession(session);
+        setSignupCompleted(true);
+        setSignupId(session.signupId);
+        setSubscriptionActive(session.subscriptionActive);
       }
-    })();
-  }, [authEntryPoint, formData, resultsBackend, resultsComputed]);
+      setPasswordResetToken(null);
+      setAuthNotice({ kind: 'success', message: 'Your password has been reset.' });
+      if (resp.latest_assessment_result) {
+        showSavedResult(
+          resp.latest_assessment_result,
+          resp.latest_assessment_created_at || null,
+          false,
+          resp.subscription_active
+        );
+      } else {
+        setCurrentPage('intake');
+      }
+      return true;
+    } catch (e: any) {
+      setSignupError(e?.message || 'Could not reset password.');
+      return false;
+    } finally {
+      setSignupSubmitting(false);
+    }
+  }, [passwordResetToken, showSavedResult]);
 
   const activateSubscription = useCallback((planId = 'monthly', paymentMethod: Record<string, unknown> = {}) => {
     const token = signupSession?.accessToken;
@@ -972,8 +989,16 @@ export function useAppState() {
     retrySubmit,
     completeSignup,
     restoreSignupByEmail,
-    continueWithOAuth,
     activateSubscription,
+    // Email verification (soft nag) + password reset.
+    authNotice,
+    dismissAuthNotice: () => setAuthNotice(null),
+    emailVerified: signupSession ? signupSession.emailVerified : true,
+    resendVerificationEmail,
+    requestPasswordResetEmail,
+    passwordResetToken,
+    submitPasswordReset,
+    cancelPasswordReset: () => setPasswordResetToken(null),
     markDashboardRevealSeen: () => setDashboardRevealSeen(true),
     goToCareerChat,
     goBackFromCareerChat,

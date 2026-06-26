@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, Search, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { CareerChatSessionSummary } from '../../lib/careerChat';
 
@@ -12,8 +12,9 @@ export interface ChatSessionSidebarProps {
   onDelete?: (sessionId: string) => void;
 }
 
-/** Session rail for the Career Mentor — mirrors the approved mockup: New chat,
- *  search, a list of saved threads with active state + hover actions. */
+/** Session rail for the Career Mentor: New chat, search, and a list of saved
+ *  threads. Row actions live behind a kebab (⋯) menu so they never overlap the
+ *  title (the title reserves right padding and truncates cleanly). */
 export function ChatSessionSidebar({
   sessions,
   activeSessionId,
@@ -25,11 +26,34 @@ export function ChatSessionSidebar({
   const [query, setQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const hasActions = Boolean(onRename || onDelete);
+
+  // Close the kebab menu on outside-click / Escape.
+  useEffect(() => {
+    if (!menuId) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuId(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuId(null);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuId]);
+
   const filtered = query.trim()
     ? sessions.filter((s) => s.title.toLowerCase().includes(query.trim().toLowerCase()))
     : sessions;
 
   const startRename = (s: CareerChatSessionSummary) => {
+    setMenuId(null);
     setEditingId(s.session_id);
     setDraft(s.title);
   };
@@ -66,7 +90,9 @@ export function ChatSessionSidebar({
 
       <ul className="flex-1 overflow-y-auto p-2 space-y-1 text-sm">
         {filtered.length === 0 && (
-          <li className="px-2 py-6 text-center text-xs text-dark-textMuted">No saved chats yet</li>
+          <li className="px-3 py-8 text-center text-xs text-dark-textMuted">
+            {query.trim() ? 'No chats match your search.' : 'No saved chats yet.'}
+          </li>
         )}
         {filtered.map((s) => {
           const active = s.session_id === activeSessionId;
@@ -95,35 +121,69 @@ export function ChatSessionSidebar({
                 aria-current={active ? 'true' : undefined}
                 onClick={() => onSelect(s.session_id)}
                 className={clsx(
-                  'w-full flex items-center gap-2 rounded-lg px-2.5 py-2 min-h-[44px] text-left transition',
+                  // pr-9 reserves room for the ⋯ trigger so titles never overlap it
+                  'w-full flex items-center rounded-lg pl-2.5 pr-9 py-2 min-h-[44px] text-left transition',
                   active
                     ? 'bg-dark-accentDim text-dark-accent border-l-2 border-dark-accent'
                     : 'text-dark-textSec hover:bg-dark-elevated hover:text-dark-textPri',
                 )}
               >
-                <span className="truncate flex-1">{s.title}</span>
+                <span className="truncate block w-full">{s.title}</span>
               </button>
-              {(onRename || onDelete) && (
-                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1">
-                  {onRename && (
-                    <button
-                      type="button"
-                      aria-label={`Rename ${s.title}`}
-                      onClick={() => startRename(s)}
-                      className="p-1.5 rounded text-dark-textMuted hover:text-dark-accent"
+
+              {hasActions && (
+                <div
+                  ref={menuId === s.session_id ? menuRef : undefined}
+                  className="absolute right-1 top-1/2 -translate-y-1/2"
+                >
+                  <button
+                    type="button"
+                    aria-label={`Chat options for ${s.title}`}
+                    aria-haspopup="menu"
+                    aria-expanded={menuId === s.session_id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuId(menuId === s.session_id ? null : s.session_id);
+                    }}
+                    className={clsx(
+                      'flex h-7 w-7 items-center justify-center rounded-md text-dark-textMuted transition',
+                      'hover:bg-dark-border/40 hover:text-dark-textPri focus:outline-none focus:ring-2 focus:ring-dark-accent/40',
+                      'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+                      menuId === s.session_id && 'opacity-100',
+                    )}
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+
+                  {menuId === s.session_id && (
+                    <div
+                      role="menu"
+                      className="absolute right-0 mt-1 w-36 overflow-hidden rounded-lg border border-dark-border bg-dark-card py-1 shadow-xl z-20"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  {onDelete && (
-                    <button
-                      type="button"
-                      aria-label={`Delete ${s.title}`}
-                      onClick={() => onDelete(s.session_id)}
-                      className="p-1.5 rounded text-dark-textMuted hover:text-dark-red"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      {onRename && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => startRename(s)}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-dark-textSec hover:bg-dark-elevated hover:text-dark-textPri"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Rename
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setMenuId(null);
+                            onDelete(s.session_id);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-dark-red hover:bg-dark-red/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
