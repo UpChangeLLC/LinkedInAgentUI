@@ -124,12 +124,16 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Stripe Buy Button / Checkout needs js.stripe.com (script + iframe),
+    # api.stripe.com (network), and image assets. Without these the
+    # <stripe-buy-button> never upgrades into a clickable button.
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data:; "
-        "connect-src 'self'"
+        "img-src 'self' data: https://*.stripe.com; "
+        "frame-src https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com; "
+        "connect-src 'self' https://api.stripe.com https://merchant-ui-api.stripe.com"
     )
     return response
